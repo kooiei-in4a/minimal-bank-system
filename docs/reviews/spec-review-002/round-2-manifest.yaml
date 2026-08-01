@@ -1,0 +1,50 @@
+benchmark:
+  review_id: "spec-review-002"
+  round: 2
+  source_review_id: "spec-review-001"
+  dataset_id: "spec-review-002-portable-v1"
+  language: "ja"
+
+review_target:
+  repository_label: "kooiei-in4a/minimal-bank-system"
+  pr_number_label: 9
+  base_sha: "dedbcaf31fd4c40b966facd1829c7535b8d0e4ba"
+  head_sha: "4944fb22806526f9e92dc47b516b57431c6c7f0a"
+  target_file: "docs/specs/bank-system-specification.md"
+  changed_file_count: 1
+  target_file_status: "new file"
+  target_file_lines: 977
+  target_file_git_blob_sha: "95097dbbe66eba6c32a18db8121db7e7f93d43d1"
+
+portable_inputs:
+  delivery_mode: "direct two-file distribution"
+  prompt:
+    filename: "review-prompt.md"
+    sha256: "af70cf9f1112b7479abcd2814f08746103329fef04dad7d3fc3fb1258c30f966"
+  evidence:
+    filename: "review-evidence-bundle.md"
+    sha256: "408bfc861e494931224f9c0feeb146e11fb27f271f5caf94d1f74884ffd9321b"
+  archive:
+    filename: "spec-review-002-portable.zip"
+    sha256: "db2aa36f2d2eab0b4a03337935fbbb72dc5d1520d5ebf3b8757a0f7c1529e56d"
+    member_count: 2
+
+results:
+  directory: "docs/reviews/spec-review-002/results"
+  filename_pattern: "spec-review-002-{reviewer_slug}-{yyyymmdd}.md"
+  one_file_per_model: true
+
+independence:
+  prohibit_external_sources: true
+  prohibit_other_model_reviews: true
+  prohibit_round_1_results: true
+  prohibit_gold_findings: true
+  prohibit_integrated_review: true
+
+repository_scope:
+  modify_review_target: false
+  modify_round_1_results: false
+  modify_issues: false
+  modify_pull_requests: false
+  modify_gates: false
+  create_pull_request: false
