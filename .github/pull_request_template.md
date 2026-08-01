@@ -8,6 +8,16 @@
 - Specification:
 - ADR:
 
+## Project control
+
+- Parent / Control issue: #3
+- Target issue:
+- Project phase:
+- Required gate:
+- Gate status:
+- [ ] Parent Issue #3の現在フェーズ、ゲート、Blocker、禁止事項を確認した
+- [ ] 対象IssueがParent Issue #3から追跡可能である
+
 ## Scope
 
 ### Included
