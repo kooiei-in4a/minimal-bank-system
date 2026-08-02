@@ -1,6 +1,6 @@
 # ADR-0004: Concurrency control and row locking
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related candidates: ADR-CANDIDATE-003, ADR-CANDIDATE-004
@@ -9,7 +9,7 @@
 
 Withdrawals and transfers must use database row locking. Deposits must also produce an exact final balance and exact post-transaction balances under concurrency. Transfer locking must avoid deadlocks.
 
-## Proposed decision
+## Decision
 
 Serialize every balance mutation for an Account by locking the Account row in PostgreSQL.
 
