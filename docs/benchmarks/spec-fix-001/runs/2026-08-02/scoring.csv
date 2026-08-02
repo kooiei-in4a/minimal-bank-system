@@ -1,0 +1,15 @@
+rank,model,slug,approx_duration_minutes,execution_method,F,C,R,S,A,T,AT,P,O,raw,official,hard_fail,summary
+1,GPT-5.6 Luna XHigh,gpt-5-6-luna-xhigh,12,Codex App,24.0,20.0,14.0,9.0,10.0,8.0,7.0,3.0,3.0,98.0,Excellent,なし,F-003の同一キー異内容を未決のまま維持。24 REQ、B/D、原因別AC、承認待ち整理が高水準。軽微なAC増加のみ。
+2,ChatGPT-5.6 Sol High,chatgpt-5-6-sol-high,9,Browser実行,24,20,14,8.5,10,8,7,2.5,3,97.0,Excellent,なし,唯一、same-key different-payload の結果を未決として維持。全24 REQとB/D追跡、AC原因分離も高水準。AC数69件はやや過剰。
+3,ChatGPT-5.6 Sol Fast,chatgpt-5-6-sol-fast,3,Browser実行,23,16,14,8.5,7,8,7,3,3,89.5,Invalid,F-003未承認判断の確定,全体品質は高いが、同一キー異内容を拒否すると仕様・ACで確定。
+4,ChatGPT-5.6 Sol Middle,chatgpt-5-6-sol-middle,4,Browser実行,22.5,16,14,8,7,8,6.5,3,3,88.0,Invalid,F-003未承認判断の確定,追跡・AC補完は良好。既存本文の異内容拒否を残し、F-003と矛盾。
+5,DeepSeek V4 Flash High,deepseek-v4-flash-high,7,Open Code,22,15,13.5,8.5,6.5,6,6,3,2.5,83.0,Invalid,F-003未承認判断の確定,原因別ACとログ分離は良好。B/D表のAC参照が弱く、報告メタデータのモデル名も不正確。
+6,Claude Opus 4.6 High,claude-opus46-high,12,Claude Desktop,22,14.5,13.5,8,6,6,6,3.5,3,82.5,Invalid,F-003未承認判断の確定,全体は整然。異内容拒否とDraft codeをACに固定し、B/D表のAC参照が不足。
+6,GLM-5.2 High,glm-5-2-high,7,Open Code,21.5,15,13.5,8,6.5,7,5,3,3,82.5,Invalid,F-003未承認判断の確定,追跡表は充実。ただし異内容拒否を固定し、振込の解約済み・識別子不一致等を複合ACに残す。
+8,Claude Opus 5 High,claude-opus5-high,8,Claude Desktop,22.5,14,13,7,6,8,6,2.5,3,82.0,Invalid,F-003未承認判断の確定,追跡と原因分離は強いが、HTTPを複数ACで確定。さらに全参照・未認証要求をAudit Log対象とし未承認範囲を固定。
+9,Claude Sonnet 5 High,claude-sonnet5-high,11,Claude Desktop,22,14,13.5,8,6,6,6,3,3,81.5,Invalid,F-003未承認判断の確定,修正範囲は良好。異内容拒否と複数の提案code/403を確定結果として使用。B/D表のAC参照も弱い。
+10,DeepSeek V4 Pro High,deepseek-v4-pro-high,8,Open Code,20.5,14,13.5,8.5,6,6,5.5,3,2,79.0,Invalid,F-003未承認判断の確定,主要Findingは扱うが、冪等同時到着AC不足、B/D追跡不足、slug typo、報告と実変更節の不一致。
+11,Gemini 3.1 Pro,gemini-3-1-pro,3,Browser実行,19.5,12,12.5,8,5,7,4,3,3,74.0,Invalid,F-003未承認判断の確定,完全出力と追跡構造は良い。401/未認証、元/先不存在など複数原因を同一ACへまとめ、HTTPを確定。
+12,Gemini Thinking,gemini-thinking,3,Browser実行,19.5,11.5,10,7,5,5,4.5,1.5,2.5,66.5,Invalid,F-003未承認判断の確定,主要論点は認識。ただし仕様に「解解約済み」「冪Config性」等の破損、B/D追跡の主張と実体の不一致。
+13,Gemini Flash,gemini-flash,2,Browser実行,17,10.5,12.5,7.5,4.5,5.5,3,2.5,2.5,65.5,Invalid,F-003未承認判断の確定,複合ACと複数候補codeが多くF-005未達。振込元/先不存在や自己振込/解約済みを分離できていない。
+14,GPT-5.6 Luna Middle,gpt-5-6-luna-middle,7,Codex App,13.0,11.0,13.5,8.0,5.5,3.0,3.0,2.5,2.5,62.0,Invalid,F-003未承認判断の確定,報告書ではF-003を承認待ちとする一方、仕様本文で同一キー異内容を拒否と確定。AC不足、未定義AC参照、F-006/N-001未達も残る。
