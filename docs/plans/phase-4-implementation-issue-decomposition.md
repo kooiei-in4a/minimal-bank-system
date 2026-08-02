@@ -1,6 +1,6 @@
 # Phase 4 実装Issue分割計画
 
-- Status: Draft
+- Status: Draft — rolling-wave revision
 - Date: 2026-08-02
 - Parent / Control Issue: #3
 - Planning Issue: #28
@@ -12,203 +12,368 @@
 
 ## 1. 目的
 
-承認済み製品仕様とAccepted ADR-0001〜ADR-0009を、AIエージェントが一件ずつ実装・検証・独立レビューできるIssueへ分割する。
+承認済み製品仕様とAccepted ADR-0001〜ADR-0009を、AIエージェントが一件ずつ安全に実装・検証・独立レビューできるIssueへ段階的に分解する。
 
-この文書は実装Issueそのものではない。候補Issue、所有責任、依存関係、追跡関係、検証戦略を先に固定し、独立レビュー後にGitHub Issueを作成するための計画成果物である。
+本計画は、最初から全実装Issueを詳細化しない。最初に次だけを固定する。
 
-## 2. 調査した公式資料
+1. Issue設計ポリシー
+2. Work Package構造
+3. Work Package間の依存関係
+4. 各Work Packageの開始前ゲートと完了後ゲート
+5. 24 REQ、仕様AC、ADRのWork Package単位の割当
+6. 直近のWP-1 Foundationに属するleaf Issue
 
-### GitHub Issues
+WP-2以降のleaf Issueは、前段Work Packageで得た実装・レビュー実績を反映し、各Work Package開始前に詳細化・独立レビューする。
 
-- GitHub Issuesは大きな作業をsub-issueへ分割し、issue dependenciesでblock関係を表現できる。
-- 親Issueとsub-issueの進捗はGitHub Projectsでも利用できる。
-- 本プロジェクトではIssue #28を親とし、最終leaf Issueを直接sub-issueとして接続する。
-- 21件前後であれば中間epic Issueは作らず、prefixとlabelでworkstreamを区別する。不要な階層を増やさない。
+この方式を、本プロジェクトのローリングウェーブ型Issue分割とする。
 
-参考:
+---
 
-- https://docs.github.com/en/issues/tracking-your-work-with-issues/learning-about-issues/about-issues
-- https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/adding-sub-issues
-- https://docs.github.com/en/enterprise-cloud@latest/issues/tracking-your-work-with-issues/using-issues/creating-issue-dependencies
+## 2. この改訂で変更すること
 
-### Backlog refinement
+以前の計画は21件の候補Issueを最初から詳細化していた。これは漏れ確認には有用だが、次の問題がある。
 
-- 作業項目は、実施者が内容と完了条件を理解でき、一回の実装・レビュー単位でDoneにできる粒度までrefineする。
-- 本計画では日数やLOCの固定上限を設けない。目的、責任、差分範囲、検証方法が一つのレビュー単位に収まるかで判断する。
+- 件数が先に固定され、責任境界より数字が優先される
+- application codeがゼロの段階で後続PRの適切な粒度を過度に予測する
+- 全Issueを同一階層へ並べ、途中の成熟度ゲートが弱い
+- 基盤の実装結果を後続Issueへ反映しにくい
+- 後続Issueの大量修正や重複Issueが発生し得る
 
-参考:
+そのため、21件は確定Issue一覧ではなく、将来の漏れ確認に使用する候補バックログへ降格する。
 
-- https://scrumguides.org/scrum-guide.html
+確定するleaf IssueはWP-1だけとする。WP-2以降はWork Packageの目的・責任・ゲート・REQ/ADR割当だけを固定する。
 
-### .NET / EF Core testing
+---
 
-- ASP.NET Core integration testはdatabase、file system、network等を含む重要な境界に集中させる。
-- 通常ロジックの全組合せをintegration testへ重複させず、unit testで十分なものはunit testを使う。
-- EF Coreのprovider固有挙動、raw SQL、transaction、constraint、migrationは実際に採用するdatabaseで試す。
-- EF Core InMemory providerまたはSQLiteをPostgreSQLのrow lock、advisory lock、constraint、migration検証の代替にしない。
+## 3. Issue設計ポリシー
 
-参考:
+### 3.1 最優先の4原則
 
-- https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-10.0
-- https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy
-- https://learn.microsoft.com/en-us/ef/core/testing/testing-with-the-database
+すべてのleaf Issueは次を満たす。
 
-### PostgreSQL concurrency
+1. **1 Issue = 1つのClose条件**
+   - 「何ができればCloseか」を一文で説明できる。
+2. **1 Issue = 1つの主責任**
+   - 複数レイヤーを変更してもよいが、実現する結果は一つにする。
+3. **明確なOut of scope**
+   - 隣接Issueが所有する責任と、今回実施しないことを明記する。
+4. **検証可能なAcceptance Criteriaと依存関係**
+   - 入力、出力、状態、異常、証拠、Blocked byを具体化する。
 
-- row lockはtransaction終了まで保持される。
-- 複数objectをlockする処理は一貫した順序で取得することがdeadlock回避の基本である。
-- transaction-level advisory lockはtransaction終了時に自動解放される。
+### 3.2 必須記載項目
 
-参考:
+各leaf Issueは最低限、次の項目を持つ。
 
-- https://www.postgresql.org/docs/current/explicit-locking.html
+- Parent / Work Package
+- Background
+- Purpose / Close condition
+- Authority
+- Scope
+- Out of scope
+- Dependencies
+- Owned artifacts
+- Acceptance Criteria
+- Verification
+- Required evidence
+- Agent B review focus
+- Stop conditions
+- Close conditions
 
-## 3. 分割判断
+### 3.3 分割判断の優先順位
 
-### 3.1 採用する基本形
+成果物やレイヤーを機械的に分けるのではなく、次の順で判断する。
 
-1. 利用者から結果を観測できる機能はvertical sliceで分ける。
-2. 複数sliceを本当にblockする共通基盤だけhorizontal Issueにする。
-3. 一つのDB object、共通contract、migration責任には一つのprimary ownerを置く。
-4. 各feature Issueが自身のunit / API / PostgreSQL integration testを持つ。
-5. 最終E2E Issueは不足テストの代替にせず、接続確認とtraceability closureだけを担当する。
-6. 各Issueは原則として一つのDraft PRと一回のAgent B独立レビューで完了する。
-7. 実装順序とmerge順序をdependencyとして明示する。
+1. 一つの完了結果か
+2. 一つの主責任か
+3. 一つのPRで独立レビューできるか
+4. 単独で検証できるか
+5. 独立してmerge・rollbackできるか
+6. DB、API、test等を分けるか統合するか
 
-### 3.2 採用しない分け方
+API、Application、Domain、Infrastructureをレイヤー別Issueにしない。vertical sliceとして一つの能力を完成させるために必要なら、複数レイヤーを一つのIssueで変更してよい。
 
-- API層、Application層、Domain層、Infrastructure層を別々のIssueとして作る。
-- 全schemaを一つの巨大initial migration Issueで作る。
-- transaction、row lock、idempotencyを各featureが個別実装する。
-- 機能Issueではテストせず、最後の横断test Issueへ丸投げする。
-- Docker、backup、migration rollbackを業務featureへ混在させる。
-- 形式的にIssue数を減らすため、登録・入出金・振込を一つのIssueへ統合する。
+### 3.4 分割を検討する兆候
 
-## 4. 候補Issue一覧
+次のいずれかがある場合は分割を検討する。
 
-最終候補は21件とする。番号は計画上の安定IDであり、GitHub Issue番号ではない。
+- 外部から観測できる機能が2つ以上ある
+- PRの目的を一文で説明できない
+- 独立してmerge・rollbackできる変更が複数ある
+- 異なる専門レビューが複数必要になる
+- primary ownerとなるDB objectや共通contractが無関係な責任へまたがる
+- 半分だけでも独立した価値と検証結果を持つ
+- Acceptance Criteriaが多く、失敗原因を一つの責任へ帰属できない
 
-| ID | 候補Issue | 種別 | Primary responsibility |
-| --- | --- | --- | --- |
-| FND-01 | Solution・API・品質基盤 | Enabler | project境界、共通REST error、TimeProvider、correlation、JSON logging、build/test CI |
-| FND-02 | PostgreSQL integration test基盤 | Enabler | Testcontainers、実PostgreSQL fixture、test isolation |
-| FND-03 | EF Core・migration実行基盤 | Enabler | DbContext、explicit migrator、migration history、model drift検査 |
-| FND-04 | Docker Compose・health基盤 | Enabler | API/PostgreSQL local runtime、image pin、live/ready health |
-| SEC-01 | 認証・JWT・authorization-state | Vertical security capability | Identity、login、JWT、current-state validation、401/403 |
-| SEC-02 | Operator一覧・詳細・作成 | Vertical security capability | 管理者向けquery/create、固定role初期割当 |
-| SEC-03 | Operator状態・role変更・管理者保護 | Vertical security capability | enable/disable、role change、last-admin、self-disable、concurrency |
-| OPS-01 | Audit Log基盤 | Cross-cutting enabler | AuditLog table、append-only trigger、writer、fail-closed contract |
-| CUS-01 | Customer登録・Account自動開設 | Vertical capability + core schema | Customer/Account aggregate、YenAmount、account number sequence、atomic registration |
-| CUS-02 | Customer参照・更新 | Vertical capability | customer query/update、email normalization/uniqueness |
-| CUS-03 | Customer/Account解約・解約後制御 | Vertical capability | closure transition、closed-state access、closure-money concurrency |
-| MON-01 | Transaction永続化・不変性 | Cross-cutting money enabler | Transaction table、4 types、transfer metadata、append-only trigger |
-| MON-02 | Transaction境界・Account row lock基盤 | Cross-cutting money enabler | explicit transaction orchestration、FOR UPDATE、lock order、conflict mapping |
-| MON-03 | 冪等性基盤 | Cross-cutting money enabler | digest、advisory lock、fixed result、replay、non-consuming errors |
-| MON-04 | 入金 | Vertical capability | deposit endpoint/use case、balance/post-balance、audit/idempotency integration |
-| MON-05 | 通常出金・全額出金 | Vertical capability | withdrawal variants、balance rules、audit/idempotency integration |
-| MON-06 | 口座間振込 | Vertical capability | two-account atomic transfer、dual history、transfer ID、counterparty fields |
-| QRY-01 | 取引履歴照会 | Vertical query capability | all-history query、ordering、empty result、role/closed access |
-| OPS-02 | Backup・restore | Operations | pg_dump/pg_restore scripts、artifact protection、clean restore evidence |
-| OPS-03 | Migration upgrade・rollback検証 | Operations | empty/previous upgrade、model drift、safe Down/restore、compatibility |
-| VAL-01 | API E2E・traceability closure | Final validation | cross-capability smoke、requirements/AC coverage audit、no missing contract |
+### 3.5 分けすぎの兆候
 
-## 5. 候補Issue詳細
+次のいずれかがある場合は統合を検討する。
 
-### FND-01 Solution・API・品質基盤
+- schemaだけを作り、使用する機能が存在しない
+- Domain、API、Repositoryだけを別Issueにしている
+- 単独では動作も検証もできない
+- 常に複数Issueを同時mergeしなければ意味を持たない
+- 同じAcceptance Criteriaを複数Issueが部分的に所有する
+- 独立レビューしても「後続実装待ち」しか判定できない
 
-**Purpose**
+### 3.6 大きさの目安
 
-`.NET 10` modular monolithのproject境界と、後続Issueが共通利用するAPI・品質契約を作る。
+数時間〜2、3日、長くても1週間程度は警告指標として利用するが、固定上限にはしない。
+
+AIエージェント開発では、日数やLOCよりも次を優先する。
+
+- 一つの目的
+- 限定された正本と責任
+- 一つのDraft PR
+- 一回のAgent B独立レビュー
+- 明示的な自動検証
+- 失敗時に安全に差分を戻せること
+
+---
+
+## 4. Issue単位のゲート
+
+### 4.1 Issue Ready
+
+leaf Issueへ着手する前に次を確認する。
+
+- [ ] 正本が明確
+- [ ] 未決の製品・設計判断がない
+- [ ] 必須依存Issueと前段ゲートが完了
+- [ ] Purpose / Close conditionが一つ
+- [ ] Scope / Out of scopeが明確
+- [ ] DB object、API contract、migration、test fixtureのownerが明確
+- [ ] Acceptance Criteriaが検証可能
+- [ ] 検証方法と必要証拠が定義済み
+- [ ] 一つのDraft PRと独立レビューで完了可能
+- [ ] Issueコメントだけで仕様・ADRを増殖させていない
+
+一つでも未達なら着手しない。
+
+### 4.2 Issue Done
+
+leaf Issueをcloseする前に次を確認する。
+
+- [ ] Acceptance Criteriaをすべて満たした
+- [ ] 必須unit / API / PostgreSQL / concurrency / migration testが成功
+- [ ] Agent BのBlocker / Majorが0
+- [ ] 仕様・ADR・Issue scopeから逸脱していない
+- [ ] テスト結果、ログ、CI等の証拠が記録済み
+- [ ] 必要なtraceabilityが更新済み
+- [ ] scope外の追加作業を別Issueへ分離済み
+- [ ] PRがmerge済み
+
+---
+
+## 5. ローリングウェーブ統制
+
+### 5.1 最初に作成するもの
+
+Decomposition Strategy Ready通過後に次を作成する。
+
+- 6つのWork Package統制Issue
+- WP-1 Foundationのleaf Issueだけ
+- WP-1の依存関係
+- WP-1 Issue Set Ready評価Issue
+
+WP-2以降のleaf Issueは作成しない。
+
+### 5.2 後続Work Packageの詳細化
+
+各Work Package完了後、次の順で後続を詳細化する。
+
+1. 前段の実装・レビュー・手戻り実績を確認
+2. 次のWork Packageのcapabilityを再抽出
+3. leaf Issue案を作成
+4. ownership、dependency、size、test strategyをセルフレビュー
+5. Agent BがIssue Setを独立レビュー
+6. `WP-n Issue Set Ready`を判定
+7. PASSの場合のみleaf Issueへ着手
+
+### 5.3 正式なImplementation Readyの扱い
+
+Phase 4の正式なImplementation Readyは、WP-1のIssue Setが確定し、ローリングウェーブ統制が成立した時点で評価する。
+
+PASSはWP-1の実装開始だけを許可する。WP-2以降のleaf Issueや実装を先取りして許可するものではない。
+
+WP-2以降は、各`WP-n Issue Set Ready`が実装開始の追加ゲートとなる。
+
+---
+
+## 6. Work Package構造
+
+```text
+WP-1 Foundation
+  ↓ Foundation Ready
+WP-2 Security and Audit
+  ↓ Security and Audit Ready
+WP-3 Customer Vertical Slice
+  ↓ First Vertical Slice Ready
+WP-4 Money Safety Kernel
+  ↓ Money Safety Ready
+WP-5 Core Banking Capabilities
+  ↓ Core Capabilities Ready
+WP-6 Operations and Integration
+  ↓ System Integration Ready
+```
+
+各Work Packageは進捗とゲートを管理する統制Issueであり、巨大な実装Issueではない。実装は配下leaf Issueで行う。
+
+---
+
+## 7. WP-1 Foundation
+
+### 7.1 目的
+
+後続機能が共通利用する最小のsolution、API契約、PostgreSQL検証基盤、migration実行経路、Docker実行環境、health contractを確立する。
+
+WP-1ではbusiness endpoint、Identity、Customer、Account、Transaction、AuditLog、Idempotency等を実装しない。
+
+### 7.2 開始前ゲート
+
+`WP-1 Issue Set Ready`
+
+- [ ] 6 leaf Issueが標準テンプレートを満たす
+- [ ] 依存関係に循環がない
+- [ ] 各IssueのClose条件が一つ
+- [ ] FND-01とFND-02の責任が分離されている
+- [ ] PostgreSQL固有検証をInMemory/SQLiteで代替しない
+- [ ] migration machineryとbusiness schemaが分離されている
+- [ ] Docker runtimeとhealth contractの責任が分離されている
+- [ ] すべて一つのDraft PRと独立レビューで完了可能
+
+### 7.3 WP-1 leaf Issue
+
+#### FND-01 Solution・project・build/test CIを確立する
+
+**Close condition**
+
+`.NET 10` modular monolithのsolution/project境界が作成され、空の基盤状態でbuildとtest CIが成功する。
 
 **Owns**
 
-- solutionとAPI/Application/Domain/Infrastructure/Tests project
-- nullable、analyzer、format/build設定
-- 共通error envelopeとerror mapping extension point
-- injected `TimeProvider`
-- correlation ID
-- JSON console loggingの基礎
-- `dotnet build` / `dotnet test` CI
-- approved major内のexact package version pin
+- solution
+- API / Application / Domain / Infrastructure / Tests projects
+- nullable、analyzer、format設定
+- exact package patch version pin
+- `dotnet restore` / `build` / `test` CI
 
 **Out of scope**
 
-- PostgreSQL、EF model、Identity、business endpoint、Docker Compose
+- 共通HTTP error
+- correlation ID、TimeProvider、logging
+- PostgreSQL、EF Core、Docker
+- business code
 
 **Verification**
 
-- build/test CI
-- error envelope contract unit/API test
-- secretを設定・logへ含めない静的確認
+- clean checkoutでrestore/build/test成功
+- project reference方向がADR-0001と整合
+- application code、DB schema、business endpointが存在しない
 
-**Trace**
+**Dependencies**
 
-- Specification §2.3、§16、AC-ERR-001
-- ADR-0001、ADR-0008 technical logging部分
+- Blocked by: WP-1 Issue Set Ready
 
-### FND-02 PostgreSQL integration test基盤
+#### FND-02 共通API実行契約を確立する
 
-**Purpose**
+**Close condition**
 
-PostgreSQL固有挙動を再現可能に検証する共通test fixtureを作る。
+APIが共通error envelope、correlation ID、TimeProvider、JSON technical loggingを一貫して利用できる。
+
+**Owns**
+
+- 共通error envelope
+- fixed error code mapping extension point
+- correlation ID生成・伝播
+- injected `TimeProvider`
+- JSON console logging baseline
+- secret/JWT/password等の禁止field policy
+
+**Out of scope**
+
+- 個別business error mapping
+- Audit Log
+- PostgreSQL
+- health endpoint
+
+**Verification**
+
+- error envelope contract test
+- correlation IDのrequest/response/log連携test
+- deterministic time test
+- prohibited fieldがlogへ出ないtest
+
+**Dependencies**
+
+- Blocked by: FND-01
+
+#### FND-03 実PostgreSQL integration test基盤を確立する
+
+**Close condition**
+
+PostgreSQL 18を使用するintegration test fixtureが、独立したtest database lifecycleと再現可能な実行方法を提供する。
 
 **Owns**
 
 - PostgreSQL 18 Testcontainers fixture
-- test database作成・cleanup・isolation
-- integration test categoryと実行方法
-- parallel実行方針
 - PostgreSQL image digest pin
+- database作成・cleanup・isolation
+- integration test category
+- parallel実行方針
 
 **Out of scope**
 
-- business table、migration、feature test内容
+- DbContext
+- migration
+- business table
+- feature test内容
 
 **Verification**
 
 - 複数testが相互干渉しない
-- database lifecycle failure時に明確にfailする
-- InMemory/SQLiteをprovider-specific testへ使用しない
+- database lifecycle failureが明示的にfailする
+- provider-specific testでInMemory/SQLiteを使用しない
 
-**Trace**
+**Dependencies**
 
-- ADR-0001、0003、0004、0005、0009のverification foundation
+- Blocked by: FND-01
 
-### FND-03 EF Core・migration実行基盤
+#### FND-04 EF Core・明示的migration実行基盤を確立する
 
-**Purpose**
+**Close condition**
 
-各schema-owning Issueが安全にmigrationを追加できる土台を作る。
+EF Core/NpgsqlのDbContext baselineと明示的migratorが作成され、API startupがschemaを自動変更しないことを証明できる。
 
 **Owns**
 
-- application DbContext baseline
+- DbContext baseline
 - Npgsql configuration
+- EF migration history
 - explicit migrator / one-shot command
 - API startup auto migration禁止
-- migration history
-- empty DB apply test harness
-- pending model drift検査
+- empty DB apply harness
+- pending model drift check
 
 **Out of scope**
 
-- Customer、Account、Operator、Transaction、AuditLog、Idempotency tables
+- Customer、Account、Operator、Transaction、AuditLog、Idempotency table
+- business migration
 
 **Verification**
 
-- empty baseline DBへの適用
-- API起動がmigrationを自動実行しない
-- model drift checkが動作する
+- empty baseline databaseへmigration適用
+- API startup前後でschema変更なし
+- model drift checkが意図した差分を検出
 
-**Trace**
+**Dependencies**
 
-- ADR-0001、ADR-0009
+- Blocked by: FND-01、FND-03
 
-### FND-04 Docker Compose・health基盤
+#### FND-05 Docker Compose実行基盤を確立する
 
-**Purpose**
+**Close condition**
 
-ローカル・閉域環境でAPIとPostgreSQLを再現可能に起動し、稼働状態を確認できるようにする。
+APIとPostgreSQLをDocker Compose v2で再現可能に起動・停止でき、secretをrepository外から注入できる。
 
 **Owns**
 
@@ -216,854 +381,531 @@ PostgreSQL固有挙動を再現可能に検証する共通test fixtureを作る�
 - API / PostgreSQL services
 - container image digest pin
 - named volume
-- `/health/live`、`/health/ready`
 - secret外部注入の枠組み
+- startup ordering
 
 **Out of scope**
 
-- production deployment、business smoke、backup script
+- health endpoint contract
+- backup script
+- production deployment
+- business smoke test
 
 **Verification**
 
-- compose startup
-- live/ready semantics
-- DB停止時readyのみ失敗
-- connection string・exception detail非露出
+- clean environmentでcompose up/down成功
+- PostgreSQL volumeが意図どおり動作
+- credentialがrepository、image、command logへ露出しない
 
-**Trace**
+**Dependencies**
 
-- Specification §2、§14、AC-OPS-001
-- ADR-0001、ADR-0008
+- Blocked by: FND-01、FND-04
 
-### SEC-01 認証・JWT・authorization-state
+#### FND-06 live／ready health contractを実装する
 
-**Purpose**
+**Close condition**
 
-個別login、short-lived JWT、現在DB状態を正本とする認証・認可基盤を作る。
+`/health/live`と`/health/ready`がAccepted ADRどおりの意味を持ち、Docker Compose上でDB停止時の差異を確認できる。
 
 **Owns**
 
-- ASP.NET Core Identity / Operator schemaとmigration
-- local password login
-- JWT issuance/validation
-- authorization-state version
-- current active state/current role lookup
-- fixed role policies
-- bootstrap administrator commandの最低実装
-- authentication 401 / authorization 403共通挙動
+- `/health/live`
+- `/health/ready`
+- PostgreSQL readiness probe
+- health responseの情報非露出
 
 **Out of scope**
 
-- Operator管理API
-- external IdP、refresh token、Redis revocation
+- business smoke test
+- metrics、APM、外部監視サービス
 
 **Verification**
 
-- login success/failure
-- stale token、disabled user 401
-- current role不足403
-- signing key/password/JWT非log
-- 実PostgreSQL API integration test
+- process稼働中はlive成功
+- DB利用可能時はready成功
+- DB停止時はlive成功、ready失敗
+- connection string、exception detail非露出
 
-**Trace**
+**Dependencies**
 
-- Specification §6、AC-AUTH-001〜004
-- ADR-0006 Operator ID、ADR-0007
+- Blocked by: FND-02、FND-05
 
-### SEC-02 Operator一覧・詳細・作成
-
-**Purpose**
-
-管理者がOperatorを参照・作成できる最低機能を作る。
-
-**Owns**
-
-- list/detail/create endpoints/use cases
-- fixed role initial assignment
-- active initial state
-- Operator creation Audit Log integration
-
-**Out of scope**
-
-- enable/disable、role change、last-admin protection
-
-**Verification**
-
-- AC-USER-001、002、005、006、009の該当部分
-- admin success、non-admin 403、missing 404
-- Audit success/failure
-
-**Trace**
-
-- Specification §6.4、§19.9
-- ADR-0007、ADR-0008
-
-### SEC-03 Operator状態・role変更・管理者保護
-
-**Purpose**
-
-Operator enable/disable、role変更、last-admin/self-disable保護をatomicに実装する。
-
-**Owns**
-
-- state/role mutation endpoints/use cases
-- authorization-state version update
-- last active administrator protection
-- self-disable prohibition
-- concurrent admin mutation handling
-- success/rejection Audit Log
-
-**Verification**
-
-- AC-USER-003、004、007、008、009
-- demotion/promotion/disable後の旧JWT rejection
-- last-admin concurrency実PostgreSQL test
-
-**Trace**
-
-- Specification §4.5、§6.4、§19.9
-- ADR-0003、0007、0008
-
-### OPS-01 Audit Log基盤
-
-**Purpose**
-
-全state-changing use caseが共通利用するAudit Log persistenceを提供する。
-
-**Owns**
-
-- AuditLog tableとmigration
-- append-only update/delete rejection trigger
-- Audit writer abstraction/implementation
-- success/fixed rejection/non-consuming rejectionのtransaction参加API
-- prohibited field policy
-- fail-closed behavior
-
-**Out of scope**
-
-- user-facing Audit API/UI
-- external immutable store、SIEM
-- 各feature固有のAudit呼び出し
-
-**Verification**
-
-- application roleでupdate/delete拒否
-- Audit persistence failure injection
-- password/JWT/raw idempotency key非保存
-
-**Trace**
-
-- Specification §14、AC-OPS-002〜005、007
-- ADR-0003、ADR-0008
-
-### CUS-01 Customer登録・Account自動開設
-
-**Purpose**
-
-CustomerとAccountのcore aggregate、登録、1対1、不変条件を実装する。
-
-**Owns**
-
-- Customer/Account domain types
-- `YenAmount`
-- Customer/Account tablesとmigration
-- 1対1 unique FK
-- active/closed text checksとrow-local constraints
-- account number sequence `1..999999999999 NO CYCLE`
-- name/email normalizationとuniqueness
-- registration endpoint/use case
-- registration Audit Log
-
-**Verification**
-
-- AC-CUS-001〜003、006、007
-- Customer/Account atomic creation failure injection
-- email normalized uniqueness
-- sequence boundary
-- 実PostgreSQL constraints
-
-**Trace**
-
-- REQ-DOM-001〜003、REQ-CUS-001〜002
-- Specification §4、§7、§15
-- ADR-0002、0003、0006、0008、0009
-
-### CUS-02 Customer参照・更新
-
-**Purpose**
-
-Customer情報のrole別参照と有効Customer更新を実装する。
-
-**Owns**
-
-- customer query/update endpoints/use cases
-- viewer-safe response
-- name/email validationとnormalized uniqueness
-- update Audit Log
-
-**Verification**
-
-- AC-CUS-002、004、005
-- role matrix
-- missing/closed/state inconsistency/error mapping
-
-**Trace**
-
-- REQ-CUS-003〜004
-- Specification §8、§16
-- ADR-0003、0007、0008
-
-### CUS-03 Customer/Account解約・解約後制御
-
-**Purpose**
-
-残高0円解約、状態・時刻同期、再有効化禁止、解約後accessを実装する。
-
-**Owns**
-
-- closure endpoint/use case
-- Customer/Account same timestamp transition
-- account lockを使用したclosure-money serialization
-- closed-state access policy
-- closure Audit Log
-
-**Verification**
-
-- AC-CLS-001〜008
-- AC-CLOSED-001〜005のaccess contract
-- closure/deposit race
-- positive/negative balance、state mismatch、missing、role failure
-
-**Trace**
-
-- REQ-CUS-005〜006
-- Specification §5、§9、§18
-- ADR-0003、0004、0006、0007、0008
-
-### MON-01 Transaction永続化・不変性
-
-**Purpose**
-
-Money movementが共通利用するTransaction recordとappend-only制約を作る。
-
-**Owns**
-
-- Transaction domain/persistence model
-- Transaction tableとmigration
-- 4 transaction types
-- post-balance
-- transfer ID/counterparty fields
-- update/delete rejection trigger
-- deterministic ordering columns/indexes
-
-**Out of scope**
-
-- deposit/withdraw/transfer endpoint
-- history query endpoint
-
-**Verification**
-
-- four-type persistence
-- update/delete DB rejection
-- transfer field constraints
-- deterministic same-time order foundation
-
-**Trace**
-
-- REQ-DOM-004、REQ-HIS-002
-- Specification §4.3、§13.5
-- ADR-0006、ADR-0009
-
-### MON-02 Transaction境界・Account row lock基盤
-
-**Purpose**
-
-Accountを変更するuse caseが同じtransaction/lock方式を安全に使えるようにする。
-
-**Owns**
-
-- application transaction orchestration abstraction
-- Account `SELECT ... FOR UPDATE` gateway
-- multi-account ascending lock order
-- transaction-local bounded lock timeout
-- conflict/deadlock mapping
-- concurrency/failure-injection test utilities
-
-**Out of scope**
-
-- business amount/state decision
-- automatic retry
-
-**Verification**
-
-- row lock held until transaction end
-- opposite-order requestでもdeterministic lock order
-- timeout/deadlock 409 mapping
-- no partial commit
-
-**Trace**
-
-- REQ-DOM-005、REQ-CON-001
-- Specification §18、AC-CON-001〜003
-- ADR-0003、ADR-0004
-
-### MON-03 冪等性基盤
-
-**Purpose**
-
-Money operationの重複実行防止、固定結果replay、non-consuming retryを実装する。
-
-**Owns**
-
-- Idempotency record tableとmigration
-- versioned raw-key digest
-- canonical request fingerprint
-- transaction-level advisory lock
-- fixed result storage/replay
-- different-payload/in-progress behavior
-- consuming/non-consuming classification API
-- raw key非永続化
-
-**Verification**
-
-- AC-IDEM-001〜008の基盤挙動
-- concurrent duplicate
-- advisory hash collision safety
-- crash rollback/no orphan
-- fixed rejection Audit atomicity
-- DB/log/backup raw key absence
-
-**Trace**
-
-- Specification §17、§19.10
-- ADR-0003、ADR-0005、ADR-0008、ADR-0009
-
-### MON-04 入金
-
-**Purpose**
-
-入金の正常系、境界、並行性、冪等性を一つのvertical sliceとして実装する。
-
-**Owns**
-
-- deposit endpoint/use case
-- target resolution
-- amount validation
-- Account lock後のbalance update
-- Transaction append/post-balance
-- Audit Log/idempotency integration
-
-**Verification**
-
-- AC-DEP-001〜008
-- 1円/10,000,000円、0/negative/over-limit
-- concurrent deposits exact post-balances
-- duplicate/retry/no partial state
-
-**Trace**
-
-- REQ-DEP-001、REQ-CON-001、REQ-VAL-001
-- ADR-0002〜0005、0008
-
-### MON-05 通常出金・全額出金
-
-**Purpose**
-
-通常出金と全額出金を、共有lock/transaction/idempotency上で実装する。
-
-**Owns**
-
-- withdrawal endpoint/use case variants
-- amount/balance rules
-- zero-balance full-withdraw rejection
-- Transaction append/post-balance
-- Audit/idempotency integration
-
-**Verification**
-
-- AC-WDR-001〜009
-- insufficient balance、zero/negative、full withdrawal
-- concurrent withdrawal no negative balance
-- duplicate/retry/no partial state
-
-**Trace**
-
-- REQ-WDR-001〜004、REQ-DOM-005、REQ-CON-001、REQ-VAL-001
-- ADR-0002〜0005、0008
-
-### MON-06 口座間振込
-
-**Purpose**
-
-two-account transferを両残高・両履歴・共通transfer IDまで不可分に実装する。
-
-**Owns**
-
-- transfer endpoint/use case
-- source/destination resolution
-- self-transfer/amount/balance/state rules
-- ascending two-account locks
-- dual Transaction append
-- transfer ID/counterparty snapshot
-- Audit/idempotency integration
-
-**Verification**
-
-- AC-TRF-001〜013
-- failure injection after each mutation
-- opposite-direction concurrency
-- same-source competing transfers
-- duplicate/different payload/retry
-
-**Trace**
-
-- REQ-TRF-001〜004、REQ-DOM-005、REQ-CON-001、REQ-VAL-001
-- ADR-0002〜0006、0008
-
-### QRY-01 取引履歴照会
-
-**Purpose**
-
-role/closed-state契約を維持し、全Transactionを決定的順序で返す。
-
-**Owns**
-
-- history endpoint/query
-- identifier resolution/mismatch
-- all-record return
-- occurred_at/transaction_id descending order
-- empty `[]`
-- signed amount/counterparty fields
-- viewer history post-balance access
-
-**Verification**
-
-- AC-HIS-001〜007
-- same timestamp ordering
-- closed Account history
-- viewer current balance非露出
-- empty/missing/mismatch distinctions
-
-**Trace**
-
-- REQ-HIS-001〜002
-- Specification §13、§15.5
-- ADR-0006、ADR-0007
-
-### OPS-02 Backup・restore
-
-**Purpose**
-
-内部デモ相応の保護付きlogical backup/clean restoreを実装する。
-
-**Owns**
-
-- pg_dump/pg_restore scripts
-- repository path rejection
-- credential argv禁止
-- owner-only相当permission
-- clean database restore
-- post-evidence cleanup
-
-**Verification**
-
-- AC-OPS-006
-- backup artifact path/permission tests
-- clean restore and minimal smoke
-- raw idempotency key不存在
-
-**Trace**
-
-- Specification §14、§21
-- ADR-0008、ADR-0009
-
-### OPS-03 Migration upgrade・rollback検証
-
-**Purpose**
-
-全schema ownerが作成したmigrationを、upgrade/rollbackの観点から横断検証する。
-
-**Owns**
-
-- empty-to-latest test
-- previous-to-latest representative-row upgrade
-- pending model drift check
-- safe Down validation
-- backup restore fallback validation
-- previous app/schema compatibility evidence
-
-**Out of scope**
-
-- 新規business schemaの所有
-
-**Verification**
-
-- migration失敗でdeployment fail
-- destructive changeに形式的Downを認めない
-- actual backup restore path
-
-**Trace**
-
-- ADR-0009
-- Release Readyへのmigration evidence
-
-### VAL-01 API E2E・traceability closure
-
-**Purpose**
-
-個別Issueの検証が揃った後、代表的な利用者journeyと全追跡関係を最終確認する。
-
-**Owns**
-
-- authenticated admin/counter-clerk/viewer representative journeys
-- register → deposit → withdraw → transfer → history → close smoke
-- Docker Compose E2E
-- 24 REQ / specification AC / implementation Issue / PR / test evidence matrix closure
-- missing test/contract detection
-
-**Does not own**
-
-- feature logic修正
-- 各featureの主要unit/integration/concurrency test
-- migration/backupの詳細検証
-
-不足を検出した場合、VAL-01へ実装を追加せず、所有Issueへ戻す。
-
-## 6. Ownership matrix
-
-| Artifact / responsibility | Primary owner | Secondary integration owners |
-| --- | --- | --- |
-| solution/project boundaries | FND-01 | all |
-| common error envelope | FND-01 | all API Issues provide mappings |
-| correlation/JSON technical logs | FND-01 | OPS-01 and all API Issues |
-| PostgreSQL test fixture | FND-02 | DB-specific Issues |
-| DbContext/migrator/model drift | FND-03 | schema-owning Issues |
-| Docker Compose/health | FND-04 | VAL-01 |
-| Identity/Operator base table/JWT | SEC-01 | SEC-02、SEC-03 |
-| Operator query/create | SEC-02 | none |
-| Operator state/role mutation | SEC-03 | none |
-| AuditLog table/trigger/writer | OPS-01 | all state-changing Issues |
-| Customer/Account tables/sequence | CUS-01 | CUS-02、CUS-03、MON-*、QRY-01 |
-| Customer read/update | CUS-02 | none |
-| closure state transition | CUS-03 | QRY-01 honors closed access |
-| Transaction table/trigger | MON-01 | MON-04〜06、QRY-01 |
-| transaction orchestration/row lock | MON-02 | CUS-03、MON-04〜06 |
-| Idempotency table/digest/advisory lock | MON-03 | MON-04〜06 |
-| deposit behavior | MON-04 | none |
-| withdrawal behavior | MON-05 | none |
-| transfer behavior | MON-06 | none |
-| history query | QRY-01 | none |
-| backup/restore scripts | OPS-02 | VAL-01 minimal smoke only |
-| migration cross-version evidence | OPS-03 | each schema owner supplies migrations/tests |
-| final E2E/traceability | VAL-01 | no production ownership |
-
-### Schema ownership rule
-
-- `SEC-01`: Identity / Operator base schema
-- `OPS-01`: AuditLog schema and append-only trigger
-- `CUS-01`: Customer / Account / account-number sequence
-- `MON-01`: Transaction schema and immutable trigger
-- `MON-03`: Idempotency schema
-- `FND-03`: migration machinery only; it does not own business tables
-- Other Issues do not modify these objects without explicit coordination or a separately reviewed schema change.
-
-## 7. Dependency DAG
+### 7.4 WP-1 dependency DAG
 
 ```mermaid
 graph TD
-    FND01[FND-01 Solution/API baseline] --> FND02[FND-02 PostgreSQL test baseline]
-    FND01 --> FND03[FND-03 EF/migration baseline]
-    FND02 --> FND03
-    FND03 --> FND04[FND-04 Compose/health]
-
-    FND03 --> SEC01[SEC-01 Auth/JWT]
-    SEC01 --> OPS01[OPS-01 Audit foundation]
-    SEC01 --> SEC02[SEC-02 Operator read/create]
-    OPS01 --> SEC02
-    SEC02 --> SEC03[SEC-03 Operator state/role]
-    OPS01 --> SEC03
-
-    FND03 --> CUS01[CUS-01 Registration/core schema]
-    SEC01 --> CUS01
-    OPS01 --> CUS01
-    CUS01 --> CUS02[CUS-02 Customer read/update]
-
-    CUS01 --> MON01[MON-01 Transaction persistence]
-    CUS01 --> MON02[MON-02 Transaction/lock foundation]
-    FND02 --> MON02
-    SEC01 --> MON03[MON-03 Idempotency]
-    OPS01 --> MON03
-    CUS01 --> MON03
-
-    MON02 --> CUS03[CUS-03 Closure/closed access]
-    SEC01 --> CUS03
-    OPS01 --> CUS03
-
-    MON01 --> MON04[MON-04 Deposit]
-    MON02 --> MON04
-    MON03 --> MON04
-    MON01 --> MON05[MON-05 Withdrawal]
-    MON02 --> MON05
-    MON03 --> MON05
-    MON01 --> MON06[MON-06 Transfer]
-    MON02 --> MON06
-    MON03 --> MON06
-
-    MON01 --> QRY01[QRY-01 History query]
-    CUS01 --> QRY01
-    SEC01 --> QRY01
-
-    FND04 --> OPS02[OPS-02 Backup/restore]
-    FND03 --> OPS03[OPS-03 Migration validation]
-    SEC01 --> OPS03
-    OPS01 --> OPS03
-    CUS01 --> OPS03
-    MON01 --> OPS03
-    MON03 --> OPS03
-
-    SEC03 --> VAL01[VAL-01 E2E/traceability]
-    CUS02 --> VAL01
-    CUS03 --> VAL01
-    MON04 --> VAL01
-    MON05 --> VAL01
-    MON06 --> VAL01
-    QRY01 --> VAL01
-    OPS02 --> VAL01
-    OPS03 --> VAL01
+    G1[WP-1 Issue Set Ready] --> F1[FND-01 Solution/CI]
+    F1 --> F2[FND-02 Common API runtime]
+    F1 --> F3[FND-03 PostgreSQL test]
+    F1 --> F4[FND-04 EF/migrator]
+    F3 --> F4
+    F1 --> F5[FND-05 Docker Compose]
+    F4 --> F5
+    F2 --> F6[FND-06 Health]
+    F5 --> F6
+    F2 --> GF[Foundation Ready]
+    F3 --> GF
+    F4 --> GF
+    F5 --> GF
+    F6 --> GF
 ```
 
-### Critical path
+FND-02とFND-03はFND-01後に並行可能。FND-04はFND-03を使用し、FND-05はFND-04後、FND-06はFND-02とFND-05後に実施する。
 
-`FND-01 → FND-02/FND-03 → SEC-01 → OPS-01 → CUS-01 → MON-01/MON-02/MON-03 → Money features → VAL-01`
+### 7.5 完了後ゲート
 
-### Parallel work
+`Foundation Ready`
 
-- FND-04はFND-03後、security/business workと並行可能。
-- SEC-02/03、CUS-02は各前提merge後にmoney foundationと並行可能。
-- MON-01、MON-02、MON-03はCUS-01後に並行可能だが、同じAccount/DbContext周辺を触るためbranch開始前にfile ownershipを確認する。
-- MON-04、MON-05、MON-06は3つのfoundation merge後に並行可能。
-- QRY-01はMON-01 merge後、money command featuresと並行可能。
+- [ ] FND-01〜FND-06がIssue Done
+- [ ] clean checkoutからbuild/test成功
+- [ ] 実PostgreSQL integration testが安定実行
+- [ ] explicit migratorが動作
+- [ ] API startupがauto migrationしない
+- [ ] Docker ComposeでAPI/PostgreSQL起動
+- [ ] live/ready semanticsが正しい
+- [ ] package versionとimage digestが固定
+- [ ] secretがrepository/logへ露出しない
+- [ ] business code、business schema、Identityを先取りしていない
+- [ ] Agent BのBlocker / Majorが0
 
-## 8. REQ traceability
+Foundation Ready PASS後にのみWP-2 leaf Issueを詳細化する。
 
-| Requirement | Candidate owner(s) |
-| --- | --- |
-| REQ-DOM-001 | CUS-01 |
-| REQ-DOM-002 | CUS-01、CUS-03 |
-| REQ-DOM-003 | CUS-01、CUS-03 |
-| REQ-DOM-004 | MON-01、QRY-01 |
-| REQ-DOM-005 | MON-02、MON-05、MON-06 |
-| REQ-CUS-001 | CUS-01 |
-| REQ-CUS-002 | CUS-01、CUS-02 |
-| REQ-CUS-003 | CUS-02 |
-| REQ-CUS-004 | CUS-02 |
-| REQ-CUS-005 | CUS-03 |
-| REQ-CUS-006 | CUS-03 |
-| REQ-DEP-001 | MON-04 |
-| REQ-WDR-001 | MON-05 |
-| REQ-WDR-002 | MON-05 |
-| REQ-WDR-003 | MON-05 |
-| REQ-WDR-004 | MON-05 |
-| REQ-TRF-001 | MON-06 |
-| REQ-TRF-002 | MON-06 |
-| REQ-TRF-003 | MON-06 |
-| REQ-TRF-004 | MON-02、MON-06 |
-| REQ-HIS-001 | QRY-01 |
-| REQ-HIS-002 | MON-01、QRY-01 |
-| REQ-CON-001 | MON-02、CUS-03、MON-04〜06 |
-| REQ-VAL-001 | FND-01、CUS-01/02、MON-04〜06、QRY-01 |
+---
 
-全24 REQが少なくとも一つの候補Issueへ接続される。
+## 8. WP-2 Security and Audit
 
-## 9. Acceptance Criteria group traceability
+### 8.1 目的
 
-| AC group | Candidate owner(s) |
-| --- | --- |
-| AC-CUS-001〜003、006〜007 | CUS-01 |
-| AC-CUS-002、004〜005 | CUS-02 |
-| AC-CLS-001〜008 | CUS-03 |
-| AC-CLOSED-001〜005 | CUS-03、QRY-01（履歴参照部分） |
-| AC-DEP-001〜008 | MON-04、MON-02、MON-03 |
-| AC-WDR-001〜009 | MON-05、MON-02、MON-03 |
-| AC-TRF-001〜013 | MON-06、MON-01〜03 |
-| AC-HIS-001〜007 | QRY-01、MON-01 |
-| AC-AUTH-001〜004 | SEC-01、FND-01 |
-| AC-USER-001〜002、005〜006 | SEC-02 |
-| AC-USER-003〜004、007〜009 | SEC-03 |
-| AC-IDEM-001〜008 | MON-03、MON-04〜06 |
-| AC-CON-001 | MON-02、MON-05 |
-| AC-CON-002 | MON-02、MON-05、MON-06 |
-| AC-CON-003 | MON-02、CUS-03、MON-04〜06 |
-| AC-ERR-001 | FND-01 + all API Issues |
-| AC-OPS-001 | FND-04 |
-| AC-OPS-002〜005、007 | OPS-01 + state-changing Issues |
-| AC-OPS-006 | OPS-02 |
+個別login、短時間JWT、現在DB状態による認可、Operator管理、Audit Log fail-closed基盤を完成させる。
 
-## 10. ADR traceability
+### 8.2 高位capability
 
-| ADR | Candidate implementation owners |
-| --- | --- |
-| ADR-0001 | FND-01〜04 |
-| ADR-0002 | CUS-01、MON-04〜06 |
-| ADR-0003 | MON-02、SEC-02/03、CUS-01〜03、MON-04〜06、OPS-01 |
-| ADR-0004 | MON-02、CUS-03、MON-04〜06 |
-| ADR-0005 | MON-03、MON-04〜06 |
-| ADR-0006 | SEC-01、CUS-01、MON-01、OPS-01、QRY-01 |
-| ADR-0007 | SEC-01〜03 |
-| ADR-0008 | FND-01、FND-04、OPS-01、OPS-02 |
-| ADR-0009 | FND-03、OPS-03、all schema owners |
+- ASP.NET Core Identity / Operator schema
+- login / JWT issuance
+- authorization-state invalidation
+- current DB role authorization
+- bootstrap administrator
+- Operator query/create
+- Operator state/role mutation
+- last-admin / self-disable protection
+- AuditLog schema、append-only trigger、writer
+- success/rejection audit transaction integration
 
-## 11. Test strategy matrix
+これは候補capability一覧であり、leaf Issueではない。Foundation Ready後に粒度を再評価する。
 
-| Test level | Primary purpose | Assigned Issues |
+### 8.3 開始前ゲート
+
+`WP-2 Issue Set Ready`
+
+- Foundation Ready PASS
+- Identity、Operator管理、Audit Logのownerが一意
+- JWT失効、401/403、Audit atomicityを検証可能
+- leaf Issueの粒度がFoundation実績に基づき再評価済み
+
+### 8.4 完了後ゲート
+
+`Security and Audit Ready`
+
+- loginと固定role policyが動作
+- disabled／stale tokenが401
+- current role不足が403
+- role変更後に旧JWTが使用不能
+- Audit Logがappend-only
+- required Audit persistence failureでfail closed
+- password、JWT、raw idempotency keyを保存・logしない
+- Agent B Blocker / Major 0
+
+---
+
+## 9. WP-3 Customer Vertical Slice
+
+### 9.1 目的
+
+最初のbusiness vertical sliceとして、Customer登録・Account自動開設をHTTPからPostgreSQL/Auditまで一貫して完成させ、その後Customer参照・更新を追加する。
+
+### 9.2 高位capability
+
+- Customer / Account aggregateとschema
+- account-number sequence
+- `YenAmount`利用境界
+- Customer登録とAccount自動開設
+- Customer参照・更新
+- email normalization / uniqueness
+- authorization、error、Audit、transaction統合
+
+### 9.3 開始前ゲート
+
+`WP-3 Issue Set Ready`
+
+- Security and Audit Ready PASS
+- Customer/Account schema ownerが一意
+- 登録、参照、更新のClose条件が混在していない
+- 初回vertical sliceのE2E経路が定義済み
+
+### 9.4 完了後ゲート
+
+`First Vertical Slice Ready`
+
+- HTTP → auth → application → domain → PostgreSQL transaction → Audit → responseが成立
+- CustomerとAccountがatomicに作成
+- email uniqueness、account-number boundaryが検証済み
+- Customer参照・更新の権限と異常系が仕様どおり
+- 設計・DI・error mappingの重大な手戻りが残っていない
+- Agent B Blocker / Major 0
+
+---
+
+## 10. WP-4 Money Safety Kernel
+
+### 10.1 目的
+
+Transaction不変性、明示的transaction、Account row lock、冪等性を、入金を参照実装として成立させる。
+
+### 10.2 高位capability
+
+- Transaction schema、4種類、不変性trigger
+- transaction orchestration
+- Account `FOR UPDATE`
+- conflict mapping
+- idempotency digest / advisory lock / fixed result
+- Audit／idempotency atomicity
+- 入金endpoint/use case
+- parallel deposit、failure injection
+
+抽象基盤だけでgateを通さない。入金で実際に利用し、成立を証明する。
+
+### 10.3 開始前ゲート
+
+`WP-4 Issue Set Ready`
+
+- First Vertical Slice Ready PASS
+- Transaction、lock、idempotencyのproduction ownerが一意
+- 入金を参照実装として含む
+- concurrency／failure injectionのownerが明確
+
+### 10.4 完了後ゲート
+
+`Money Safety Ready`
+
+- 同時入金後の残高と各post-balanceが正しい
+- 同じkey再送で二重更新なし
+- different payload / in-progressが仕様どおり
+- raw idempotency keyがdurable storage/log/backupへ存在しない
+- business change、Transaction、Audit、fixed resultがatomic
+- failure injectionで部分更新なし
+- Agent B Blocker / Major 0
+
+---
+
+## 11. WP-5 Core Banking Capabilities
+
+### 11.1 目的
+
+Money Safety Kernelを利用して、出金、振込、解約、履歴照会を完成させる。
+
+### 11.2 高位capability
+
+- 通常出金
+- 全額出金
+- 口座間振込
+- Customer/Account解約
+- 解約後アクセス制御
+- 取引履歴照会
+- opposite-direction transfer concurrency
+- closure-money concurrency
+
+### 11.3 開始前ゲート
+
+`WP-5 Issue Set Ready`
+
+- Money Safety Ready PASS
+- 出金、振込、解約、履歴の責任が混在していない
+- transferとclosure concurrency testが明示済み
+- 主要featureが一つの巨大Issueへ統合されていない
+
+### 11.4 完了後ゲート
+
+`Core Capabilities Ready`
+
+- 出金で負残高なし
+- 振込が両残高・両履歴をatomic更新
+- lock orderとtimeoutが安全
+- 解約と金銭操作の競合が安全
+- 解約後アクセス制御が仕様どおり
+- 履歴順序、必須項目、0件応答が仕様どおり
+- Agent B Blocker / Major 0
+
+---
+
+## 12. WP-6 Operations and Integration
+
+### 12.1 目的
+
+backup/restore、migration upgrade/rollback、Docker E2E、smoke、traceability closureを完成させる。
+
+### 12.2 高位capability
+
+- protected `pg_dump` / `pg_restore`
+- clean restore
+- empty-to-latest migration
+- previous-to-latest migration
+- safe Down / backup restore
+- previous app/schema compatibility
+- Docker Compose E2E
+- representative user journey smoke
+- Requirement → Issue → PR → Test evidence closure
+
+### 12.3 開始前ゲート
+
+`WP-6 Issue Set Ready`
+
+- Core Capabilities Ready PASS
+- backup、migration、E2E、traceabilityの責任が分離
+- final validationがfeature test不足を埋めるcatch-allになっていない
+
+### 12.4 完了後ゲート
+
+`System Integration Ready`
+
+- clean environmentで起動
+- migrationを空DB・旧DBから適用
+- backupからrestoreしsmoke成功
+- 全24 REQと仕様ACが実装Issue/PR/testへ追跡
+- feature固有testを最終Issueへ丸投げしていない
+- Agent B Blocker / Major 0
+
+---
+
+## 13. Phase 4のゲート
+
+### Gate 4-A: Decomposition Strategy Ready
+
+PR #31の対象ゲート。
+
+- Issue設計ポリシーが明確
+- Work Package構造とゲートが妥当
+- rolling-wave方式が明確
+- WP-1 leaf Issueだけが詳細化されている
+- WP-2以降を確定しすぎていない
+- 24 REQ、AC、ADRがWork Packageへ割り当てられている
+- Agent B Blocker / Major 0
+
+PASS後にWork Package統制IssueとWP-1 leaf Issueを作成する。
+
+### Gate 4-B: WP-1 Issue Set Ready
+
+実際に作成したWP-1 leaf Issue群の品質を確認する。
+
+- 標準テンプレート準拠
+- Close条件が一つ
+- ownershipとdependencyが明確
+- ACとVerificationが具体的
+- 循環なし
+- Agent B Blocker / Major 0
+
+### Formal Gate: Implementation Ready
+
+Decomposition Strategy ReadyとWP-1 Issue Set ReadyがPASSした後に別工程で評価する。
+
+PASSはWP-1実装だけを許可する。WP-2以降は各Issue Set Readyまで着手禁止とする。
+
+---
+
+## 14. Work Package単位のREQ割当
+
+| Requirement | Primary Work Package | Integration / final verification |
 | --- | --- | --- |
-| Domain/unit | amount/state/validation/policy pure logic | CUS-*、SEC-*、MON-04〜06 |
-| API integration | routing、auth、error envelope、response contract | FND-01、SEC-*、CUS-*、MON-04〜06、QRY-01 |
-| PostgreSQL integration | constraints、trigger、transaction、raw SQL、provider behavior | FND-03、SEC-03、OPS-01、CUS-01/03、MON-01〜06、OPS-03 |
-| Concurrency | row lock、lock order、last-admin、closure-money race | SEC-03、CUS-03、MON-02、MON-04〜06 |
-| Failure injection | atomic rollback、Audit/fixed result consistency | OPS-01、CUS-01、MON-03〜06 |
-| Migration | empty/previous upgrade、drift、Down/restore | FND-03、schema owners、OPS-03 |
-| Docker E2E | deployable composition and representative journey | FND-04、VAL-01 |
-| Backup/restore | artifact protection、clean restore | OPS-02 |
-| Traceability audit | REQ/AC/ADR/Issue/PR/test completeness | VAL-01 |
+| REQ-DOM-001 | WP-3 | WP-6 |
+| REQ-DOM-002 | WP-3 / WP-5 | WP-6 |
+| REQ-DOM-003 | WP-3 / WP-5 | WP-6 |
+| REQ-DOM-004 | WP-4 / WP-5 | WP-6 |
+| REQ-DOM-005 | WP-4 / WP-5 | WP-6 |
+| REQ-CUS-001 | WP-3 | WP-6 |
+| REQ-CUS-002 | WP-3 | WP-6 |
+| REQ-CUS-003 | WP-3 | WP-6 |
+| REQ-CUS-004 | WP-3 | WP-6 |
+| REQ-CUS-005 | WP-5 | WP-6 |
+| REQ-CUS-006 | WP-5 | WP-6 |
+| REQ-DEP-001 | WP-4 | WP-6 |
+| REQ-WDR-001 | WP-5 | WP-6 |
+| REQ-WDR-002 | WP-5 | WP-6 |
+| REQ-WDR-003 | WP-5 | WP-6 |
+| REQ-WDR-004 | WP-5 | WP-6 |
+| REQ-TRF-001 | WP-5 | WP-6 |
+| REQ-TRF-002 | WP-5 | WP-6 |
+| REQ-TRF-003 | WP-5 | WP-6 |
+| REQ-TRF-004 | WP-4 / WP-5 | WP-6 |
+| REQ-HIS-001 | WP-5 | WP-6 |
+| REQ-HIS-002 | WP-4 / WP-5 | WP-6 |
+| REQ-CON-001 | WP-4 / WP-5 | WP-6 |
+| REQ-VAL-001 | WP-1〜WP-5 | WP-6 traceability closure |
 
-### Test allocation rule
+leaf Issue単位の割当は各Work PackageのIssue Set Ready時に確定する。
 
-- Feature acceptanceをVAL-01へ先送りしない。
-- row lock、advisory lock、trigger、check constraint、migrationは実PostgreSQLで検証する。
-- ASP.NET Core integration testは重要なHTTP/infrastructure境界に集中する。
-- pure domain logicの細かい組合せはunit testへ置く。
+---
 
-## 12. Issue sizing review
+## 15. Work Package単位のAC割当
 
-### 適切と判断したIssue
+| AC group | Primary Work Package |
+| --- | --- |
+| AC-CUS-001〜007 | WP-3 |
+| AC-CLS-001〜008 | WP-5 |
+| AC-CLOSED-001〜005 | WP-5 |
+| AC-DEP-001〜008 | WP-4 |
+| AC-WDR-001〜009 | WP-5 |
+| AC-TRF-001〜013 | WP-5（安全基盤はWP-4） |
+| AC-HIS-001〜007 | WP-5 |
+| AC-AUTH-001〜004 | WP-2 |
+| AC-USER-001〜009 | WP-2 |
+| AC-IDEM-001〜008 | WP-4 |
+| AC-CON-001〜003 | WP-4 / WP-5 |
+| AC-ERR-001 | WP-1 contract、WP-2〜5 mappings |
+| AC-OPS-001 | WP-1 |
+| AC-OPS-002〜005、007 | WP-2 + state-changing Work Packages |
+| AC-OPS-006 | WP-6 |
 
-- CUS-01、MON-03、MON-06は比較的大きいが、一つのatomic responsibilityを持つため分割しない。
-- SEC-02とSEC-03は、read/createとsecurity-critical mutationを分離した。
-- MON-01、MON-02、MON-03は、history persistence、locking、idempotencyを別責任として分離した。
-- OPS-02とOPS-03は、backup operationとschema evolution verificationを分離した。
+---
 
-### 過大化を防ぐscope guard
+## 16. Work Package単位のADR割当
 
-- FND-01へDB、Docker、認証を入れない。
-- FND-03へbusiness tableを入れない。
-- OPS-01へ各featureのAudit呼び出しを入れない。
-- MON-02へdeposit/withdraw/transferのbusiness ruleを入れない。
-- MON-03へmoney endpointを入れない。
-- VAL-01へproduction fixを入れない。
+| ADR | Primary Work Package | Integration / verification |
+| --- | --- | --- |
+| ADR-0001 Platform baseline | WP-1 | all |
+| ADR-0002 Money representation | WP-3 / WP-4 | WP-5 |
+| ADR-0003 Transaction boundaries | WP-3 / WP-4 | WP-2 / WP-5 |
+| ADR-0004 Concurrency / row lock | WP-4 | WP-5 |
+| ADR-0005 Idempotency | WP-4 | WP-5 |
+| ADR-0006 Persistence / IDs / time | WP-2 / WP-3 / WP-4 | WP-5 |
+| ADR-0007 Authentication / authorization | WP-2 | WP-3〜5 |
+| ADR-0008 Audit / logging / backup | WP-1 / WP-2 / WP-6 | WP-3〜5 |
+| ADR-0009 Migration / rollback | WP-1 machinery / WP-6 validation | schema-owning WPs |
 
-### 過小化を防ぐ判断
+---
 
-- health endpointsだけのIssueを作らずFND-04へ含める。
-- technical JSON loggingだけのIssueを作らずFND-01へ含める。
-- normal withdrawalとfull withdrawalは同じuse case familyとしてMON-05へ含める。
-- Audit success/rejection writerを別Issueへ細分化しない。
+## 17. テスト戦略
 
-## 13. Standard implementation Issue template
+| Test type | Primary timing | Rule |
+| --- | --- | --- |
+| Domain unit | owning leaf Issue | pure business rulesと境界値 |
+| API integration | owning vertical Issue | auth、HTTP、error contract |
+| PostgreSQL integration | schema/transaction owning Issue | constraint、trigger、transaction、raw SQL |
+| Concurrency | WP-4 / WP-5 owning Issue | row lock、advisory lock、deadlock、timeout |
+| Failure injection | transaction/Audit/idempotency owner | atomicityとfail-closed |
+| Migration | schema owner + WP-6 | issue-local upgrade + cross-version validation |
+| Docker E2E | WP-6 | 接続・代表journeyのみ |
+| Manual evidence | 必要なIssueのみ | 自動化不能なrelease/operation確認 |
+
+最終E2Eへ主要feature testを丸投げしない。provider固有挙動をInMemory/SQLiteで代替しない。
+
+---
+
+## 18. 標準leaf Issueテンプレート
 
 ```markdown
 Refs #3
-Refs #28
+Parent Work Package: #TBD
 
-## 1. Purpose
+## Background
 
-## 2. Project control
-- Parent / Control Issue: #3
-- Project phase: 5 AI-PR駆動実装
-- Required gate: Implementation Ready
-- Required gate status: PASS
+## Purpose / Close condition
+このIssueは、○○が△△できる状態を実現した時点で完了する。
 
-## 3. Authority
-- Specification sections:
+## Authority
+- Specification:
 - Acceptance Criteria:
-- Accepted ADRs:
+- Accepted ADR:
 
-## 4. Scope
+## Scope
 
-## 5. Out of scope
+## Out of scope
 
-## 6. Dependencies
+## Dependencies
 - Blocked by:
-- Blocks:
+- Depends on:
+- Can run in parallel with:
 
-## 7. Owned artifacts
-- Production responsibility:
-- DB objects / migrations:
+## Owned artifacts
+- API contract:
+- Domain/Application responsibility:
+- DB objects:
+- Migration:
 - Test fixtures:
 
-## 8. Acceptance Criteria
+## Acceptance Criteria
+- [ ]
 
-## 9. Verification
+## Verification
 - Unit:
 - API integration:
 - PostgreSQL integration:
-- Concurrency / failure injection:
-- Not required:
+- Concurrency/failure injection:
+- Manual:
 
-## 10. Agent B review focus
+## Required evidence
+- Test results:
+- CI:
+- Logs/screenshots where required:
 
-## 11. Allowed operations
-- explore / plan / self-review / implement / test / Draft PR
+## Agent B review focus
 
-## 12. Prohibited operations
-- merge / cleanup / issue close / release / publish
+## Stop conditions
 
-## 13. Stop conditions
-- authority conflict
-- scope expansion
-- unapproved design decision
-- required verification unavailable
+## Close conditions
+- [ ] Acceptance Criteria achieved
+- [ ] Required tests passed
+- [ ] Agent B Blocker/Major 0
+- [ ] Evidence recorded
+- [ ] PR merged
 ```
 
-## 14. Creation policy after plan approval
+---
 
-1. Issue #28を親とし、21 leaf Issueをdirect sub-issueとして作成する。
-2. ID prefixをtitleへ含める。例: `[FND-01] Solution・API・品質基盤を作成する`。
-3. GitHub issue dependenciesへDAGのblock関係を設定する。
-4. workstream labelを使用する。
-   - `workstream/foundation`
-   - `workstream/security`
-   - `workstream/customer`
-   - `workstream/money`
-   - `workstream/query`
-   - `workstream/operations`
-   - `workstream/validation`
-5. `type/implementation`、`gate/implementation-ready`等のlabelは既存label体系を確認してから使用する。存在しないlabelを無秩序に増やさない。
-6. Issue作成後、title/body/dependency/traceabilityを機械的に再照合する。
-7. Issue群の独立レビューとImplementation Ready PASS前に実装branchを作らない。
+## 19. 将来候補バックログの扱い
 
-## 15. Risks and remaining checks
+以前の21候補は削除せず、漏れ確認用の参考カテゴリとして次へ整理する。
 
-### Plan reviewで重点確認する事項
+- Foundation: solution、API runtime、PostgreSQL test、EF/migration、Compose、health
+- Security/Audit: auth、Operator、Audit
+- Customer: registration、query/update、closure
+- Money: Transaction、transaction/lock、idempotency、deposit、withdrawal、transfer
+- Query: history
+- Operations: backup、migration validation、E2E/traceability
 
-- CUS-01、MON-03、MON-06が一回のPRとして過大でないか。
-- OPS-01をSEC-01より後に置くcritical pathが妥当か。
-- MON-03がCUS-01へ依存する必要性とcanonical account resolution責任が明確か。
-- FND-04のCompose/health scopeが大きすぎないか。
-- OPS-02/03をPhase 5実装Issueとして作る時期が早すぎないか。
-- VAL-01のE2Eがfeature testの重複または代替になっていないか。
+これらはGitHub Issueでも確定leaf Issueでもない。各Work Package開始前に統合・分割・削除を再判断する。
 
-### Koo判断
+---
 
-現時点で新しい製品判断は不要である。
+## 20. 本計画のAcceptance Criteria
 
-独立レビューで、機能優先順位またはv0.1.0 scopeを変える必要が検出された場合だけKooへ確認する。
+- [ ] Issue数を先に固定していない
+- [ ] 1 Issue = 1 Close条件 / 1主責任をポリシー化した
+- [ ] Issue Ready / Issue Doneを定義した
+- [ ] 6 Work Packageと開始・完了ゲートを定義した
+- [ ] ローリングウェーブでWP-1だけを詳細化した
+- [ ] WP-1 leaf Issueのresponsibilityとdependencyが明確
+- [ ] FND-01の過大scopeを分割した
+- [ ] Docker runtimeとhealth contractを分離した
+- [ ] 24 REQがWork Packageへ追跡される
+- [ ] 仕様AC groupがWork Packageへ追跡される
+- [ ] ADR-0001〜0009がWork Packageへ追跡される
+- [ ] PostgreSQL固有挙動は実PostgreSQL testへ割り当てた
+- [ ] final E2Eをcatch-allにしていない
+- [ ] Implementation ReadyをWP-1限定の開始許可として明確化した
+- [ ] WP-2以降のleaf Issueを先取りしていない
+- [ ] application code、schema、migration、Docker実装を開始していない
 
-## 16. Completion criteria for this plan
+---
 
-- [x] 分割原則を公式資料とAccepted ADRへ接続した
-- [x] 21候補Issueを定義した
-- [x] primary ownershipを定義した
-- [x] schema ownershipを定義した
-- [x] dependency DAGを作成した
-- [x] 24 REQを候補Issueへ追跡した
-- [x] AC groupを候補Issueへ追跡した
-- [x] ADR-0001〜0009を候補Issueへ追跡した
-- [x] test strategyを割り当てた
-- [x] issue sizingをセルフレビューした
-- [x] standard Issue templateを作成した
-- [ ] Agent B独立レビュー
-- [ ] Koo判断が必要なfindingの解消
-- [ ] `READY TO CREATE IMPLEMENTATION ISSUES`
+## 21. 現在の停止点
 
-この計画が独立レビューを通過するまで、実装Issueを作成しない。
+次はPR #31の改訂計画をAgent Bが独立レビューし、`Decomposition Strategy Ready`を判定する。
+
+PASSとなるまで、次を行わない。
+
+- Work Package統制Issueの作成
+- WP-1 leaf Issueの作成
+- WP-1 Issue Set Ready判定
+- Implementation Ready判定
+- application code、schema、migration、Docker実装
+
+レビューでPASSとなった場合、6 Work Package統制IssueとWP-1 leaf Issueだけを作成する。WP-2以降のleaf Issueは各前段ゲート後に作成する。
