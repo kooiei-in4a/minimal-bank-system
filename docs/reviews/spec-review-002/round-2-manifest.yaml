@@ -1,0 +1,65 @@
+benchmark:
+  review_id: "spec-review-002"
+  round: 2
+  status: "completed"
+  source_review_id: "spec-review-001"
+  dataset_id: "spec-review-002-portable-v1"
+  language: "ja"
+  review_artifact_count: 16
+  unique_model_configuration_count: 15
+
+review_target:
+  repository_label: "kooiei-in4a/minimal-bank-system"
+  pr_number_label: 9
+  base_sha: "dedbcaf31fd4c40b966facd1829c7535b8d0e4ba"
+  head_sha: "4944fb22806526f9e92dc47b516b57431c6c7f0a"
+  target_file: "docs/specs/bank-system-specification.md"
+  changed_file_count: 1
+  target_file_status: "new file"
+  target_file_lines: 977
+  target_file_git_blob_sha: "95097dbbe66eba6c32a18db8121db7e7f93d43d1"
+
+portable_inputs:
+  prompt_sha256: "af70cf9f1112b7479abcd2814f08746103329fef04dad7d3fc3fb1258c30f966"
+  evidence_sha256: "408bfc861e494931224f9c0feeb146e11fb27f271f5caf94d1f74884ffd9321b"
+  evidence_document_set_sha256: "d8a2f062da2a33a672b10dacbadb556674fe23be9c3598856c3543c7b20fa8f6"
+  portable_archive_sha256: "db2aa36f2d2eab0b4a03337935fbbb72dc5d1520d5ebf3b8757a0f7c1529e56d"
+
+raw_results:
+  archive: "docs/reviews/spec-review-002/results/spec-review-002-round-2-complete.zip"
+  archive_git_blob_sha: "95bed447a2ac7c370fd6327641266eb84c51d013"
+  review_count: 16
+  includes_analysis_snapshot: true
+
+analysis:
+  archive: "docs/reviews/spec-review-002/analysis/spec-review-002-analysis-16.zip"
+  archive_sha256: "092db778137677f1860828b0a07d39947066f8fc1f557d44dfeb660368c8648f"
+  archive_git_blob_sha: "c907d1d6d2f48e9c5196c24d26f34200f09ab99c"
+  member_count: 4
+  members:
+    - "spec-review-002-finding-matrix.md"
+    - "spec-review-002-model-evaluation.md"
+    - "spec-review-002-round-comparison.md"
+    - "spec-review-002-final.md"
+
+final_adjudication:
+  verdict: "FAIL"
+  ready_recommendation: "NOT READY"
+  blocker: 0
+  major: 4
+  minor: 5
+  nit: 2
+
+independence:
+  external_sources_prohibited: true
+  other_model_reviews_prohibited_during_execution: true
+  round_1_results_prohibited_during_execution: true
+  gold_findings_prohibited_during_execution: true
+
+repository_scope:
+  modify_review_target: false
+  modify_round_1_results: false
+  modify_issues: false
+  modify_pull_requests: false
+  modify_gates: false
+  create_pull_request: false
