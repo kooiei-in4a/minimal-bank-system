@@ -14,7 +14,7 @@ fixed_target:
   target_git_blob_sha1: 95097dbbe66eba6c32a18db8121db7e7f93d43d1
 final_adjudication:
   verdict: FAIL
-  ready_recommendation: NOT_READY
+  ready_recommendation: NOT READY
   blocker: 0
   major: 4
   minor: 5
