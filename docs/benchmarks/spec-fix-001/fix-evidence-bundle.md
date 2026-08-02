@@ -19,7 +19,7 @@ This bundle is the complete factual input for the repair model. It contains the 
 
 It intentionally excludes individual Round 1 / Round 2 model outputs, model names, scores, rankings, evaluation rubric, and Gold Fix criteria.
 
-Each embedded document is delimited by `<document>` and `</document>`. SHA-256 is calculated from the exact UTF-8 text inside the delimiter, excluding the trailing newline before `</document>`.
+Each embedded document is delimited by `<document>` and `</document>`. SHA-256 is calculated from the exact UTF-8 text inside the delimiter, including the trailing newline immediately before `</document>`.
 
 ## Document index
 
@@ -30,7 +30,7 @@ Each embedded document is delimited by `<document>` and `</document>`. SHA-256 i
 | `DOC-TRACE-001` | Requirements register digest | `e974f6475545ddb5717bd975690a018dcba9b7034708aec3b671aafe3f531168` |
 | `DOC-B-001` | Approved B-01 to B-06 decisions | `3d156e63117afc7b9b089bb3a4bfcf83420aec211d9a441409b05c881464d20e` |
 | `DOC-D-001` | Approved D-01 to D-17 decisions | `144b48e0553fba14c97d7a40bc265c9a4297d51d5e5da5a675c4adc1432aafed` |
-| `DOC-DIFF-001` | Fixed target diff | `03343586513a7035f0bd964d5786c2ebf8fa0d731653a3b55382a96e6ac58d5a` |
+| `DOC-DIFF-001` | Fixed target diff | `5921b1919a1f1e095777e98988e42f733f26916452a72ce2e3a502f0cbc017c1` |
 | `DOC-SPEC-001` | Target specification full text | `c9d448105408dd75a6130ef42cc7ebf4529264f777945d370353d71f0710e368` |
 | `FINAL-FINDINGS-001` | Final adjudicated findings | `506721dfa9440aa0bb50c0dac27125b1563c26e5528dc41be406e6b1122887ec` |
 | `DOC-APPROVAL-001` | Approval items | `902e35d0763353a9db5d4744fe4d5774b5c2d97ae46c69103fa4905aef39930c` |
@@ -362,7 +362,7 @@ D-01〜D-17はすべてAgent A推奨案を追加条件なしでKooが承認し�
 - Head state: new file
 - Git blob SHA-1 at Head: `95097dbbe66eba6c32a18db8121db7e7f93d43d1`
 
-The complete added content is `DOC-TARGET-001` in this bundle. Because the file did not exist at Base, the semantic unified diff is exactly the full content of `DOC-TARGET-001` added with no deleted lines.
+The complete added content is `DOC-SPEC-001` in this bundle. Because the file did not exist at Base, the semantic unified diff is exactly the full content of `DOC-SPEC-001` added with no deleted lines.
 </document>
 <document id="DOC-SPEC-001" title="Target specification full text">
 # 最小銀行システム 製品仕様書
