@@ -1,7 +1,7 @@
-schema_version: '1.1'
+schema_version: '1.2'
 benchmark_id: spec-fix-001
 input_dataset_id: spec-fix-001-portable-v1
-prompt_revision: screen-output-v2
+prompt_revision: file-first-v3
 created_at: '2026-08-02'
 revised_at: '2026-08-02'
 language: ja
@@ -20,12 +20,16 @@ final_adjudication:
   minor: 5
   nit: 2
 benchmark_execution:
-  status: NOT_RUN
+  formal_status: NOT_RUN
+  pilot_status: EXPLORATORY_ONLY
+  observed_pilot_runs: 2
+  pilot_prompt_revision: screen-output-v2
 distribution:
   prompt_delivery: paste fix-prompt.md content into the model input screen
   evidence_delivery: provide fix-evidence-bundle.md
-  result_delivery: two delimited Markdown blocks in the response screen
-  model_file_operations_required: false
+  preferred_result_delivery: two downloadable UTF-8 Markdown files
+  fallback_result_delivery: two-step delimited screen output using CONTINUE_SPEC
+  model_existing_file_edits_required: false
   execution_model_files:
   - docs/benchmarks/spec-fix-001/fix-prompt.md
   - docs/benchmarks/spec-fix-001/fix-evidence-bundle.md
@@ -37,22 +41,22 @@ integrity:
   hashed_file_count_excluding_manifest: 9
   manifest_self_hash_excluded: true
   content_set_algorithm: SHA-256 over sorted path + NUL + file SHA-256 + LF
-  content_set_sha256: e3df410fc1e926f7c5ef7c5d7e180106d15e804af383692fb2e1ca16c19c4450
+  content_set_sha256: a5504bbf6c47c74be207af9d20af3c11c9042d843c373b1d73359eb6f61d0d0e
   evidence_bundle_sha256: b0ac7277ccdc3758a372fb209380dea5c67c848db3b64dde48b46207fb5dc1dd
   evidence_document_count: 10
 files:
 - path: docs/benchmarks/spec-fix-001/README.md
-  bytes: 3377
-  sha256: d4cdd6f584b40d3fa441a82d42f3b25ba4a1caac95a4570a9a7012f8b7501cfd
+  bytes: 4223
+  sha256: 5312976ef82994517c1ac75b18e8b5bdffa291665edc56810c1b1f23738c829a
 - path: docs/benchmarks/spec-fix-001/fix-evaluation-rubric.md
-  bytes: 8165
-  sha256: 4d884c3a153b1d95d388ec0bd6e207c8a7a1e357c95577a9cda867abd56ba2c6
+  bytes: 9837
+  sha256: a83fea05dc06bb18520aeb4d7d96f6cea9d28473916aaacadc9cc426d41d9f30
 - path: docs/benchmarks/spec-fix-001/fix-evidence-bundle.md
   bytes: 60364
   sha256: b0ac7277ccdc3758a372fb209380dea5c67c848db3b64dde48b46207fb5dc1dd
 - path: docs/benchmarks/spec-fix-001/fix-prompt.md
-  bytes: 7424
-  sha256: 0cf795d6754f03af860544fe455fa6e34eb8e555b4f67811c9de1dbb5bf1084c
+  bytes: 9133
+  sha256: 9a2e32495e452e1e7d32b249828114dc30770af753ea44353e30db1449673d43
 - path: docs/benchmarks/spec-fix-001/gold-fix-acceptance-criteria.md
   bytes: 6975
   sha256: ac072ce75fb37779522db8dda887f2a248fb000af21fcc1a914264d2e5ac33af
