@@ -1,6 +1,6 @@
 # ADR-0002: Money representation
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related candidates: ADR-CANDIDATE-001
@@ -9,7 +9,7 @@
 
 The product supports Japanese yen only and all approved amounts are whole yen. Balance arithmetic must be exact, deterministic and protected from floating-point rounding.
 
-## Proposed decision
+## Decision
 
 Represent money as integer yen:
 
