@@ -1,6 +1,6 @@
 # ADR-0005: Idempotency persistence and replay
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related candidates: ADR-CANDIDATE-005, ADR-CANDIDATE-013
@@ -9,7 +9,7 @@
 
 The approved product contract defines scope, request equivalence, fixed results, non-consuming errors, in-progress behavior, different-payload conflict and no expiry in v0.1.0. The implementation must preserve atomicity, avoid persisting the raw idempotency key and avoid a durable `Processing` record becoming orphaned after a crash.
 
-## Proposed decision
+## Decision
 
 Use PostgreSQL for durable idempotency results and PostgreSQL advisory transaction locks for in-progress exclusion.
 
