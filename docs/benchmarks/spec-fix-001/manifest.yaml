@@ -1,7 +1,9 @@
-schema_version: '1.0'
+schema_version: '1.1'
 benchmark_id: spec-fix-001
 input_dataset_id: spec-fix-001-portable-v1
+prompt_revision: screen-output-v2
 created_at: '2026-08-02'
+revised_at: '2026-08-02'
 language: ja
 repository: kooiei-in4a/minimal-bank-system
 fixed_target:
@@ -20,6 +22,10 @@ final_adjudication:
 benchmark_execution:
   status: NOT_RUN
 distribution:
+  prompt_delivery: paste fix-prompt.md content into the model input screen
+  evidence_delivery: provide fix-evidence-bundle.md
+  result_delivery: two delimited Markdown blocks in the response screen
+  model_file_operations_required: false
   execution_model_files:
   - docs/benchmarks/spec-fix-001/fix-prompt.md
   - docs/benchmarks/spec-fix-001/fix-evidence-bundle.md
@@ -31,22 +37,22 @@ integrity:
   hashed_file_count_excluding_manifest: 9
   manifest_self_hash_excluded: true
   content_set_algorithm: SHA-256 over sorted path + NUL + file SHA-256 + LF
-  content_set_sha256: 1ad57394dee40fbbb0d25a9a6eaa2649465e7f66b25d007006a86d65ee4561e5
+  content_set_sha256: e3df410fc1e926f7c5ef7c5d7e180106d15e804af383692fb2e1ca16c19c4450
   evidence_bundle_sha256: b0ac7277ccdc3758a372fb209380dea5c67c848db3b64dde48b46207fb5dc1dd
   evidence_document_count: 10
 files:
 - path: docs/benchmarks/spec-fix-001/README.md
-  bytes: 2451
-  sha256: 91af098206da547a38ed40380a582eaac712a7d3138f478dc8e07673ddd049a7
+  bytes: 3377
+  sha256: d4cdd6f584b40d3fa441a82d42f3b25ba4a1caac95a4570a9a7012f8b7501cfd
 - path: docs/benchmarks/spec-fix-001/fix-evaluation-rubric.md
-  bytes: 7093
-  sha256: 3794671905e265fd5f8dd3cccb42888530095ce3fef5e605f62cf123289649c9
+  bytes: 8165
+  sha256: 4d884c3a153b1d95d388ec0bd6e207c8a7a1e357c95577a9cda867abd56ba2c6
 - path: docs/benchmarks/spec-fix-001/fix-evidence-bundle.md
   bytes: 60364
   sha256: b0ac7277ccdc3758a372fb209380dea5c67c848db3b64dde48b46207fb5dc1dd
 - path: docs/benchmarks/spec-fix-001/fix-prompt.md
-  bytes: 8450
-  sha256: c3af3ea08fa01501030d8152eb458b7370b0bbd2a3e7b8f8c1e685dcd73e27f4
+  bytes: 7424
+  sha256: 0cf795d6754f03af860544fe455fa6e34eb8e555b4f67811c9de1dbb5bf1084c
 - path: docs/benchmarks/spec-fix-001/gold-fix-acceptance-criteria.md
   bytes: 6975
   sha256: ac072ce75fb37779522db8dda887f2a248fb000af21fcc1a914264d2e5ac33af

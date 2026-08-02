@@ -8,18 +8,19 @@
 
 ## 2. 評価前提
 
-評価対象:
-
-```text
-fixed-bank-system-specification.md
-spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
-```
-
-固定対象:
-
+- Dataset ID: `spec-fix-001-portable-v1`
+- Prompt revision: `screen-output-v2`
 - Base SHA: `dedbcaf31fd4c40b966facd1829c7535b8d0e4ba`
 - Head SHA: `4944fb22806526f9e92dc47b516b57431c6c7f0a`
-- Dataset ID: `spec-fix-001-portable-v1`
+
+評価対象は、回答画面に出力された次の2ブロックである。
+
+```text
+spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
+fixed-bank-system-specification.md
+```
+
+区切り付き画面出力を評価対象とし、モデルによる実ファイル作成や検索置換の成否は評価しない。
 
 ## 3. Hard fail
 
@@ -36,6 +37,8 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 9. 11件のFindingの半数以上を報告していない。
 10. 出力が破損し、修正後仕様として読めない。
 
+区切りの軽微な表記揺れだけでHard failにはしない。2つの成果物を明確に分離・抽出できない場合はOutput complianceを0点とし、内容が判定不能な場合だけHard failとする。
+
 ## 4. スコア
 
 総点100点。
@@ -50,7 +53,7 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 | Traceability | 8 | REQ、B、D、仕様節、ACの意味的対応を維持・改善したか |
 | Acceptance testability | 7 | 修正後契約が原因別に検証可能か |
 | Precision | 4 | 過剰修正、重複AC、不要な新概念が少ないか |
-| Output compliance | 3 | ファイル名、メタデータ、報告構成、独立性宣言を守ったか |
+| Output compliance | 3 | 画面出力区切り、メタデータ、報告構成、独立性宣言を守ったか |
 
 ## 5. Finding coverage採点
 
@@ -78,7 +81,7 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 
 ## 6. Correctness採点
 
-### 満点条件
+満点条件:
 
 - B-01の「のみ」を正しく適用する。
 - B-04の固定3役割と権限を維持する。
@@ -87,7 +90,7 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 - D-06の全件返却、D-14の履歴不変性、D-15の共通振込IDを壊さない。
 - 未承認code、最大長、管理操作集合、空結果レスポンスを確定しない。
 
-### 主な減点
+主な減点:
 
 - 正本の意味を弱める: -3〜-10
 - 外部契約を誤って変更: -2〜-8
@@ -132,6 +135,8 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 - 不要な新ID・新概念: -1〜-4
 - API endpoint、DB、認証方式の具体化: -2〜-8
 
+モデルがファイル編集を行わなかったこと、検索置換を使用しなかったこと自体は加点・減点しない。評価するのは成果物の内容である。
+
 ## 9. Approval discipline採点
 
 満点:
@@ -140,6 +145,7 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 - 既存§22.1事項を承認待ちのまま維持。
 - 決定軸、選択肢、影響、承認後ACを整理。
 - 推奨と決定を明確に区別。
+- 承認待ちがあっても、直接修正可能なFindingを完了している。
 
 重大減点またはHard fail:
 
@@ -147,6 +153,7 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 - Koo承認不要と虚偽報告。
 - Open approval itemを削除。
 - §16.3の提案codeを承認済みと扱う。
+- 承認待ちを理由に、修正可能なFindingまで未処理で停止する。
 
 ## 10. Traceability採点
 
@@ -171,9 +178,11 @@ spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 
 ## 12. Output compliance採点
 
-- 指定2ファイル: 1点
-- メタデータ、Finding status、変更箇所、Open approval items、自己レビュー: 1点
-- 外部情報・他モデル結果を参照していない宣言、変更ファイル明示: 1点
+- 2つのBEGIN / END区切りがあり、報告書と仕様全文を抽出できる: 1点
+- メタデータ、Finding status、変更箇所、Open approval items、自己レビューがある: 1点
+- 外部情報・他モデル結果を参照していない宣言、変更対象の明示がある: 1点
+
+区切り外の短い挨拶や軽微なファイル名表記揺れは、内容を抽出できる限り最大1点の減点に留める。形式だけを過度に重く評価しない。
 
 ## 13. 総合判定
 
