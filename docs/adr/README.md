@@ -40,6 +40,18 @@
 
 These ADRs are proposals until independently reviewed and approved by Koo. They do not authorize application implementation, schema creation, migration generation or Docker configuration.
 
+## Review-fix scope
+
+The first independent review of PR #25 reported three Major and two Minor findings.
+
+The correction scope is intentionally bounded for the internal demo:
+
+- stale authorization, raw idempotency-key persistence and audit/idempotency atomicity are mandatory architecture fixes;
+- account-number exhaustion receives a safe non-cycling boundary without a rollover service or capacity platform;
+- backup artifacts receive local access, location and cleanup controls without requiring a remote vault, KMS or scheduled backup service;
+- application code, schema, migration and Docker implementation remain out of scope;
+- all ADRs remain `Proposed` until the revised head passes independent review.
+
 ## Approval order
 
 1. ADR-0001 establishes the shared platform baseline.
