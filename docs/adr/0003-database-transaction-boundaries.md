@@ -1,6 +1,6 @@
 # ADR-0003: Database transaction boundaries
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related candidates: ADR-CANDIDATE-002
@@ -9,7 +9,7 @@
 
 Customer registration, closure, deposits, withdrawals and transfers have approved all-or-nothing outcomes. Fixed deterministic business rejections may also consume an idempotency key and require a durable Audit Log. The system uses one PostgreSQL database, so distributed transaction machinery is unnecessary.
 
-## Proposed decision
+## Decision
 
 Use one explicit PostgreSQL transaction per state-changing application use case.
 
