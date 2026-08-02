@@ -1,4 +1,4 @@
-schema_version: '1.1'
+schema_version: '1.2'
 benchmark_id: spec-fix-001
 run_id: '2026-08-02-formal'
 execution_date: '2026-08-02'
@@ -11,6 +11,8 @@ parent_issue: 3
 model_count: 14
 submission_file_count: 28
 source_artifact_manifest: docs/benchmarks/spec-fix-001/runs/2026-08-02/source-artifacts.csv
+source_artifact_hash_algorithm: SHA-256
+source_artifact_count: 28
 repository_retained_full_output_count: 1
 repository_retention_note: only the winning repair report is stored in full; generated specifications remain non-authoritative external evidence identified by SHA-256
 valid_submission_count: 2
@@ -27,6 +29,7 @@ runtime_metadata:
   approximate: true
   included_in_score: false
 integrity:
-  algorithm: SHA-256 over sorted path + NUL + file SHA-256 + LF
-  retained_file_count_excluding_manifest: 6
-  retained_content_set_sha256: def9ea1bd3f188acb76d5ca2c9bf23fc91ae64761a274bf06c37e34692a87cb0
+  authoritative_submission_integrity_file: docs/benchmarks/spec-fix-001/runs/2026-08-02/source-artifacts.csv
+  selected_repair_report_source_sha256: c78ceaea653a5e2cc449d96f193c9645dfeaf7d7d3565e64b59e1966ff9f9402
+  winning_fixed_specification_source_sha256: c6e482737a4663194042ea4c8a59ba61a668e41188bfb1d2dcc70d6ef9994495
+  note: repository file integrity is additionally protected by Git object hashes; no aggregate content-set hash is asserted
