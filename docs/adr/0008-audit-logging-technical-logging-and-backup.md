@@ -1,6 +1,6 @@
 # ADR-0008: Audit logging, technical logging and backup
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related candidates: ADR-CANDIDATE-012, ADR-CANDIDATE-014
@@ -11,7 +11,7 @@ The product requires Audit Log records, separate technical failure logs, secret 
 
 Audit persistence must remain consistent with successful operations and fixed deterministic business rejections. Backup artifacts also contain credential hashes, Audit Log data and idempotency records, even though the internal demo uses no real personal or banking data.
 
-## Proposed decision
+## Decision
 
 ### Audit Log
 
