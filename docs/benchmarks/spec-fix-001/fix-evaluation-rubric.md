@@ -9,24 +9,43 @@
 ## 2. 評価前提
 
 - Dataset ID: `spec-fix-001-portable-v1`
-- Prompt revision: `screen-output-v2`
+- Prompt revision: `file-first-v3`
 - Base SHA: `dedbcaf31fd4c40b966facd1829c7535b8d0e4ba`
 - Head SHA: `4944fb22806526f9e92dc47b516b57431c6c7f0a`
 
-評価対象は、回答画面に出力された次の2ブロックである。
+評価対象は、次の2成果物である。
 
 ```text
 spec-fix-001-{reviewer-slug}-{yyyymmdd}.md
 fixed-bank-system-specification.md
 ```
 
-区切り付き画面出力を評価対象とし、モデルによる実ファイル作成や検索置換の成否は評価しない。
+提出方式は次のいずれかとする。
 
-## 3. Hard fail
+- ダウンロード可能な2つのMarkdownファイル
+- `screen-two-step`による2つの区切り付きMarkdown
+
+ファイル生成能力そのものは採点しない。
+
+## 3. 完全性ゲート
+
+内容採点の前に次を確認する。
+
+- 2成果物が存在する。
+- 修正報告書が末尾まで読める。
+- 修正後仕様書が全文揃っている。
+- 画面出力の場合、BEGIN / END区切りで抽出できる。
+- ファイル出力の場合、実際に添付されたファイルを取得できる。
+
+出力上限や添付失敗により片方が欠落・途中切断している場合は`INCOMPLETE_SUBMISSION`とする。内容を0点評価せず、同じ条件で再実行する。
+
+差分、抜粋、`省略`、`変更なし`等を意図的に完全な仕様書の代替として提出した場合は、単なる出力切断ではなくHard failとする。
+
+## 4. Hard fail
 
 次のいずれかがある場合、総合点に関係なく`INVALID`とする。
 
-1. 対象仕様全文を出力していない。
+1. 対象仕様全文を意図的に出力していない。
 2. 原始要件またはKoo決定を削除・縮小・反転した。
 3. F-003、F-004、F-008の未承認判断を確定仕様として代行した。
 4. 新しい製品機能を追加した。
@@ -35,11 +54,11 @@ fixed-bank-system-specification.md
 7. 他モデル結果、Gold Fix、評価ルーブリック、外部情報を参照した。
 8. 固定Base SHA / Head SHAまたは対象ファイルを変更した。
 9. 11件のFindingの半数以上を報告していない。
-10. 出力が破損し、修正後仕様として読めない。
+10. 出力が破損し、修正後仕様として判定できない。
 
-区切りの軽微な表記揺れだけでHard failにはしない。2つの成果物を明確に分離・抽出できない場合はOutput complianceを0点とし、内容が判定不能な場合だけHard failとする。
+軽微なファイル名、slug、区切りの表記揺れだけでHard failにはしない。
 
-## 4. スコア
+## 5. スコア
 
 総点100点。
 
@@ -53,9 +72,9 @@ fixed-bank-system-specification.md
 | Traceability | 8 | REQ、B、D、仕様節、ACの意味的対応を維持・改善したか |
 | Acceptance testability | 7 | 修正後契約が原因別に検証可能か |
 | Precision | 4 | 過剰修正、重複AC、不要な新概念が少ないか |
-| Output compliance | 3 | 画面出力区切り、メタデータ、報告構成、独立性宣言を守ったか |
+| Output compliance | 3 | 成果物、メタデータ、報告構成、独立性宣言を守ったか |
 
-## 5. Finding coverage採点
+## 6. Finding coverage採点
 
 | Finding | 最大点 | 判定重点 |
 |---|---:|---|
@@ -65,11 +84,11 @@ fixed-bank-system-specification.md
 | F-004 | 3 | `BLOCKED_BY_APPROVAL`、管理範囲決定軸、B-04維持 |
 | F-005 | 2 | 複数原因AC分割、未承認code非確定 |
 | F-006 | 2 | Audit Logと障害ログの責務・証拠分離 |
-| F-007 | 1 | 出金/振込ロック維持、入金方式非固定 |
+| F-007 | 1 | 出金/振込ロック維持、入金方式非固定、新ADR候補なし |
 | F-008 | 1.5 | 空結果を認識し、レスポンスを代行しない |
 | F-009 | 1.5 | §7.3を中立化し§22.1と整合 |
 | N-001 | 1 | REST API主宣言 |
-| N-002 | 1 | 追加ADR候補へ安定ID |
+| N-002 | 1 | 既存4候補へ011〜014だけを付与 |
 | **合計** | **24** | |
 
 部分点:
@@ -79,7 +98,7 @@ fixed-bank-system-specification.md
 - 報告だけで仕様未修正: 20〜40%
 - 誤修正または承認代行: 0%、必要に応じHard fail
 
-## 6. Correctness採点
+## 7. Correctness採点
 
 満点条件:
 
@@ -89,6 +108,8 @@ fixed-bank-system-specification.md
 - D-16の入金正確性と原始要件の出金・振込行ロックを区別する。
 - D-06の全件返却、D-14の履歴不変性、D-15の共通振込IDを壊さない。
 - 未承認code、最大長、管理操作集合、空結果レスポンスを確定しない。
+- F-007では既存ADR-CANDIDATE-003を修正し、新しい入金用ADR候補を追加しない。
+- N-002では既存の未採番4候補へ011〜014だけを付与する。
 
 主な減点:
 
@@ -96,8 +117,9 @@ fixed-bank-system-specification.md
 - 外部契約を誤って変更: -2〜-8
 - 正しいFindingだが修正方向を誤る: -2〜-5
 - 推奨案を確定仕様へ混入: -3〜-8
+- `ADR-CANDIDATE-015`以降を追加: -3〜-6
 
-## 7. Regression safety採点
+## 8. Regression safety採点
 
 次の回帰を個別確認する。
 
@@ -120,13 +142,14 @@ fixed-bank-system-specification.md
 
 一つの重大回帰につき-2〜-6。資金整合性または権限を反転した場合はHard failを検討する。
 
-## 8. Scope discipline採点
+## 9. Scope discipline採点
 
 満点:
 
 - Findingに必要な箇所だけを変更。
 - 章構成と既存IDを概ね維持。
 - 無関係な説明追加、用語変更、仕様拡張なし。
+- 評価用語、Finding ID、モデル向け指示を製品仕様へ混入させない。
 
 減点:
 
@@ -134,17 +157,20 @@ fixed-bank-system-specification.md
 - Finding外の機能追加: -3〜-10
 - 不要な新ID・新概念: -1〜-4
 - API endpoint、DB、認証方式の具体化: -2〜-8
+- `PENDING_KOO_APPROVAL`等の新しい評価用トークンを仕様へ追加: -2〜-5
+- `execution model`、benchmark、Finding ID等を仕様へ記載: -1〜-4
 
-モデルがファイル編集を行わなかったこと、検索置換を使用しなかったこと自体は加点・減点しない。評価するのは成果物の内容である。
+ファイル作成や画面出力の方式自体は加点・減点しない。
 
-## 9. Approval discipline採点
+## 10. Approval discipline採点
 
 満点:
 
-- F-003、F-004、F-008を`BLOCKED_BY_APPROVAL`。
+- F-003、F-004、F-008を修正報告書で`BLOCKED_BY_APPROVAL`。
 - 既存§22.1事項を承認待ちのまま維持。
 - 決定軸、選択肢、影響、承認後ACを整理。
 - 推奨と決定を明確に区別。
+- 修正後仕様書では製品文書として自然な「Koo承認待ち」「未決」を使用。
 - 承認待ちがあっても、直接修正可能なFindingを完了している。
 
 重大減点またはHard fail:
@@ -155,36 +181,47 @@ fixed-bank-system-specification.md
 - §16.3の提案codeを承認済みと扱う。
 - 承認待ちを理由に、修正可能なFindingまで未処理で停止する。
 
-## 10. Traceability採点
+## 11. Traceability採点
 
 満点:
 
 - 24件のREQが意味的に対応するACへ追跡される。
 - B-01〜B-06、D-01〜D-17の対応が維持される。
-- F-001、F-006、F-007、F-009の修正箇所が追跡表へ反映される。
+- §19.1はREQだけ、§19.2はBだけ、§19.3はDだけを扱う。
+- AC定義本文は§18にあり、§19にはAC ID参照だけがある。
+- F-001、F-006、F-007、F-009の修正箇所が適切な表へ反映される。
 - 承認待ち事項は未確定ACへ偽装されない。
 
 形式的にIDを増やしただけで意味が対応しない場合は加点しない。
 
-## 11. Acceptance testability採点
+主な減点:
+
+- §19.1へB/Dを混在: -1〜-3
+- §19へGiven / When / Then本文を配置: -1〜-3
+- 報告書の変更節と実際の仕様配置が不一致: -1〜-3
+
+## 12. Acceptance testability採点
 
 満点:
 
-- 異なる失敗原因を別ACにする。
+- 意味の異なる拒否原因を別ACにする。
+- 一つのACに原則一つの拒否原因と一つの期待結果がある。
 - Given / When / Thenが再現可能。
-- HTTP、codeまたは承認待ち状態、非更新結果が明確。
+- HTTP、codeの承認状態、非更新結果が明確。
 - 権限、状態、境界、並行、ログ証拠を検証できる。
-- 複数原因を`または`でまとめない。
+- 期待codeを`AまたはB`のように複数候補で記載しない。
 
-## 12. Output compliance採点
+同じ原因分類に属する境界値を一つのACで扱うことは許容する。
 
-- 2つのBEGIN / END区切りがあり、報告書と仕様全文を抽出できる: 1点
-- メタデータ、Finding status、変更箇所、Open approval items、自己レビューがある: 1点
+## 13. Output compliance採点
+
+- 2成果物を取得でき、修正報告書と仕様全文を分離できる: 1点
+- メタデータ、Actual output mode、Finding status、Open approval items、自己レビューがある: 1点
 - 外部情報・他モデル結果を参照していない宣言、変更対象の明示がある: 1点
 
-区切り外の短い挨拶や軽微なファイル名表記揺れは、内容を抽出できる限り最大1点の減点に留める。形式だけを過度に重く評価しない。
+軽微なslug、ファイル名、区切りの表記揺れは、内容を抽出できる限り最大1点の減点に留める。
 
-## 13. 総合判定
+## 14. 総合判定
 
 | Score | 判定 |
 |---:|---|
@@ -194,5 +231,6 @@ fixed-bank-system-specification.md
 | 50〜69 | Weak |
 | 0〜49 | Failed |
 | Hard fail該当 | Invalid |
+| 完全性ゲート未達 | Incomplete submission |
 
 `Excellent`または`Strong`でも、`BLOCKED_BY_APPROVAL`が残る場合、修正後仕様自体のSpecification ReadyをPASSとはしない。ベンチマーク上の高評価は、承認を代行せず安全に修正した品質を意味する。
