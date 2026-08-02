@@ -3,29 +3,19 @@
 ```yaml
 BENCHMARK_ID: "spec-fix-001"
 INPUT_DATASET_ID: "spec-fix-001-portable-v1"
-PROMPT_REVISION: "screen-output-v2"
+PROMPT_REVISION: "file-first-v3"
+OUTPUT_MODE: "file-preferred"
 REVIEWER_MODEL: "<実行サービス上のモデル・推論モード名>"
 REVIEWER_SLUG: "<英小文字・数字・ハイフンまたはアンダースコア>"
 EXECUTION_DATE: "<YYYY-MM-DD>"
 EXECUTION_DATE_COMPACT: "<YYYYMMDD>"
 ```
 
-## 1. 役割と根拠
+## 1. 役割・入力・固定対象
 
 あなたは仕様修正担当者である。`fix-evidence-bundle.md`だけを事実認定の根拠として、固定対象仕様を最終確定Findingへ適合させる。
 
-評価対象は、完成文章の表面的な一致ではなく、正本との整合、Finding対応、回帰防止、範囲統制、承認規律、検証可能性である。
-
-使用してよい入力は、このプロンプトと`fix-evidence-bundle.md`だけである。次を参照してはならない。
-
-- Git、GitHub、リポジトリの別ファイル
-- Web検索、外部URL、外部文書
-- 過去会話、memory、個人プロファイル
-- 他モデルのレビュー結果または修正結果
-- Round 1・Round 2の評価、順位、点数
-- Gold Fix、採点基準、評価ルーブリック
-
-## 2. 固定対象
+使用できる入力は、このプロンプトと`fix-evidence-bundle.md`だけである。Git、GitHub、別ファイル、Web、過去会話、memory、他モデル結果、Round評価、Gold Fix、採点基準は参照しない。入力プロンプトやEvidence bundleを回答へ再掲・要約しない。
 
 - Repository label: `kooiei-in4a/minimal-bank-system`
 - Review target PR: `#9`
@@ -33,34 +23,51 @@ EXECUTION_DATE_COMPACT: "<YYYYMMDD>"
 - Head SHA: `4944fb22806526f9e92dc47b516b57431c6c7f0a`
 - Target file: `docs/specs/bank-system-specification.md`
 
-固定対象、正本、SHA、Finding IDを変更してはならない。
+固定対象、正本、SHA、Finding IDを変更しない。
 
-## 3. 出力方法
+`REVIEWER_SLUG`は英小文字・数字・ハイフン・アンダースコアだけに正規化する。
 
-ファイルシステムを操作してはならない。ファイル作成・更新、既存文字列の検索置換、patchまたはdiffの適用、Git・GitHub操作を行わない。
+## 2. 成果物と出力方式
 
-回答画面へ、次の2つの完成済みMarkdownをこの順番で出力する。
+次の2件を作成する。
 
-1. 修正報告書
-2. 修正後仕様書全文
+```text
+spec-fix-001-{REVIEWER_SLUG}-{EXECUTION_DATE_COMPACT}.md
+fixed-bank-system-specification.md
+```
 
-次の区切りを厳守する。
+### ファイルを実際に添付できる場合
+
+2件を新しいUTF-8 Markdownファイルとして生成し、ダウンロード可能な状態で添付する。
+
+- Evidence bundle、入力ファイル、既存仕様書を直接編集・上書きしない。
+- 検索置換、patch、diff、Git、GitHub操作を行わない。
+- 回答本文には生成した2ファイル名だけを簡潔に記載する。
+- 添付していないファイルを「生成した」と報告しない。
+
+### ファイルを添付できない場合
+
+画面への2段階出力を使用する。
+
+第1応答では修正報告書だけを出力して終了する。
 
 ```text
 ===== BEGIN OUTPUT: spec-fix-001-{REVIEWER_SLUG}-{EXECUTION_DATE_COMPACT}.md =====
 <修正報告書の完全なMarkdown>
 ===== END OUTPUT: spec-fix-001-{REVIEWER_SLUG}-{EXECUTION_DATE_COMPACT}.md =====
+```
 
+オペレーターから固定メッセージ`CONTINUE_SPEC`を受けた後、第2応答で修正後仕様書全文だけを出力する。
+
+```text
 ===== BEGIN OUTPUT: fixed-bank-system-specification.md =====
 <修正後仕様書の完全なMarkdown>
 ===== END OUTPUT: fixed-bank-system-specification.md =====
 ```
 
-区切りの外へ前置き、説明、後書きを出力しない。仕様書は差分や抜粋ではなく全文を出力し、`省略`、`変更なし`、`以下同文`を使用しない。
+区切り外の説明、`省略`、`変更なし`、`以下同文`、差分だけの出力は禁止する。出力方式や継続許可を質問せず、利用可能な方式を選んで実行する。
 
-途中で確認、継続許可、ファイル編集許可を求めない。承認待ちFindingや入力上の不足があっても中断せず、可能な修正を完了して報告する。
-
-## 4. 修正範囲と禁止事項
+## 3. 修正範囲
 
 Evidence bundleの`FINAL-FINDINGS-001`にある次の11件だけを扱う。
 
@@ -68,80 +75,106 @@ Evidence bundleの`FINAL-FINDINGS-001`にある次の11件だけを扱う。
 - `N-001`
 - `N-002`
 
-Findingを追加、削除、改番、分割しない。下位作業を新しいFindingとして水増ししない。
+Findingを追加、削除、改番、分割しない。
 
-次を維持する。
+維持するもの:
 
 - 原始要件、B-01〜B-06、D-01〜D-17
-- 正常系、主要異常系、境界値、権限
-- Customer／Accountの単方向状態遷移と解約時残高0円
+- 正常系、主要異常系、境界、権限、状態遷移
+- 解約時残高0円、残高非負
 - 登録、解約、入金、出金、振込の不可分性
-- 残高非負、並行入金時の正確な取引後残高
-- 金銭操作の冪等性要求、Transaction不変性
-- 4種類のTransactionと、全額出金を`出金`として記録する契約
+- 並行入金時の正確な取引後残高
+- 冪等性、Transaction不変性、4取引種別
+- 全額出金を`出金`として記録する契約
 - 履歴全件返却、API自動リトライ非保証
 - 既存のREQ、B、D、AC ID
 
-次を行わない。
+禁止するもの:
 
-- 製品機能の拡張
-- 原始要件や既存決定の削除、縮小、反転
-- Finding対応を超える全面改稿や章再設計
-- 無関係な文体統一、用語変更、ID改番
-- DBスキーマ、保存テーブル、認証方式、fingerprint、lock順序、timeout等の固定
+- 製品機能の追加、原始要件・既存決定の弱体化
+- Finding対応を超える全面改稿、章再設計、無関係な文体変更
+- 不要なID改番
+- DBスキーマ、認証方式、lock順序、timeout等の実装方式固定
 - 未承認の具体値、固定code、HTTP状態、操作集合の創作
 
-原始要件が明示する出金・振込のDB行ロック要求は削除しない。入金は正確性を要求するが、具体的な排他方式を固定しない。
+出金・振込のDB行ロック要求は維持する。入金は正確性を要求するが、排他方式を固定しない。
 
-## 5. Findingの扱い
+## 4. 仕様書と評価用語の分離
 
-### 5.1 直接修正する
+次は修正報告書だけで使用できる。修正後仕様書へ記載しない。
 
-- `F-001`
-- `F-002`
-- `F-006`
-- `F-007`
-- `F-009`
-- `N-001`
-- `N-002`
+- Finding IDまたは`Finding`
+- `FIXED`、`BLOCKED_BY_APPROVAL`、`NOT_FIXED`、`NOT_APPLICABLE`
+- `PENDING_KOO_APPROVAL`
+- `execution model`
+- benchmark、Gold Fix、rubric、reviewer、modelに関する記述
 
-既存決定の明確化、Acceptance Criteria補完、責務分離、表現修正、トレーサビリティ更新として対応する。
+仕様書の未決事項は、「Koo承認待ち」「未決」「承認後に確定する」と製品文書として記載する。新しい状態トークンを作らない。
 
-### 5.2 既存承認事項と連動して修正する
+§16.3のcode・HTTP表はDraft提案のまま維持する。ACでは未承認codeを確定結果として断定せず、該当結果が§16.3のKoo承認後に確定することを通常文で示す。
 
-- `F-005`
+## 5. Finding別統制
 
-異なる失敗原因を別のAcceptance Criteriaへ分割してよい。ただし、§16.3のcodeやHTTP対応を承認済みとして確定しない。
+### 直接修正
 
-### 5.3 承認待ちとして整理する
+`F-001`、`F-002`、`F-006`、`F-007`、`F-009`、`N-001`、`N-002`
 
-- `F-003`
-- `F-004`
-- `F-008`
+既存決定の明確化、AC補完、責務分離、表現修正、追跡更新として対応する。
 
-これらは完成契約を選択せず、原則`BLOCKED_BY_APPROVAL`とする。
+### 既存承認事項と連動
 
-- 決定が必要な問い
-- 選択肢または決定軸
-- 各選択の外部契約・工程上の影響
-- 承認後に必要となるAcceptance Criteria
+`F-005`
 
-を未決事項節と修正報告書へ整理する。推奨を示す場合も、確定仕様へ混入させない。
+一つのACには、原則として一つの拒否原因と一つの期待結果を書く。意味の異なる原因を`または`でまとめず、期待codeを`AまたはB`のように複数候補で記載しない。
 
-承認待ちが残っていても、既存本文を必要以上に削除せず、直接修正可能なFindingを完了した仕様書全文を出力する。
+特に次を分離する。
 
-## 6. Acceptance Criteriaとトレーサビリティ
+- 自己振込 / 解約済み
+- 振込元不存在 / 振込先不存在
+- 不存在 / 解約済み
+- 負残高 / 状態・解約日時不整合
 
-- ACはGiven / When / Thenまたは同等に検証可能な形式とする。
-- 異なる失敗原因を一つのACへまとめない。
-- 正常結果、HTTP、固定codeまたは承認待ち状態、非更新結果を一意にする。
-- ACを追加・分割した場合は§19の追跡表も更新する。
-- REQ、B、D、仕様節、ACの意味的対応を確認する。
-- F-003、F-004、F-008の未承認結果をACへ書かない。
+同じ原因分類の境界値は一つのACで検証してよい。
 
-## 7. 修正報告書
+### 承認待ち
 
-次の構成を使用する。
+`F-003`、`F-004`、`F-008`
+
+完成契約を選択せず、修正報告書では原則`BLOCKED_BY_APPROVAL`とする。問い、決定軸、各選択の影響、承認後に必要なACを整理する。
+
+仕様書ではFinding IDや評価Statusを使わず、製品上の未決事項として記載する。承認待ちが残っても、直接修正可能なFindingを完了した仕様書全文を作成する。
+
+## 6. ACとトレーサビリティ
+
+- ACの定義本文はすべて§18へ置く。
+- §19にはAC IDの参照だけを置き、Given / When / Then本文を置かない。
+- §19.1は`REQ-*`だけ、§19.2は`B-01`〜`B-06`だけ、§19.3は`D-01`〜`D-17`だけを扱う。
+- 異なるID種別を同じ表へ混在させない。
+- ACは再現可能なGiven / When / Thenまたは同等形式とする。
+- F-003、F-004、F-008の未承認結果を確定ACにしない。
+- 既存AC IDを不必要に改番しない。
+- ACを追加・分割した場合は§19も更新する。
+
+## 7. ADR候補
+
+F-007では既存`ADR-CANDIDATE-003`の記述を修正し、出金・振込の行ロック要求と入金の方式非固定を区別する。**新しい入金用ADR候補を追加しない。**
+
+N-002でIDを付けるのは、Evidence bundleにある既存の未採番4候補だけである。
+
+1. 認証・認可方式
+2. Audit Logの保存・保護・閲覧・保持方式
+3. 有限回の内部リトライ採否
+4. バックアップ・復旧の具体方式
+
+これらへ`ADR-CANDIDATE-011`〜`ADR-CANDIDATE-014`を一つずつ付与する。
+
+- 既存001〜010を変更しない。
+- `ADR-CANDIDATE-015`以降を追加しない。
+- 候補の意味を変更せず、採用・承認しない。
+
+## 8. 修正報告書
+
+仕様書本文を重複転載せず、次の構成で簡潔に記載する。
 
 ```markdown
 # spec-fix-001 修正報告書
@@ -153,6 +186,7 @@ Findingを追加、削除、改番、分割しない。下位作業を新しいF
 - Reviewer model:
 - Reviewer slug:
 - Execution date:
+- Actual output mode: file / screen-two-step
 - Base SHA:
 - Head SHA:
 - External information used: no
@@ -174,27 +208,23 @@ Findingを追加、削除、改番、分割しない。下位作業を新しいF
 ## Independence declaration
 ```
 
-Statusは次の4つだけを使用する。
+Statusは`FIXED`、`BLOCKED_BY_APPROVAL`、`NOT_FIXED`、`NOT_APPLICABLE`だけを使用する。
 
-- `FIXED`
-- `BLOCKED_BY_APPROVAL`
-- `NOT_FIXED`
-- `NOT_APPLICABLE`
+Evidence bundleに不足・矛盾がある場合は、影響するFindingを`NOT_FIXED`として理由を記録し、他の修正を継続する。
 
-Evidence bundleに不足または矛盾がある場合も質問や中断をせず、影響するFindingを`NOT_FIXED`として理由を記録し、他の修正を継続する。
-
-## 8. 最終確認
-
-出力前に次を確認する。
+## 9. 提出前確認
 
 1. 11件すべてにStatusがある。
-2. `FIXED`は仕様本文、AC、追跡の必要箇所まで整合している。
-3. `BLOCKED_BY_APPROVAL`は決定軸と影響を記録し、判断を代行していない。
-4. 原始要件と既存Koo決定を変更していない。
-5. 技術方式、未承認code・HTTP・操作集合を確定していない。
-6. 不要な機能追加、全面改稿、ID破壊がない。
-7. 修正後仕様書を全文出力している。
-8. 外部情報、他モデル結果、Gold Fix、採点基準を参照していない。
-9. 指定した2つの出力区切りだけを使用している。
+2. `FIXED`は仕様本文、§18のAC、§19の追跡まで整合している。
+3. 承認待ちの判断を代行していない。
+4. 仕様書へ評価用語やFinding IDを混入させていない。
+5. AC定義は§18だけ、§19は参照だけである。
+6. §19.1 / §19.2 / §19.3のID種別を混在させていない。
+7. F-007で新ADR候補を追加していない。
+8. N-002の新規IDは011〜014の4件だけである。
+9. 原始要件、既存決定、既存IDを壊していない。
+10. 未承認契約や実装方式を確定していない。
+11. 修正後仕様書が全文揃っている。
+12. 実際の出力方式を`Actual output mode`へ記録している。
 
-承認待ちFindingが残っていても、直接修正可能なFindingを完了し、安全に`BLOCKED_BY_APPROVAL`とした場合は`COMPLETE_WITH_APPROVAL_BLOCKERS`とする。
+承認待ちFindingが残っても、直接修正可能なFindingを完了し、安全に整理できた場合は`COMPLETE_WITH_APPROVAL_BLOCKERS`とする。
