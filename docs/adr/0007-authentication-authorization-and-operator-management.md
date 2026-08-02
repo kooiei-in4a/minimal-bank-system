@@ -1,6 +1,6 @@
 # ADR-0007: Authentication, authorization and operator management
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related candidates: ADR-CANDIDATE-011
@@ -11,7 +11,7 @@ Every operator requires an individual login. The product has three fixed roles, 
 
 A short-lived JWT alone cannot guarantee immediate role-change enforcement because an older token may still contain the former role. The design therefore needs a per-request authorization-state check.
 
-## Proposed decision
+## Decision
 
 Use ASP.NET Core Identity backed by the same PostgreSQL database.
 
