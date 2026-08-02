@@ -1,6 +1,6 @@
 # ADR-0006: Persistence model, identifiers and time
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related candidates: ADR-CANDIDATE-006, ADR-CANDIDATE-007, ADR-CANDIDATE-008, ADR-CANDIDATE-009, ADR-CANDIDATE-010
@@ -9,7 +9,7 @@
 
 The specification requires one Customer to one Account, synchronized state and closure time, immutable Transaction history, deterministic history ordering, a simple unique account number and JST presentation.
 
-## Proposed decision
+## Decision
 
 ### Identifiers
 
