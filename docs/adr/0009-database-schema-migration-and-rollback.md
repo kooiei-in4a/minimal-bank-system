@@ -1,6 +1,6 @@
 # ADR-0009: Database schema migration and rollback
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related: #3, #24
@@ -9,7 +9,7 @@
 
 The project must eventually demonstrate migration, deployment and rollback. Database schema changes affect transaction safety, test reproducibility and release evidence. Applying migrations automatically during normal application startup makes failure handling and deployment order harder to control.
 
-## Proposed decision
+## Decision
 
 Use EF Core migrations as the only application-owned schema evolution mechanism.
 
