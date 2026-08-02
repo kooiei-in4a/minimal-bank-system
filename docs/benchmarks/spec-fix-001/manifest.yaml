@@ -1,4 +1,4 @@
-schema_version: '1.2'
+schema_version: '1.3'
 benchmark_id: spec-fix-001
 input_dataset_id: spec-fix-001-portable-v1
 prompt_revision: file-first-v3
@@ -20,7 +20,18 @@ final_adjudication:
   minor: 5
   nit: 2
 benchmark_execution:
-  formal_status: NOT_RUN
+  formal_status: COMPLETED
+  formal_execution_date: '2026-08-02'
+  formal_model_count: 14
+  formal_submission_file_count: 28
+  formal_valid_count: 2
+  formal_invalid_count: 12
+  formal_run_path: docs/benchmarks/spec-fix-001/runs/2026-08-02
+  formal_scoring_report: docs/benchmarks/spec-fix-001/runs/2026-08-02/scoring-report.md
+  formal_scoring_csv: docs/benchmarks/spec-fix-001/runs/2026-08-02/scoring.csv
+  formal_winner: GPT-5.6 Luna XHigh
+  formal_winner_score: 98.0
+  runtime_metadata_in_score: false
   pilot_status: EXPLORATORY_ONLY
   observed_pilot_runs: 2
   pilot_prompt_revision: screen-output-v2
@@ -37,17 +48,19 @@ distribution:
   - docs/benchmarks/spec-fix-001/fix-evaluation-rubric.md
   - docs/benchmarks/spec-fix-001/gold-fix-acceptance-criteria.md
 integrity:
+  scope: benchmark input and evaluator package; formal run outputs excluded and covered by run manifest
   artifact_file_count_including_manifest: 10
   hashed_file_count_excluding_manifest: 9
   manifest_self_hash_excluded: true
   content_set_algorithm: SHA-256 over sorted path + NUL + file SHA-256 + LF
-  content_set_sha256: a5504bbf6c47c74be207af9d20af3c11c9042d843c373b1d73359eb6f61d0d0e
+  content_set_sha256: c30af3ec987419aee8b1255c0cfacd847623196d8f2abc4ae26580c804bf9614
   evidence_bundle_sha256: b0ac7277ccdc3758a372fb209380dea5c67c848db3b64dde48b46207fb5dc1dd
   evidence_document_count: 10
+  formal_run_manifest: docs/benchmarks/spec-fix-001/runs/2026-08-02/manifest.yaml
 files:
 - path: docs/benchmarks/spec-fix-001/README.md
-  bytes: 4223
-  sha256: 5312976ef82994517c1ac75b18e8b5bdffa291665edc56810c1b1f23738c829a
+  bytes: 4688
+  sha256: e41b2e9e977cbeb8e1f163a3eef147f87355434bc01c4acb3d2bdb4d7a884755
 - path: docs/benchmarks/spec-fix-001/fix-evaluation-rubric.md
   bytes: 9837
   sha256: a83fea05dc06bb18520aeb4d7d96f6cea9d28473916aaacadc9cc426d41d9f30

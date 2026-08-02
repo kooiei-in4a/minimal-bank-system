@@ -1,0 +1,32 @@
+schema_version: '1.1'
+benchmark_id: spec-fix-001
+run_id: '2026-08-02-formal'
+execution_date: '2026-08-02'
+input_dataset_id: spec-fix-001-portable-v1
+prompt_revision: file-first-v3
+fixed_base_sha: dedbcaf31fd4c40b966facd1829c7535b8d0e4ba
+fixed_head_sha: 4944fb22806526f9e92dc47b516b57431c6c7f0a
+review_issue: 10
+parent_issue: 3
+model_count: 14
+submission_file_count: 28
+source_artifact_manifest: docs/benchmarks/spec-fix-001/runs/2026-08-02/source-artifacts.csv
+repository_retained_full_output_count: 1
+repository_retention_note: only the winning repair report is stored in full; generated specifications remain non-authoritative external evidence identified by SHA-256
+valid_submission_count: 2
+invalid_submission_count: 12
+winner:
+  model: GPT-5.6 Luna XHigh
+  score: 98.0
+  verdict: Excellent
+runner_up:
+  model: ChatGPT-5.6 Sol High
+  score: 97.0
+  verdict: Excellent
+runtime_metadata:
+  approximate: true
+  included_in_score: false
+integrity:
+  algorithm: SHA-256 over sorted path + NUL + file SHA-256 + LF
+  retained_file_count_excluding_manifest: 6
+  retained_content_set_sha256: def9ea1bd3f188acb76d5ca2c9bf23fc91ae64761a274bf06c37e34692a87cb0

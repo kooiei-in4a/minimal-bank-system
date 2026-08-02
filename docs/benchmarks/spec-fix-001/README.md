@@ -11,8 +11,15 @@ LLM仕様レビューの最終審理済みFindingに対し、複数LLMを同一�
 - Fixed Head SHA: `4944fb22806526f9e92dc47b516b57431c6c7f0a`
 - Target: `docs/specs/bank-system-specification.md`
 - Language: Japanese Markdown
-- Formal benchmark execution status: **NOT RUN**
-- Pilot status: **2 exploratory runs observed with screen-output-v2**
+- Formal benchmark execution status: **COMPLETED**
+- Formal run: [`runs/2026-08-02/`](runs/2026-08-02/)
+- Formal models: **14**
+- Formal submissions: **28 Markdown files**
+- Valid / Invalid: **2 / 12**
+- Winner: **GPT-5.6 Luna XHigh — 98.0 / Excellent**
+- Runner-up: **ChatGPT-5.6 Sol High — 97.0 / Excellent**
+
+実行時間と実行方法は正式runに参考メタデータとして保存するが、採点には使用しない。
 
 ## 実行モデルへ渡すもの
 
@@ -116,4 +123,5 @@ gold-fix-acceptance-criteria.md
 | `fix-evidence-bundle.md` | Execution model | Offline evidence and final findings |
 | `fix-evaluation-rubric.md` | Evaluator only | Weighted scoring, completeness gate and hard-fail rules |
 | `gold-fix-acceptance-criteria.md` | Evaluator only | Meaning-level Gold Fix conditions |
-| `manifest.yaml` | Operator / evaluator | File hashes, prompt revision, document IDs, fixed SHAs |
+| `manifest.yaml` | Operator / evaluator | Input package hashes, prompt revision, document IDs, fixed SHAs, formal run pointer |
+| `runs/2026-08-02/` | Evaluator / reviewer | Formal model outputs, timing metadata, scoring and integrity evidence |
