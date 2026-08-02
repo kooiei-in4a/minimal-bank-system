@@ -1,6 +1,6 @@
 # ADR-0001: Application and platform baseline
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-02
 - Decision owner: Koo
 - Related: #3, #24, PR #9
@@ -9,7 +9,7 @@
 
 The approved specification fixes product behavior but intentionally leaves implementation technologies open. The project needs one reproducible and conventional platform so that later ADRs can define transactions, locks, migrations, authentication and operations without comparing unrelated ecosystems.
 
-## Proposed decision
+## Decision
 
 Use a modular monolith with the following baseline:
 
