@@ -1,0 +1,112 @@
+schema_version: '1.0'
+benchmark_id: spec-fix-001
+input_dataset_id: spec-fix-001-portable-v1
+created_at: '2026-08-02'
+language: ja
+repository: kooiei-in4a/minimal-bank-system
+fixed_target:
+  pr_number: 9
+  base_sha: dedbcaf31fd4c40b966facd1829c7535b8d0e4ba
+  head_sha: 4944fb22806526f9e92dc47b516b57431c6c7f0a
+  target_file: docs/specs/bank-system-specification.md
+  target_git_blob_sha1: 95097dbbe66eba6c32a18db8121db7e7f93d43d1
+final_adjudication:
+  verdict: FAIL
+  ready_recommendation: NOT READY
+  blocker: 0
+  major: 4
+  minor: 5
+  nit: 2
+benchmark_execution:
+  status: NOT_RUN
+distribution:
+  execution_model_files:
+  - docs/benchmarks/spec-fix-001/fix-prompt.md
+  - docs/benchmarks/spec-fix-001/fix-evidence-bundle.md
+  evaluator_only_files:
+  - docs/benchmarks/spec-fix-001/fix-evaluation-rubric.md
+  - docs/benchmarks/spec-fix-001/gold-fix-acceptance-criteria.md
+integrity:
+  artifact_file_count_including_manifest: 10
+  hashed_file_count_excluding_manifest: 9
+  manifest_self_hash_excluded: true
+  content_set_algorithm: SHA-256 over sorted path + NUL + file SHA-256 + LF
+  content_set_sha256: 1ad57394dee40fbbb0d25a9a6eaa2649465e7f66b25d007006a86d65ee4561e5
+  evidence_bundle_sha256: b0ac7277ccdc3758a372fb209380dea5c67c848db3b64dde48b46207fb5dc1dd
+  evidence_document_count: 10
+files:
+- path: docs/benchmarks/spec-fix-001/README.md
+  bytes: 2451
+  sha256: 91af098206da547a38ed40380a582eaac712a7d3138f478dc8e07673ddd049a7
+- path: docs/benchmarks/spec-fix-001/fix-evaluation-rubric.md
+  bytes: 7093
+  sha256: 3794671905e265fd5f8dd3cccb42888530095ce3fef5e605f62cf123289649c9
+- path: docs/benchmarks/spec-fix-001/fix-evidence-bundle.md
+  bytes: 60364
+  sha256: b0ac7277ccdc3758a372fb209380dea5c67c848db3b64dde48b46207fb5dc1dd
+- path: docs/benchmarks/spec-fix-001/fix-prompt.md
+  bytes: 8450
+  sha256: c3af3ea08fa01501030d8152eb458b7370b0bbd2a3e7b8f8c1e685dcd73e27f4
+- path: docs/benchmarks/spec-fix-001/gold-fix-acceptance-criteria.md
+  bytes: 6975
+  sha256: ac072ce75fb37779522db8dda887f2a248fb000af21fcc1a914264d2e5ac33af
+- path: docs/reviews/spec-review-final/README.md
+  bytes: 1866
+  sha256: 9be3d86c92d59a76fceb0dac42b62396ffd0a7da9f569c6146eb5173d9f3af04
+- path: docs/reviews/spec-review-final/final-adjudicated-findings.md
+  bytes: 34243
+  sha256: 4a2f7dc811da779e8ff1acbf9f046e3e66f5da221ca283812befc5d7c6370212
+- path: docs/reviews/spec-review-final/rejected-and-merged-findings.md
+  bytes: 6703
+  sha256: c49e61af198e7b0899e77bbd91e0b5a8b088f1ca2872131e18bee03478caa6c7
+- path: docs/reviews/spec-review-final/traceability-to-rounds.md
+  bytes: 5860
+  sha256: 8b2ff0349a8f71c8296fa46f10f4ee1531aff7bb7624e93b936cfb0f47fd3d86
+evidence_documents:
+- document_id: DOC-GOV-001
+  title: Governance and authority
+  bytes: 1708
+  sha256: b808c28f561574c17edacdd9204f28500e35119f43fe7255bdba00611e3c5546
+- document_id: DOC-REQ-001
+  title: Original requirements
+  bytes: 4501
+  sha256: b22e5566cabbd4821b51dc22d6895865528fcee5147d5a976aef986b74ee0dc1
+- document_id: DOC-TRACE-001
+  title: Requirements register digest
+  bytes: 1430
+  sha256: e974f6475545ddb5717bd975690a018dcba9b7034708aec3b671aafe3f531168
+- document_id: DOC-B-001
+  title: Approved B-01 to B-06 decisions
+  bytes: 4487
+  sha256: 3d156e63117afc7b9b089bb3a4bfcf83420aec211d9a441409b05c881464d20e
+- document_id: DOC-D-001
+  title: Approved D-01 to D-17 decisions
+  bytes: 2277
+  sha256: 144b48e0553fba14c97d7a40bc265c9a4297d51d5e5da5a675c4adc1432aafed
+- document_id: DOC-DIFF-001
+  title: Fixed target diff
+  bytes: 553
+  sha256: 5921b1919a1f1e095777e98988e42f733f26916452a72ce2e3a502f0cbc017c1
+- document_id: DOC-SPEC-001
+  title: Target specification full text
+  bytes: 34386
+  sha256: c9d448105408dd75a6130ef42cc7ebf4529264f777945d370353d71f0710e368
+- document_id: FINAL-FINDINGS-001
+  title: Final adjudicated findings
+  bytes: 6117
+  sha256: 506721dfa9440aa0bb50c0dac27125b1563c26e5528dc41be406e6b1122887ec
+- document_id: DOC-APPROVAL-001
+  title: Approval items
+  bytes: 1247
+  sha256: 902e35d0763353a9db5d4744fe4d5774b5c2d97ae46c69103fa4905aef39930c
+- document_id: DOC-EXCLUSION-001
+  title: Scope exclusions
+  bytes: 557
+  sha256: 70d8447f206455e91e87d110f45c087daf0653d4abac42130edd2f0ffede5563
+prohibitions:
+  other_model_outputs_in_evidence: false
+  model_evaluations_in_evidence: false
+  gold_fix_in_execution_inputs: false
+  evaluation_rubric_in_execution_inputs: false
+  target_spec_modified_by_this_work: false
+  round_1_or_2_artifacts_modified: false
