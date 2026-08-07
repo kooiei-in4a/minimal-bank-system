@@ -37,3 +37,14 @@
 5. 実装Issueへの分割
 6. AI実装と独立レビュー
 7. 統合検証と内部デモリリース
+
+## ローカル検証
+
+CIと同じコマンドをリポジトリルートで実行する。
+
+```shell
+dotnet restore MinimalBankSystem.slnx --locked-mode
+dotnet format MinimalBankSystem.slnx --verify-no-changes --no-restore
+dotnet build MinimalBankSystem.slnx --configuration Release --no-restore
+dotnet test MinimalBankSystem.slnx --configuration Release --no-build
+```
