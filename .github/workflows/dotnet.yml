@@ -1,0 +1,29 @@
+name: .NET
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Restore
+        run: dotnet restore MinimalBank.sln --locked-mode
+
+      - name: Build
+        run: dotnet build MinimalBank.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test MinimalBank.sln --configuration Release --no-build
