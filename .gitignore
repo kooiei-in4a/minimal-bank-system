@@ -19,4 +19,9 @@ Thumbs.db
 tmp/
 temp/
 
-# Build artifacts will be added after the implementation stack is approved.
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
