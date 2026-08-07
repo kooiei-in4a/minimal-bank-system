@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MinimalBank.API/MinimalBank.API.csproj" />
+    <Project Path="src/MinimalBank.Application/MinimalBank.Application.csproj" />
+    <Project Path="src/MinimalBank.Domain/MinimalBank.Domain.csproj" />
+    <Project Path="src/MinimalBank.Infrastructure/MinimalBank.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MinimalBank.Tests/MinimalBank.Tests.csproj" />
+  </Folder>
+</Solution>
