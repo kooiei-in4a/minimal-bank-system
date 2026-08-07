@@ -1,0 +1,11 @@
+# Normalize line endings so the committed content is identical regardless of
+# the contributor's operating system, and so a Windows local build and a Linux
+# CI build compile byte-identical sources.
+* text=auto eol=lf
+
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+*.png binary
+*.jpg binary
+*.zip binary

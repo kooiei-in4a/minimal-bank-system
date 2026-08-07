@@ -13,7 +13,7 @@
 
 ## 現在のフェーズ
 
-要件定義レビュー開始前の初期基盤です。アプリケーション実装はまだ開始しません。
+進捗、フェーズ、ゲートの正本はParent Issue #3です。現在はWP-1 Foundationの実装段階で、solutionとCIの基盤のみを構築しています。業務機能、DBスキーマ、Docker構成はまだ実装しません。
 
 ## 正本
 
@@ -27,6 +27,20 @@
 ## リリース境界
 
 本リポジトリで構築するシステムは開発手法検証用の内部デモです。実際の銀行業務、実口座、実送金、実顧客データには使用しません。
+
+## ビルドとテスト
+
+必要なSDKは`global.json`で固定しています（.NET SDK 10.0.302）。
+
+リポジトリ標準コマンドは次の3つです。CIもこの3つをそのまま実行します。
+
+```bash
+dotnet restore
+dotnet build --no-restore
+dotnet test --no-build
+```
+
+警告・アナライザー方針は`Directory.Build.props`と`.editorconfig`に集約し、NuGetのバージョンは`Directory.Packages.props`で一元的に固定しています。CI側で追加のビルドフラグは指定しません。
 
 ## 開発開始順序
 

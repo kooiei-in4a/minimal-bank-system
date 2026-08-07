@@ -1,0 +1,22 @@
+<Project>
+
+  <!--
+    Central Package Management.
+
+    Every NuGet version used by the repository is declared here as an exact
+    version. Projects reference packages without a Version attribute, so a
+    floating version (for example "8.*" or a version range) cannot be
+    introduced in an individual project file.
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+</Project>

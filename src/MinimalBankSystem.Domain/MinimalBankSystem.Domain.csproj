@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Domain: business rules and domain types (ADR-0001).
+    Depends on no other project in the solution.
+  -->
+
+</Project>

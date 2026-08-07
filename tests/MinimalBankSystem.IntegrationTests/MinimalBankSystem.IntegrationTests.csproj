@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Integration tests for the API and Infrastructure boundaries (ADR-0001).
+    Hosting, database and container infrastructure are out of scope for FND-01.
+    Package versions come from Directory.Packages.props.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MinimalBankSystem.Api\MinimalBankSystem.Api.csproj" />
+    <ProjectReference Include="..\..\src\MinimalBankSystem.Infrastructure\MinimalBankSystem.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

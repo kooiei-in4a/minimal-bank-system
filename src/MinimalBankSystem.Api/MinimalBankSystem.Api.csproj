@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    API: HTTP contracts, authentication entry points and response mapping
+    (ADR-0001). No HTTP contract is defined in FND-01.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\MinimalBankSystem.Application\MinimalBankSystem.Application.csproj" />
+  </ItemGroup>
+
+</Project>

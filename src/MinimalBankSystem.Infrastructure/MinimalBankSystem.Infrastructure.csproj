@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Infrastructure: persistence and operational adapters (ADR-0001).
+    Depends on Domain only. Persistence technology is out of scope for FND-01.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\MinimalBankSystem.Domain\MinimalBankSystem.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
