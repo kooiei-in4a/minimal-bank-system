@@ -15,5 +15,10 @@ csharp_using_directive_placement = outside_namespace:warning
 csharp_style_namespace_declarations = file_scoped:warning
 csharp_prefer_braces = true:warning
 
+[tests/**/*Tests.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1873.severity = none
+
 [*.md]
 trim_trailing_whitespace = false
