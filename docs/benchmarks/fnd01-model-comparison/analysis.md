@@ -575,3 +575,46 @@ Best Agent Environment:
 **「このIssueに対して、誰が最も正確・簡潔・安全な変更を作ったか」**
 
 を中心に評価してください。
+
+---
+
+# 20. FND-01 benchmark archive manifest
+
+この節は、Issue #39 の14候補を比較実験結果として保存するためのアーカイブ台帳です。各候補のbranch HeadはGitHub上で再確認し、提示された短縮SHAと一致したfull SHAをsnapshot対象にしました。
+
+候補別のCoding Scoreは、既存のreportおよび各PRの一次証拠に記録された値がないため、**本アーカイブ作業では再採点していません**。`未記録`は0点や失敗を意味しません。処理時間は実験時の原記録値をそのまま保持し、単位を補完していません。
+
+| # | Model | Agent | Original branch | Full Head | Benchmark tag | PR | CI | Coding Score | 処理時間 | Final disposition | Selected |
+|---:|---|---|---|---|---|---:|---|---:|---:|---|---|
+| 1 | DeepSeek V4 Pro | Open Code | `agent/issue-39-fnd-01-dsv4pro` | `14ae1344c68f2e62faa3f4d81dc7c6af2ea4db3e` | `benchmark/fnd01/deepseek-v4-pro-opencode` | [#48](https://github.com/kooiei-in4a/minimal-bank-system/pull/48) | [31182285063](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31182285063) SUCCESS | 未記録 | 6 | Closed benchmark candidate | No |
+| 2 | Qwen3.7 Plus | Open Code | `agent/issue-39-fnd-01-qwen3.7-plus` | `c7980b99e5ea54408ee539940f841270c1adbc74` | `benchmark/fnd01/qwen3.7-plus-opencode` | [#49](https://github.com/kooiei-in4a/minimal-bank-system/pull/49) | [31184197843](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31184197843) SUCCESS | 未記録 | 12 | Closed benchmark candidate | No |
+| 3 | GPT-5.6 Luna | Open Code | `agent/issue-39-fnd-01-gpt5.6-luna` | `131f9a72942372a8bd1a8b7b0d369d9c919f31a4` | `benchmark/fnd01/gpt5.6-luna-opencode` | [#50](https://github.com/kooiei-in4a/minimal-bank-system/pull/50) | [31185622226](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31185622226) SUCCESS | 未記録 | 15 | Closed benchmark candidate | No |
+| 4 | DeepSeek V4 Flash | Open Code | `agent/issue-39-fnd-01-dsv4flash` | `c1f7c37e8ed9059e8d46bd5655e656486d40d778` | `benchmark/fnd01/deepseek-v4-flash-opencode` | [#51](https://github.com/kooiei-in4a/minimal-bank-system/pull/51) | [31186977878](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31186977878) SUCCESS | 未記録 | 10 | Closed benchmark candidate | No |
+| 5 | MiMo-V2.5 | Open Code | `agent/issue-39-fnd-01-mimo-v2.5` | `ba2c72dd70c7d6008438b5c482e724ef532f13c9` | `benchmark/fnd01/mimo-v2.5-opencode` | [#52](https://github.com/kooiei-in4a/minimal-bank-system/pull/52) | [31188524656](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31188524656) SUCCESS | 未記録 | 12 | Closed benchmark candidate | No |
+| 6 | MiMo-V2.5-Pro | Open Code | `agent/issue-39-fnd-01-mimo-v2.5-pro` | `01a6d00c8c46223749cd1c4a0ffc5d3f1a02beca` | `benchmark/fnd01/mimo-v2.5-pro-opencode` | [#53](https://github.com/kooiei-in4a/minimal-bank-system/pull/53) | [31189586132](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31189586132) SUCCESS | 未記録 | 9 | Closed benchmark candidate | No |
+| 7 | MiniMax M3 | Open Code | `agent/issue-39-fnd-01-minimax-m3` | `28494508f792cf07386ccbf148e0e7bcb4260640` | `benchmark/fnd01/minimax-m3-opencode` | [#54](https://github.com/kooiei-in4a/minimal-bank-system/pull/54) | [31190900666](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31190900666) SUCCESS | 未記録 | 17 | Closed benchmark candidate | No |
+| 8 | GPT-5.6 Luna | Codex | `agent/issue-39-fnd-01-gpt5.6-luna-codex` | `eafa6312a83b9f8b04e6984c7dd5d36eb29ecfa8` | `benchmark/fnd01/gpt5.6-luna-codex` | [#55](https://github.com/kooiei-in4a/minimal-bank-system/pull/55) | [31192680940](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31192680940) SUCCESS | 未記録 | 14 | Closed benchmark candidate | No |
+| 9 | GPT-5.6 Terra | Codex | `agent/issue-39-fnd-01-gpt5.6-terra-codex` | `b67ba14235abbf6473713802005e56adff2f71c7` | `benchmark/fnd01/gpt5.6-terra-codex` | [#56](https://github.com/kooiei-in4a/minimal-bank-system/pull/56) | [31194126317](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31194126317) SUCCESS | 未記録 | 13 | Closed benchmark candidate | No |
+| 10 | GPT-5.6 Sol | Codex | `agent/issue-39-fnd-01-gpt5.6-sol-codex` | `6dfd241b9bd3b877de5b04c60d6c594b8edad5ec` | `benchmark/fnd01/gpt5.6-sol-codex` | [#57](https://github.com/kooiei-in4a/minimal-bank-system/pull/57) | [31195782531](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31195782531) SUCCESS | 未記録 | 17 | Closed benchmark candidate | No |
+| 11 | Grok 4.5 | Cursor | `agent/issue-39-fnd-01-grok-4.5` | `65f4b24ec8c9292f6be69ecb00f2bb41affcf31a` | `benchmark/fnd01/grok-4.5-cursor` | [#58](https://github.com/kooiei-in4a/minimal-bank-system/pull/58) | [31195828710](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31195828710) SUCCESS | 未記録 | 8 | Closed benchmark candidate | No |
+| 12 | Composer 2.5 | Cursor | `agent/issue-39-fnd-01-composer-2.5` | `69ce4160f2ec9ced4d75e3f282f17058447dd891` | `benchmark/fnd01/composer-2.5-cursor` | [#59](https://github.com/kooiei-in4a/minimal-bank-system/pull/59) | [31196525305](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31196525305) SUCCESS | 未記録 | 5 | Closed benchmark candidate | No |
+| 13 | Sonnet 5 | Claude Code | `agent/issue-39-fnd-01-claude-sonnet-5` | `8e50cb5f78614fd069de3ed0a7443e2da2586a6c` | `benchmark/fnd01/claude-sonnet-5-claude-code` | [#60](https://github.com/kooiei-in4a/minimal-bank-system/pull/60) | [31198108091](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31198108091) SUCCESS | 未記録 | 16 | Closed benchmark candidate | No |
+| 14 | Opus 5 | Claude Code | `agent/issue-39-fnd-01-claude-opus-5` | `fe26d58395d802c4b488e16b14334bf394bc0fab` | `benchmark/fnd01/claude-opus-5-claude-code` | [#61](https://github.com/kooiei-in4a/minimal-bank-system/pull/61) | [31199794399](https://github.com/kooiei-in4a/minimal-bank-system/actions/runs/31199794399) SUCCESS | 未記録 | 19 | Closed benchmark candidate | No |
+
+全14候補について、branch Headと期待値は一致し、14個のannotated tagがremoteで期待commitへ解決することを確認しました。PR #48〜#61はmergeせず、比較候補としてcloseしています。PRの差分・CI・会話履歴は各PRから引き続き参照できます。
+
+# 21. Final integrated implementation
+
+14候補の比較後に、良い設計・検証方法を比較して作成したcurated / synthesized implementationです。単独モデルの15番目の結果として扱いません。
+
+- Branch: `agent/issue-39-fnd-01-final-code`
+- Head: `d8e75bc6eab7fd14b7a58042b24deabe2227e189`
+- Coding Score: **99/100**
+- Disposition: curated / synthesized implementation
+- Selected candidate: **No**（14候補とは別の統合成果物）
+
+# 22. Benchmark interpretation and archive scope
+
+このベンチマークは、各Model + Agent + Effortによる1回の実装結果を比較したものです。モデル本来の一般性能を断定するものではなく、Agent / Harness、Effort、repository探索、tool利用、検証実行、context管理の影響を完全には分離できません。処理時間とCoding Scoreを混同せず、Effort未指定を推定しません。
+
+今回のアーカイブでは、既存の比較結果を恣意的に変更せず、候補のsource snapshot、PR履歴、CI結果、比較条件を後から追跡できる状態を優先しています。
