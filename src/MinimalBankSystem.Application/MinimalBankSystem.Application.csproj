@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MinimalBankSystem.Domain\MinimalBankSystem.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
