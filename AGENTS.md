@@ -50,6 +50,7 @@ Parent Issue #3の詳細を子Issueへ複製しない。具体的な作業範囲
 - `docs/specs/`: 承認済みの製品挙動、契約、受入条件。
 - `docs/adr/`: 重要かつ変更コストの高い設計判断。
 - `docs/plans/`: 実行計画。仕様やADRの代替にしない。
+- `docs/benchmarks/`: AIモデル／Agent等の比較実験、評価方法、結果、再現用snapshotを記録する。製品仕様、ADR、実装Issueの正本にはしない。
 - `docs/traceability/`: 要件、仕様、Issue、PR、テスト、リリース証拠の対応関係。
 - `docs/releases/`: リリース判定、手順、結果、既知制約。
 
