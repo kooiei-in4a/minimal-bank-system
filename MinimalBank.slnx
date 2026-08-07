@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/MinimalBank.Domain/MinimalBank.Domain.csproj" />
+  <Project Path="src/MinimalBank.Application/MinimalBank.Application.csproj" />
+  <Project Path="src/MinimalBank.API/MinimalBank.API.csproj" />
+  <Project Path="src/MinimalBank.Infrastructure/MinimalBank.Infrastructure.csproj" />
+  <Project Path="tests/MinimalBank.Tests/MinimalBank.Tests.csproj" />
+</Solution>
