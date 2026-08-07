@@ -1,0 +1,26 @@
+name: .NET Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - agent/**
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore MinimalBankSystem.sln
+      - name: Build
+        run: dotnet build MinimalBankSystem.sln --configuration Release --no-restore
+      - name: Test
+        run: dotnet test MinimalBankSystem.sln --configuration Release --no-build

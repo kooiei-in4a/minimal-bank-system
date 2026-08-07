@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <ProjectReference Include="..\..\src\MinimalBankSystem.Api\MinimalBankSystem.Api.csproj" />
+    <ProjectReference Include="..\..\src\MinimalBankSystem.Application\MinimalBankSystem.Application.csproj" />
+    <ProjectReference Include="..\..\src\MinimalBankSystem.Domain\MinimalBankSystem.Domain.csproj" />
+    <ProjectReference Include="..\..\src\MinimalBankSystem.Infrastructure\MinimalBankSystem.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

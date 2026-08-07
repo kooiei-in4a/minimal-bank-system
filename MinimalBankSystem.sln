@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalBankSystem.Api", "src\MinimalBankSystem.Api\MinimalBankSystem.Api.csproj", "{8BCFB80E-2064-4383-B6CC-08A01F9B5251}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalBankSystem.Application", "src\MinimalBankSystem.Application\MinimalBankSystem.Application.csproj", "{1D5C76A7-0147-4AAB-BED2-F401FD5E85A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalBankSystem.Domain", "src\MinimalBankSystem.Domain\MinimalBankSystem.Domain.csproj", "{E494C73A-8AEA-4630-A548-4100FB7E4DD8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalBankSystem.Infrastructure", "src\MinimalBankSystem.Infrastructure\MinimalBankSystem.Infrastructure.csproj", "{BAB2685A-7B70-4819-80F7-E8C14D27B26D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalBankSystem.UnitTests", "tests\MinimalBankSystem.UnitTests\MinimalBankSystem.UnitTests.csproj", "{BD7ED0A4-CB3D-4A7D-BC26-6B837B02F6F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalBankSystem.IntegrationTests", "tests\MinimalBankSystem.IntegrationTests\MinimalBankSystem.IntegrationTests.csproj", "{9D2787AB-9C57-448D-9C1B-8F0668FEFFAD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8BCFB80E-2064-4383-B6CC-08A01F9B5251}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BCFB80E-2064-4383-B6CC-08A01F9B5251}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BCFB80E-2064-4383-B6CC-08A01F9B5251}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BCFB80E-2064-4383-B6CC-08A01F9B5251}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D5C76A7-0147-4AAB-BED2-F401FD5E85A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D5C76A7-0147-4AAB-BED2-F401FD5E85A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D5C76A7-0147-4AAB-BED2-F401FD5E85A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D5C76A7-0147-4AAB-BED2-F401FD5E85A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E494C73A-8AEA-4630-A548-4100FB7E4DD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E494C73A-8AEA-4630-A548-4100FB7E4DD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E494C73A-8AEA-4630-A548-4100FB7E4DD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E494C73A-8AEA-4630-A548-4100FB7E4DD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAB2685A-7B70-4819-80F7-E8C14D27B26D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAB2685A-7B70-4819-80F7-E8C14D27B26D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAB2685A-7B70-4819-80F7-E8C14D27B26D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAB2685A-7B70-4819-80F7-E8C14D27B26D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD7ED0A4-CB3D-4A7D-BC26-6B837B02F6F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD7ED0A4-CB3D-4A7D-BC26-6B837B02F6F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD7ED0A4-CB3D-4A7D-BC26-6B837B02F6F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD7ED0A4-CB3D-4A7D-BC26-6B837B02F6F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D2787AB-9C57-448D-9C1B-8F0668FEFFAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D2787AB-9C57-448D-9C1B-8F0668FEFFAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D2787AB-9C57-448D-9C1B-8F0668FEFFAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D2787AB-9C57-448D-9C1B-8F0668FEFFAD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
