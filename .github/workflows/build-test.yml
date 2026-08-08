@@ -29,10 +29,13 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore MinimalBankSystem.slnx --verbosity minimal
 
       - name: Build
-        run: dotnet build --no-restore
+        run: dotnet build MinimalBankSystem.slnx --no-restore --verbosity minimal
 
-      - name: Test
-        run: dotnet test --no-build
+      - name: Test (non-PostgreSQL)
+        run: dotnet test MinimalBankSystem.slnx --no-build --filter "Category!=PostgreSqlIntegration"
+
+      - name: Test (real PostgreSQL)
+        run: dotnet test tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj --no-build --filter "Category=PostgreSqlIntegration"
