@@ -17,7 +17,10 @@ concurrency:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # ubuntu-latest ships Docker preinstalled and running, so Testcontainers can start
+    # the pinned PostgreSQL 18 container without extra setup; the higher timeout leaves
+    # room for a cold image pull.
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
