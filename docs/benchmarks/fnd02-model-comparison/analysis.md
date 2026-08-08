@@ -41,14 +41,16 @@ Claude Sonnet 5 / Opus 5についてはbranch rename履歴（PR #73 / #75 / #77�
 ```yaml
 Final synthesis:
   Branch: agent/issue-40-fnd-02-final-code
-  Head: 2306c634abc40b4e5330c9492c8bcee8c0d6a5cc
+  Head: 8e7c8c48eefccf1a5ab85efd2a22af2f66eef033
   PR: 83
   Candidate: false
   Disposition: KEEP
 ```
 
 - Branch: `agent/issue-40-fnd-02-final-code`
-- Head: `2306c634abc40b4e5330c9492c8bcee8c0d6a5cc`
+- Head: `8e7c8c48eefccf1a5ab85efd2a22af2f66eef033`
+- Prior synthesis commit (archive開始時点の記録値): `2306c634abc40b4e5330c9492c8bcee8c0d6a5cc`
+- Additional commit observed during archive (not authored by this archive operation): `8e7c8c48eefccf1a5ab85efd2a22af2f66eef033` (`fix(fnd-02): close approved error contract findings`)
 - PR: [#83](https://github.com/kooiei-in4a/minimal-bank-system/pull/83)（OPEN / Draft / NOT MERGED）
 - Disposition: curated / synthesized implementation
 - Selected candidate: **No**（14候補とは別の統合成果物）
