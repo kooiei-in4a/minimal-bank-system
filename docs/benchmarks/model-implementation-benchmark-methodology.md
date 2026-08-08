@@ -2,6 +2,7 @@
 
 - Status: Active
 - Initial version: 2026-08-08
+- Updated: 2026-08-08（Issue #40 FND-02の比較で得た再利用可能な検証知見を反映）
 - Origin: Issue #39 FND-01 model comparison experiment
 - Applies to: 同一Issueを複数のModel + Agent/Harnessで独立実装し、実コードを比較評価する実験
 
@@ -183,6 +184,13 @@
 
 単位が不明な場合は値そのものを相対比較に使用し、勝手に単位を補完しない。
 
+処理時間はModel、branch、PRではなく、**個別のexecution attemptとそのfull Head SHA**へ紐付ける。再実行でHeadが変わった場合、旧attemptの処理時間を新Headへ引き継がない。
+
+- attemptごとに `completed / failed / stopped / no-change` 等のoutcomeを区別する。
+- Speed Scoreには、比較可能な処理時間を取得できたcompleted attemptだけを使用する。
+- completedでも処理時間を取得できない場合は`N/A`とし、推測値を入れない。
+- failed / stopped / no-changeの時間はfailure latencyとして別記してよいが、最速候補の基準には使用しない。
+
 ### Quality / Time Index
 
 ```text
@@ -239,12 +247,13 @@ Effort設定が異なる場合、その差をモデル能力差と断定しな�
 - Model
 - Agent / Harness
 - Effort
+- execution attempt / outcome
 - 処理時間
 - Post-Implementation Notesの有無
 
 snapshot後は原則として候補を修正しない。
 
-重大な検証漏れなどで修正した候補を再評価する場合は、旧Headと新Headを区別し、他候補との公平性への影響を記録する。
+重大な検証漏れなどで修正または再実行した候補を再評価する場合は、旧attempt / Headと新attempt / Headを区別し、処理時間を混同せず、他候補との公平性への影響を記録する。
 
 ## 12. 比較評価
 
@@ -268,6 +277,18 @@ snapshot後は原則として候補を修正しない。
 - 後続Issueの先取り
 
 単に「動くか」ではなく、**Issueに対して必要十分か**を評価する。
+
+### 検証証拠の忠実度
+
+runtime wiringや外部観測可能なcontractを評価する場合、testの種類を同格に扱わない。
+
+- production entry point / production pipelineを通すrequest-level testは、実際のDI、middleware順序、serializer、logging設定を含む証拠になる。
+- test側でproduction componentを再構築したhostはcomponent動作の証拠にはなるが、production wiringの証拠にはならない。
+- middleware / handler / serviceの直接呼出しは局所動作の証拠であり、実HTTP contractやproduction wiringの代替にはしない。
+
+security、logging、serialization等の**最終出力**を評価する場合、test doubleが生成した表現だけでproduction出力を証明しない。可能なら実際のformatter / serializer / providerが生成する出力を検証する。
+
+secret non-disclosureでは、request header / query / bodyだけでなく、実装上流入し得る場合はexception message / exception data等にもsentinelを配置する。test loggerがException、scope、structured state等を省略する場合、そのtestだけをactual production outputの非開示証拠にしない。
 
 ## 13. Final synthesis
 
