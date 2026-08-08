@@ -17,7 +17,8 @@ concurrency:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Includes real PostgreSQL Testcontainers pulls/startup for Category=PostgreSql.
+    timeout-minutes: 25
 
     steps:
       - name: Check out repository
@@ -34,5 +35,8 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
+      # Same command locally and in CI. PostgreSQL provider tests use Testcontainers
+      # (Category=PostgreSql). Container/start/connect failures fail the job; no
+      # InMemory/SQLite fallback.
       - name: Test
         run: dotnet test --no-build
