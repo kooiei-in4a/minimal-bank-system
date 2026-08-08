@@ -12,6 +12,7 @@ public sealed class SolutionConfigurationTests
         "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
         "tests/MinimalBankSystem.UnitTests/MinimalBankSystem.UnitTests.csproj",
         "tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj",
+        "tests/MinimalBankSystem.PostgresIntegrationTests/MinimalBankSystem.PostgresIntegrationTests.csproj",
     ];
 
     [Fact]
