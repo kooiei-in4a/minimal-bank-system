@@ -21,6 +21,8 @@
 - `schemas/gold-review.schema.json`
 - `schemas/review-benchmark-manifest.schema.json`
 - `templates/review-result-template.md`
+- `templates/review-benchmark-prompt-preamble.md`
+  - 他reviewer / Gold Reviewからの情報漏れを防ぎ、target SHA確認を強制する共通preamble
 
 ## Issue-specific reports
 
@@ -35,5 +37,5 @@
   - 新しい独立レビューartifact protocolを初回適用
 
 新しいimplementation benchmarkを開始する場合は`model-implementation-benchmark-methodology.md`を確認する。
-独立レビューbenchmarkを行う場合は`independent-review-benchmark-protocol.md`を併用する。
+独立レビューbenchmarkを行う場合は`independent-review-benchmark-protocol.md`と共通preambleを併用する。
 archive時は`archive-conventions.md`に従う。
