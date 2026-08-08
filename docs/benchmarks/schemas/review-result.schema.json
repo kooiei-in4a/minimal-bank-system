@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kooiei-in4a/minimal-bank-system/docs/benchmarks/schemas/review-result.schema.json",
+  "title": "Independent Review Benchmark Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "run_id",
+    "target",
+    "reviewer",
+    "attempt",
+    "outcome",
+    "target_verification",
+    "verdict",
+    "counts",
+    "findings",
+    "ci_verified",
+    "local_verification"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "benchmark_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "issue", "pr", "base_sha", "head_sha"],
+      "properties": {
+        "repository": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+        "issue": { "type": "integer", "minimum": 1 },
+        "pr": { "type": "integer", "minimum": 1 },
+        "base_sha": { "$ref": "#/$defs/sha" },
+        "head_sha": { "$ref": "#/$defs/sha" },
+        "ci_target_sha": { "$ref": "#/$defs/sha" }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "model", "harness"],
+      "properties": {
+        "slug": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "harness": { "type": "string", "minLength": 1 },
+        "effort": { "type": ["string", "null"] }
+      }
+    },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "outcome": {
+      "enum": ["completed", "failed", "stopped", "wrong_target", "no_result"]
+    },
+    "target_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "base_sha", "head_sha", "pr", "ci_sha"],
+      "properties": {
+        "repository": { "type": "boolean" },
+        "base_sha": { "type": "boolean" },
+        "head_sha": { "type": "boolean" },
+        "pr": { "type": "boolean" },
+        "ci_sha": { "type": ["boolean", "null"] }
+      }
+    },
+    "verdict": {
+      "enum": ["approve", "request_changes", "blocked", "incomplete", "not_applicable"]
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocker", "major", "minor", "nit"],
+      "properties": {
+        "blocker": { "type": "integer", "minimum": 0 },
+        "major": { "type": "integer", "minimum": 0 },
+        "minor": { "type": "integer", "minimum": 0 },
+        "nit": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "ci_verified": { "type": ["boolean", "null"] },
+    "local_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["performed"],
+      "properties": {
+        "performed": { "type": "boolean" },
+        "summary": { "type": ["string", "null"] }
+      }
+    },
+    "recorded_at": { "type": ["string", "null"], "format": "date-time" },
+    "notes": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "blocking", "title", "description", "evidence", "root_cause_candidate"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["Blocker", "Major", "Minor", "Nit"] },
+        "blocking": { "type": "boolean" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "affected_component": { "type": ["string", "null"] },
+        "root_cause_candidate": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

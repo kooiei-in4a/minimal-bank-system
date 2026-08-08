@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kooiei-in4a/minimal-bank-system/docs/benchmarks/schemas/gold-review.schema.json",
+  "title": "Independent Review Benchmark Gold Review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "benchmark_id", "run_id", "target", "revision", "reference_verdict", "root_causes"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "benchmark_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "issue", "pr", "base_sha", "head_sha"],
+      "properties": {
+        "repository": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+        "issue": { "type": "integer", "minimum": 1 },
+        "pr": { "type": "integer", "minimum": 1 },
+        "base_sha": { "$ref": "#/$defs/sha" },
+        "head_sha": { "$ref": "#/$defs/sha" }
+      }
+    },
+    "revision": { "type": "integer", "minimum": 1 },
+    "revision_reason": { "type": ["string", "null"] },
+    "reference_verdict": { "enum": ["approve", "request_changes", "blocked"] },
+    "root_causes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "severity", "blocking", "title", "description", "evidence"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^G-[0-9]{2,}$" },
+          "severity": { "enum": ["Blocker", "Major", "Minor", "Nit"] },
+          "blocking": { "type": "boolean" },
+          "title": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  }
+}
