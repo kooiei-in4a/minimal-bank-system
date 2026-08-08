@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "claude-sonnet-5-claude-code",
+    "model": "Claude Sonnet 5",
+    "harness": "Claude Code",
+    "effort": "xhigh"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Database cleanup-failure injection fails at connection-open, never reaches the server",
+      "description": "CleanupFailureIsVisibleAndTheDatabaseRemainsRetryable pre-cancels its CancellationTokenSource before calling DisposeAsync, so NpgsqlConnection.OpenAsync throws before any network I/O and the DROP DATABASE statement is never sent. The test genuinely proves the exception-wrapping/non-swallowing/retry contract (reproduced locally: throws, database persists, retry succeeds), but does not exercise a real server-side or mid-command cleanup failure.",
+      "evidence": [
+        "PostgreSqlFixtureTests.cs:74 - cancellation.Cancel(); executed before the DisposeAsync call",
+        "Local reproduction: dotnet test --filter \"Category=PostgreSqlIntegration\" -> 7/7 passed including this test"
+      ],
+      "affected_component": "tests/MinimalBankSystem.IntegrationTests/PostgreSql/PostgreSqlFixtureTests.cs:66-84",
+      "root_cause_candidate": null
+    },
+    {
+      "id": "F-02",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Container-level DisposeAsync failure/retry path has no dedicated test",
+      "description": "PostgreSqlContainerFixture.DisposeAsync correctly avoids swallowing exceptions and retains the container handle for retry on failure (verified by code reading), but no test deterministically injects a Testcontainers-internal DisposeAsync failure to prove this at runtime, unlike the equivalent database-level path. The PR itself discloses this gap under 'Unverified'.",
+      "evidence": [
+        "PostgreSqlContainerFixture.cs:92-110 - catch block rethrows without nulling `container`, but no test exercises this path",
+        "PR #104 body, 'Unverified' section: 'Deterministic injection of a Testcontainers-internal container DisposeAsync failure is not added; production fixture code does not swallow it and retains the container handle for retry.'"
+      ],
+      "affected_component": "tests/MinimalBankSystem.IntegrationTests/PostgreSql/PostgreSqlContainerFixture.cs:92-110",
+      "root_cause_candidate": null
+    }
+  ],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": true,
+    "summary": "Restored/built (0 warnings/errors) and ran full test matrix in an isolated git worktree at the exact head commit: non-PostgreSQL suite 30/30 (repeated 3x, no flakiness), real-PostgreSQL suite 7/7 with genuine Docker container create/ready/delete observed in Testcontainers logs, full suite 37/37. Independently verified the pinned image digest via `docker image inspect`. Independently pulled the prior failing CI run log and confirmed the exact root cause (StringBuilder.ToString race in ConsoleCapture.get_Content). Wrote and ran a standalone program empirically confirming TextWriter.Synchronized's internal lock object matches the external lock used in the fix. Confirmed no leaked containers and no interference with unrelated Docker containers on the shared daemon."
+  },
+  "recorded_at": "2026-08-09T00:00:00Z",
+  "notes": "No independence violations: did not access other reviewers' results, PR review threads, Gold Review, benchmark scoring/normalization, or docs/benchmarks/fnd03-model-comparison/*. PR body was read only as permitted secondary evidence and every claim in it was independently re-verified against code, CI logs, or local execution before being relied upon."
+}

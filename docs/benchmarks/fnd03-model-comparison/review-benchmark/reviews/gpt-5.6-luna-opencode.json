@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "gpt-5.6-luna-opencode",
+    "model": "GPT-5.6 Luna",
+    "harness": "Open Code",
+    "effort": "Xhigh"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": false,
+    "summary": "ローカルcheckoutがBase SHAのままだったため対象Headのローカルテストは未実施。CI Run 31277771209でRestore、Build、非PostgreSQLテスト30件、実PostgreSQLテスト7件の成功を独立確認した。"
+  },
+  "recorded_at": "2026-08-08T21:58:50.0314144Z",
+  "notes": "対象HeadはGit objectとして検証し、SHA指定の差分とGitHub上のPR・CI証拠でレビューした。指定禁止の既存review本文、inline thread、Gold/Reference Review、benchmark評価結果、評価文書は参照していない。"
+}

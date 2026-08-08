@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "gpt-5.6-sol-codex",
+    "model": "GPT-5.6 Sol",
+    "harness": "Codex",
+    "effort": "xHigh"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": true,
+    "summary": "指定Headをrepository外へ展開し、restore、warning 0/error 0のbuild、non-PG 3/3＋27/27、real PostgreSQL 7/7、full suite 3/3＋34/34を確認した。指定digestとPostgreSQL 18.4、package version、database lifecycle/isolation/cleanup retry、failure injection、container残存0件も確認した。Primary CI Run 31277771209は指定Headに関連付けられ、全必須stepが成功した。"
+  },
+  "recorded_at": "2026-08-08T22:32:03.9644819Z",
+  "notes": "ローカルcheckoutはcleanなBase SHAのまま維持し、tracked fileやbranchを変更していない。Testcontainers内部のcontainer DisposeAsync失敗は決定論的に注入されていないが、例外伝播・startup primary failureとの集約・handle保持をコードから確認したためFindingとはしなかった。許可されたPR body以外の既存review、Gold Review、benchmark評価文書、他reviewer結果にはアクセスしていない。"
+}

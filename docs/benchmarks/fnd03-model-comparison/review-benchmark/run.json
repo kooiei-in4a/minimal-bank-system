@@ -1,0 +1,215 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "prompt_revision": "fnd03-final-review-v1",
+  "status": "raw_captured_analysis_not_started",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "primary_ci_run": 31277771209
+  },
+  "execution_time_unit": "minutes",
+  "source_capture": {
+    "description": "User-provided combined reviewer output capture (original uploaded file bytes)",
+    "file_name": "貼り付けたマークダウン（1）(20260808-225909).md",
+    "sha256": "a4b4e2b9b7c28b37ba44be3b035e01b5ef5c994ae105935a70d62168d4308a52",
+    "bytes": 161419
+  },
+  "reviewers": [
+    {
+      "slug": "deepseek-v4-pro-opencode",
+      "model": "DeepSeek V4 Pro",
+      "harness": "Open Code",
+      "effort": "指定値",
+      "attempt": 1,
+      "execution_minutes": 20,
+      "markdown_path": "reviews/deepseek-v4-pro-opencode.md",
+      "json_path": "reviews/deepseek-v4-pro-opencode.json",
+      "json_schema_valid": false
+    },
+    {
+      "slug": "grok-4.5-cursor",
+      "model": "Grok 4.5",
+      "harness": "Cursor",
+      "effort": "high fast",
+      "attempt": 1,
+      "execution_minutes": 6,
+      "markdown_path": "reviews/grok-4.5-cursor.md",
+      "json_path": "reviews/grok-4.5-cursor.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "claude-sonnet-5-claude-code",
+      "model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "effort": "xhigh",
+      "attempt": 1,
+      "execution_minutes": 7,
+      "markdown_path": "reviews/claude-sonnet-5-claude-code.md",
+      "json_path": "reviews/claude-sonnet-5-claude-code.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "qwen3.7-plus-opencode",
+      "model": "Qwen3.7 Plus",
+      "harness": "Open Code",
+      "effort": "MAX",
+      "attempt": 1,
+      "execution_minutes": 10,
+      "markdown_path": "reviews/qwen3.7-plus-opencode.md",
+      "json_path": "reviews/qwen3.7-plus-opencode.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "chatgpt-opus-5.6-sol-browser",
+      "model": "ChatGPT Opus 5.6 Sol",
+      "harness": "Browser",
+      "effort": "xhigh",
+      "attempt": 1,
+      "execution_minutes": 7,
+      "markdown_path": "reviews/chatgpt-opus-5.6-sol-browser.md",
+      "json_path": "reviews/chatgpt-opus-5.6-sol-browser.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "mimo-v2.5-pro-opencode",
+      "model": "MiMo-V2.5-Pro",
+      "harness": "Open Code",
+      "effort": null,
+      "attempt": 1,
+      "execution_minutes": 7,
+      "markdown_path": "reviews/mimo-v2.5-pro-opencode.md",
+      "json_path": "reviews/mimo-v2.5-pro-opencode.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "gpt-5.6-luna-opencode",
+      "model": "GPT-5.6 Luna",
+      "harness": "Open Code",
+      "effort": "Xhigh",
+      "attempt": 1,
+      "execution_minutes": 7,
+      "markdown_path": "reviews/gpt-5.6-luna-opencode.md",
+      "json_path": "reviews/gpt-5.6-luna-opencode.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "composer-2.5-cursor",
+      "model": "Composer 2.5",
+      "harness": "Cursor",
+      "effort": null,
+      "attempt": 1,
+      "execution_minutes": 3,
+      "markdown_path": "reviews/composer-2.5-cursor.md",
+      "json_path": "reviews/composer-2.5-cursor.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "chatgpt-gpt-5.5-browser",
+      "model": "ChatGPT GPT 5.5",
+      "harness": "Browser",
+      "effort": "xhigh",
+      "attempt": 1,
+      "execution_minutes": 6,
+      "markdown_path": "reviews/chatgpt-gpt-5.5-browser.md",
+      "json_path": "reviews/chatgpt-gpt-5.5-browser.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "claude-opus-5-claude-code",
+      "model": "Claude Opus 5",
+      "harness": "Claude Code",
+      "effort": "xhigh",
+      "attempt": 1,
+      "execution_minutes": 12,
+      "markdown_path": "reviews/claude-opus-5-claude-code.md",
+      "json_path": "reviews/claude-opus-5-claude-code.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "mimo-v2.5-opencode",
+      "model": "MiMo-V2.5",
+      "harness": "Open Code",
+      "effort": null,
+      "attempt": 1,
+      "execution_minutes": 4,
+      "markdown_path": "reviews/mimo-v2.5-opencode.md",
+      "json_path": "reviews/mimo-v2.5-opencode.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "chatgpt-o3-browser",
+      "model": "ChatGPT o3",
+      "harness": "Browser",
+      "effort": "Medium",
+      "attempt": 1,
+      "execution_minutes": 5,
+      "markdown_path": "reviews/chatgpt-o3-browser.md",
+      "json_path": "reviews/chatgpt-o3-browser.json",
+      "json_schema_valid": false
+    },
+    {
+      "slug": "gpt-5.6-sol-codex",
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "effort": "xHigh",
+      "attempt": 1,
+      "execution_minutes": 11,
+      "markdown_path": "reviews/gpt-5.6-sol-codex.md",
+      "json_path": "reviews/gpt-5.6-sol-codex.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "deepseek-v4-flash-opencode",
+      "model": "DeepSeek V4 Flash",
+      "harness": "Open Code",
+      "effort": "指定値",
+      "attempt": 1,
+      "execution_minutes": 13,
+      "markdown_path": "reviews/deepseek-v4-flash-opencode.md",
+      "json_path": "reviews/deepseek-v4-flash-opencode.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "gpt-5.6-terra-codex",
+      "model": "GPT-5.6 Terra",
+      "harness": "Codex",
+      "effort": "xHigh",
+      "attempt": 1,
+      "execution_minutes": 8,
+      "markdown_path": "reviews/gpt-5.6-terra-codex.md",
+      "json_path": "reviews/gpt-5.6-terra-codex.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "gpt-5.6-luna-codex",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "effort": "xHigh",
+      "attempt": 1,
+      "execution_minutes": 11,
+      "markdown_path": "reviews/gpt-5.6-luna-codex.md",
+      "json_path": "reviews/gpt-5.6-luna-codex.json",
+      "json_schema_valid": true
+    },
+    {
+      "slug": "minimax-m3-opencode",
+      "model": "MiniMax M3",
+      "harness": "Open Code",
+      "effort": "指定値",
+      "attempt": 1,
+      "execution_minutes": 36,
+      "markdown_path": "reviews/minimax-m3-opencode.md",
+      "json_path": "reviews/minimax-m3-opencode.json",
+      "json_schema_valid": true
+    }
+  ],
+  "normalization": {
+    "raw_reviews": "Transport BEGIN/END wrappers and whole-artifact Markdown code fences removed; line endings normalized to LF; semantic review content unchanged."
+  }
+}
