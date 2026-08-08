@@ -2,37 +2,28 @@
 
 Target Issue: #41 `[FND-03] 実PostgreSQL integration test基盤を確立する`
 
-Status: **PREPARED / NOT STARTED**
+Status: **IMPLEMENTATION BENCHMARK EVALUATED**
 
-FND-03ではFND-02と同様に、同一common baseから複数のModel + Agent/Harnessへ独立実装させ、candidate比較、Final synthesis、独立レビューbenchmarkを実施する。
+FND-03では、同一common baseから複数のModel + Agent/Harnessへ独立実装させ、GitHub上の実コード・テスト・CIを一次証拠として比較評価する。
+
+## 実装比較結果
+
+まず全体像を確認する場合は要約版、採点根拠や設計差まで確認する場合は最終評価を参照する。
+
+- [`summary.md`](./summary.md)
+  - **Issue #41 FND-03 — AIコーディングモデル実装比較・要約**
+  - 総合ランキング、主要な差、品質と速度、実装方式、Final synthesisへの推奨を短く整理
+- [`implementation-evaluation.md`](./implementation-evaluation.md)
+  - **Issue #41 FND-03 — AIコーディングモデル実装比較・最終評価**
+  - 13 Model + Agent/Harnessの採点、カテゴリ別評価、Acceptance Criteria、設計比較、処理効率、CI証跡を収録
+
+実装比較は14候補で開始し、13候補を採点した。MiniMax M3 / Open Codeは `stopped / no-change` のためランキング対象外としている。
 
 ## Governing documents
 
 - `../model-implementation-benchmark-methodology.md`
 - `../archive-conventions.md`
 - `../independent-review-benchmark-protocol.md`
-
-## Planned artifacts
-
-```text
-fnd03-model-comparison/
-├── README.md
-├── analysis.md
-├── implementation-evaluation.md
-└── review-benchmark/
-    ├── README.md
-    ├── run.json
-    ├── gold-review.md
-    ├── gold-review.json
-    ├── manifest.json
-    ├── summary.md
-    ├── full-evaluation.md
-    └── reviews/
-        ├── <reviewer-slug>.md
-        └── <reviewer-slug>.json
-```
-
-`analysis.md`以降はbenchmark実行時に生成する。空の結果ファイルを事前作成しない。
 
 ## FND-03 specific review focus
 
@@ -50,7 +41,11 @@ Issue #41の正本に従い、少なくとも次を比較・レビュー対象�
 
 ## Common base
 
-Preparatory protocol PR merge後の`main` full SHAをbenchmark開始時に固定し、全candidateへ同一に使用する。
+Implementation benchmark common base:
+
+```text
+95a8e50e6b68025e3386fdd0672bd73bcbaa60a0
+```
 
 ## Independent review artifact rule
 
