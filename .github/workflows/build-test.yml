@@ -34,5 +34,18 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
+      # The PostgreSQL integration tests need a container runtime. Failing here keeps an
+      # unavailable runtime from looking like a test problem, and never turns it into a pass.
+      - name: Verify the container runtime
+        run: docker version
+
+      # Pulling by digest makes the pin visible in the CI log and keeps the first container start
+      # from competing with the image download. PostgresTestPolicyTests asserts that this
+      # reference stays identical to PostgresTestImage.Reference.
+      - name: Pull the pinned PostgreSQL image
+        run: docker pull postgres:18.4@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
+
+      # One command for the whole solution, identical to the local one. It includes the real
+      # PostgreSQL integration tests; they are never filtered out of CI.
       - name: Test
         run: dotnet test --no-build
