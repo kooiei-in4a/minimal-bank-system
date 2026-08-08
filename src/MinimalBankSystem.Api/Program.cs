@@ -25,8 +25,20 @@ builder.Services.AddSingleton<ApplicationTime>();
 
 WebApplication app = builder.Build();
 
-app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ApiExceptionMiddleware>();
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    HttpContext context = statusCodeContext.HttpContext;
+    ApiErrorMapping? mapping = ApiErrorMapping.FromFrameworkStatusCode(context.Response.StatusCode);
+
+    if (mapping is not null)
+    {
+        await context.Response.WriteAsJsonAsync(
+            new ApiErrorEnvelope(mapping.Code, mapping.Message),
+            context.RequestAborted);
+    }
+});
 app.MapControllers();
 
 app.Run();

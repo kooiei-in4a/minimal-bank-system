@@ -12,7 +12,7 @@ public sealed class ApiExceptionMiddleware(
         {
             await next(context);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
             throw;
         }
@@ -20,16 +20,26 @@ public sealed class ApiExceptionMiddleware(
         {
             if (context.Response.HasStarted)
             {
-                throw;
+                TechnicalLog.RequestFailed(
+                    logger,
+                    ApiErrorMapping.InternalError.Code,
+                    ApiErrorMapping.InternalError.StatusCode,
+                    exception.GetType().FullName ?? exception.GetType().Name,
+                    context.TraceIdentifier);
+                return;
             }
 
-            ApiErrorMapping mapping = Map(exception, exceptionMappers);
+            ApiErrorMapping mapping = Map(
+                exception,
+                exceptionMappers,
+                context.RequestAborted.IsCancellationRequested);
 
             TechnicalLog.RequestFailed(
                 logger,
                 mapping.Code,
                 mapping.StatusCode,
-                exception.GetType().FullName ?? exception.GetType().Name);
+                exception.GetType().FullName ?? exception.GetType().Name,
+                context.TraceIdentifier);
 
             context.Response.Clear();
             context.Response.StatusCode = mapping.StatusCode;
@@ -43,7 +53,8 @@ public sealed class ApiExceptionMiddleware(
 
     private static ApiErrorMapping Map(
         Exception exception,
-        IEnumerable<IApiExceptionMapper> exceptionMappers)
+        IEnumerable<IApiExceptionMapper> exceptionMappers,
+        bool requestAborted)
     {
         foreach (IApiExceptionMapper mapper in exceptionMappers)
         {
@@ -56,7 +67,7 @@ public sealed class ApiExceptionMiddleware(
                     return mapping;
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (requestAborted)
             {
                 throw;
             }
@@ -77,10 +88,11 @@ internal static partial class TechnicalLog
     [LoggerMessage(
         EventId = 1000,
         Level = LogLevel.Error,
-        Message = "HTTP request failed with {ErrorCode} ({HttpStatusCode}). Exception type: {ExceptionType}.")]
+        Message = "HTTP request failed with {ErrorCode} ({HttpStatusCode}). Exception type: {ExceptionType}. Correlation ID: {CorrelationId}.")]
     public static partial void RequestFailed(
         ILogger logger,
         string errorCode,
         int httpStatusCode,
-        string exceptionType);
+        string exceptionType,
+        string correlationId);
 }

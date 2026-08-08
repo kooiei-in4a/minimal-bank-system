@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -74,6 +75,26 @@ public sealed class ApiRuntimeContractTests
     }
 
     [Fact]
+    public async Task MapperOperationCanceledExceptionFallsBackWhenRequestIsNotAborted()
+    {
+        using ConsoleCapture capture = new();
+
+        using (ContractWebApplicationFactory factory = new(
+                   services => services.AddSingleton<IApiExceptionMapper>(new ThrowingOperationCanceledExceptionMapper())))
+        using (HttpClient client = factory.CreateClient())
+        using (HttpResponseMessage response = await client.GetAsync("/__contract/error/mapped"))
+        {
+            string body = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+            AssertErrorEnvelope(body, "internal_error", "An internal error occurred.");
+            Assert.DoesNotContain(SecretSentinels.MapperCancellation, body, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain(SecretSentinels.MapperCancellation, capture.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ApiControllerValidationUsesTheCommonEnvelope()
     {
         using ContractWebApplicationFactory factory = new();
@@ -86,6 +107,33 @@ public sealed class ApiRuntimeContractTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         AssertErrorEnvelope(body, "validation_failed", "The request is invalid.");
+    }
+
+    [Theory]
+    [InlineData("GET", "/__contract/does-not-exist", 404, "endpoint_not_found", "The requested endpoint was not found.")]
+    [InlineData("GET", "/__contract/validation", 405, "method_not_allowed", "The HTTP method is not allowed for this endpoint.")]
+    [InlineData("POST", "/__contract/media-type", 415, "unsupported_media_type", "The request media type is not supported.")]
+    public async Task FrameworkErrorsUseTheApprovedCommonEnvelope(
+        string method,
+        string path,
+        int expectedStatusCode,
+        string expectedCode,
+        string expectedMessage)
+    {
+        using ContractWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateClient();
+        using HttpRequestMessage request = new(new HttpMethod(method), path);
+
+        if (expectedStatusCode == StatusCodes.Status415UnsupportedMediaType)
+        {
+            request.Content = new StringContent("not-json", Encoding.UTF8, "text/plain");
+        }
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+        string body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal((HttpStatusCode)expectedStatusCode, response.StatusCode);
+        AssertErrorEnvelope(body, expectedCode, expectedMessage);
     }
 
     [Fact]
@@ -270,47 +318,121 @@ public sealed class ApiRuntimeContractTests
     }
 
     [Fact]
-    public async Task OperationCanceledExceptionIsNotConvertedToGeneric500()
+    public async Task NonRequestAbortedOperationCanceledExceptionUsesTheGenericErrorContract()
     {
+        using ConsoleCapture capture = new();
+
         using ContractWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateClient();
 
-        try
-        {
-            using HttpResponseMessage response = await client.GetAsync("/__contract/canceled");
-            string body = await response.Content.ReadAsStringAsync();
+        using HttpResponseMessage response = await client.GetAsync("/__contract/canceled");
+        string body = await response.Content.ReadAsStringAsync();
 
-            Assert.DoesNotContain("internal_error", body, StringComparison.Ordinal);
-        }
-        catch (Exception exception)
-        {
-            Assert.Contains(
-                EnumerateExceptionChain(exception),
-                candidate => candidate is OperationCanceledException);
-        }
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        AssertErrorEnvelope(body, "internal_error", "An internal error occurred.");
+        Assert.DoesNotContain(SecretSentinels.InternalCancellationException, body, StringComparison.Ordinal);
+        Assert.DoesNotContain(SecretSentinels.InternalCancellationException, capture.Content, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ResponseStartedExceptionIsRethrownByProductionPipeline()
+    public async Task ResponseStartedExceptionIsNotEscapedByTestServerPipeline()
     {
         using ConsoleCapture capture = new();
-        Exception exception;
 
         using (ContractWebApplicationFactory factory = new())
         using (HttpClient client = factory.CreateClient())
         {
-            exception = await Assert.ThrowsAnyAsync<Exception>(
-                () => client.GetAsync("/__contract/response-started"));
+            using HttpResponseMessage response = await client.GetAsync("/__contract/response-started");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("prefix", await response.Content.ReadAsStringAsync());
         }
 
-        Assert.Contains(
-            EnumerateExceptionChain(exception),
-            candidate => candidate is InvalidOperationException invalidOperation &&
-                invalidOperation.Message == SecretSentinels.ResponseStartedException);
+        JsonElement[] entries = ParseJsonLogLines(capture.Content);
+        Assert.Contains(entries, entry => ContainsStringProperty(entry, "ErrorCode", "internal_error"));
         Assert.DoesNotContain(
             SecretSentinels.ResponseStartedException,
             capture.Content,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task KestrelResponseStartedExceptionDoesNotLeakSecretsOrEscapeToServerLogging()
+    {
+        using ConsoleCapture capture = new();
+
+        using (ContractWebApplicationFactory factory = new())
+        {
+            factory.UseKestrel(0);
+
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await client.GetAsync("/__contract/response-started");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("prefix", await response.Content.ReadAsStringAsync());
+        }
+
+        JsonElement[] entries = ParseJsonLogLines(capture.Content);
+        Assert.Contains(entries, entry => ContainsStringProperty(entry, "ErrorCode", "internal_error"));
+        Assert.DoesNotContain(SecretSentinels.ResponseStartedException, capture.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("StackTrace", capture.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("exceptionDetail", capture.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task KestrelNonRequestAbortedOperationCanceledExceptionUsesSafeEnvelopeAndLogging()
+    {
+        using ConsoleCapture capture = new();
+
+        using (ContractWebApplicationFactory factory = new())
+        {
+            factory.UseKestrel(0);
+
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await client.GetAsync("/__contract/canceled");
+            string body = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+            AssertErrorEnvelope(body, "internal_error", "An internal error occurred.");
+            Assert.DoesNotContain(SecretSentinels.InternalCancellationException, body, StringComparison.Ordinal);
+        }
+
+        JsonElement[] entries = ParseJsonLogLines(capture.Content);
+        Assert.Contains(entries, entry => ContainsStringProperty(entry, "ErrorCode", "internal_error"));
+        Assert.DoesNotContain(SecretSentinels.InternalCancellationException, capture.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("StackTrace", capture.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("exceptionDetail", capture.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task KestrelRequestAbortIsRethrownWithoutGeneratingAnErrorEnvelopeOrSecretLog()
+    {
+        using ConsoleCapture capture = new();
+        ContractProbeSignals signals = new();
+
+        using (ContractWebApplicationFactory factory = new(
+                   services => services.AddSingleton(signals)))
+        {
+            factory.UseKestrel(0);
+
+            using HttpClient client = factory.CreateClient();
+            using CancellationTokenSource cancellation = new();
+            using HttpRequestMessage request = new(HttpMethod.Get, "/__contract/client-abort");
+
+            Task<HttpResponseMessage> pending = client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellation.Token);
+
+            await signals.RequestAbortStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
+            await signals.RequestAbortObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.DoesNotContain(SecretSentinels.RequestAbortException, capture.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("internal_error", capture.Content, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -319,6 +441,9 @@ public sealed class ApiRuntimeContractTests
         OperationCanceledException expected = new("request canceled");
         DefaultHttpContext context = new();
         context.Response.Body = new MemoryStream();
+        using CancellationTokenSource requestAborted = new();
+        requestAborted.Cancel();
+        context.RequestAborted = requestAborted.Token;
 
         ApiExceptionMiddleware middleware = new(
             _ => Task.FromException(expected),
@@ -343,23 +468,13 @@ public sealed class ApiRuntimeContractTests
             _ => Task.FromException(expected),
             NullLogger<ApiExceptionMiddleware>.Instance);
 
-        InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => middleware.InvokeAsync(context, []));
+        await middleware.InvokeAsync(context, []);
 
-        Assert.Same(expected, actual);
         Assert.Equal(0, responseFeature.Body.Length);
     }
 
     private static string GetCorrelationId(HttpResponseMessage response) =>
         Assert.Single(response.Headers.GetValues(CorrelationIdMiddleware.HeaderName));
-
-    private static IEnumerable<Exception> EnumerateExceptionChain(Exception exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            yield return current;
-        }
-    }
 
     private static void AssertErrorEnvelope(string body, string expectedCode, string expectedMessage)
     {
@@ -453,7 +568,9 @@ public sealed class ApiRuntimeContractTests
 }
 
 [ApiController]
-public sealed class RuntimeContractController(ApplicationTime applicationTime) : ControllerBase
+public sealed class RuntimeContractController(
+    ApplicationTime applicationTime,
+    ContractProbeSignals signals) : ControllerBase
 {
     [HttpGet("/__contract/correlation")]
     public ActionResult<object> GetCorrelation() =>
@@ -492,11 +609,37 @@ public sealed class RuntimeContractController(ApplicationTime applicationTime) :
         return Ok();
     }
 
+    [HttpPost("/__contract/media-type")]
+    [Consumes("application/json")]
+    public IActionResult MediaType([FromBody] ValidationRequest request)
+    {
+        _ = request;
+        return Ok();
+    }
+
     [HttpGet("/__contract/canceled")]
     public IActionResult GetCanceled()
     {
         _ = HttpContext;
-        throw new OperationCanceledException("request canceled");
+        throw new OperationCanceledException(SecretSentinels.InternalCancellationException);
+    }
+
+    [HttpGet("/__contract/client-abort")]
+    public async Task GetClientAbort()
+    {
+        signals.RequestAbortStarted.TrySetResult();
+
+        try
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, HttpContext.RequestAborted);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            signals.RequestAbortObserved.TrySetResult();
+            throw new OperationCanceledException(
+                SecretSentinels.RequestAbortException,
+                HttpContext.RequestAborted);
+        }
     }
 
     [HttpGet("/__contract/response-started")]
@@ -524,6 +667,7 @@ internal sealed class ContractWebApplicationFactory(
             services
                 .AddControllers()
                 .AddApplicationPart(typeof(RuntimeContractController).Assembly);
+            services.TryAddSingleton<ContractProbeSignals>();
 
             if (timeProvider is not null)
             {
@@ -556,7 +700,25 @@ internal sealed class ThrowingExceptionMapper : IApiExceptionMapper
     }
 }
 
+internal sealed class ThrowingOperationCanceledExceptionMapper : IApiExceptionMapper
+{
+    public ApiErrorMapping? TryMap(Exception exception)
+    {
+        _ = exception;
+        throw new OperationCanceledException(SecretSentinels.MapperCancellation);
+    }
+}
+
 internal sealed class ContractProbeException : Exception;
+
+public sealed class ContractProbeSignals
+{
+    public TaskCompletionSource RequestAbortStarted { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public TaskCompletionSource RequestAbortObserved { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+}
 
 internal sealed class FrozenTimeProvider(DateTimeOffset utcNow) : TimeProvider
 {
@@ -577,6 +739,9 @@ internal static class SecretSentinels
     public const string ExceptionIdempotencyKey = "EXCEPTION_RAW_IDEMPOTENCY_KEY_SENTINEL";
     public const string ExceptionConnectionString = "EXCEPTION_CONNECTION_STRING_SENTINEL";
     public const string MapperFailure = "MAPPER_FAILURE_SECRET_SENTINEL";
+    public const string MapperCancellation = "MAPPER_CANCELLATION_SECRET_SENTINEL";
+    public const string InternalCancellationException = "INTERNAL_CANCELLATION_SECRET_SENTINEL";
+    public const string RequestAbortException = "REQUEST_ABORT_SECRET_SENTINEL";
     public const string ResponseStartedException = "RESPONSE_STARTED_EXCEPTION_SECRET_SENTINEL";
 
     public static string ExceptionMessage => string.Join(
@@ -601,6 +766,9 @@ internal static class SecretSentinels
         ExceptionIdempotencyKey,
         ExceptionConnectionString,
         MapperFailure,
+        MapperCancellation,
+        InternalCancellationException,
+        RequestAbortException,
         ResponseStartedException,
     ];
 }

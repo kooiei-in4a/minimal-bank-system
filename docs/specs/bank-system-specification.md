@@ -6,7 +6,7 @@
 - 対象リリース: 内部デモ版 `v0.1.0`
 - 対応Issue: #7
 - Parent / Control Issue: #3
-- 前提決定: Issue #5、Issue #8、Issue #7のKoo承認記録
+- 前提決定: Issue #5、Issue #8、Issue #7のKoo承認記録、Issue #40 FND-02 D-01/D-02のKoo承認（2026-08-08）
 - 前提ゲート: Requirements Ready = `PASS`
 - 対象ゲート: Specification Ready = `NOT EVALUATED`
 
@@ -693,6 +693,8 @@ v0.1.0ではAudit Logの記録と検証証拠取得を必須とし、利用者�
 - `message`は人向け説明であり、利用側は文字列一致に依存しない。
 - 同じ原因には機能が異なっても同じ固定コードを使用する。
 - 内部例外、SQL、credential、secret、token、不要な個人情報を返さない。
+- ASP.NET Coreのapplication pipelineへ到達し、APIがHTTP error responseを返す場合は、原則としてこの共通形式を使用する。
+- Kestrel等がapplication pipeline到達前に拒否するtransport／protocol-level errorは、FND-02の共通error envelope保証対象外とする。
 
 ### 16.2 HTTP状態の役割
 
@@ -701,8 +703,10 @@ v0.1.0ではAudit Logの記録と検証証拠取得を必須とし、利用者�
 | 400 | 入力形式、識別子組合せ、金額範囲等が不正 |
 | 401 | 未認証 |
 | 403 | 認証済みだが権限不足 |
-| 404 | Customer、Accountまたは対象利用者が存在しない |
+| 404 | Customer、Accountまたは対象利用者が存在しない。routingで一致するAPI endpointが存在しない場合も含む |
+| 405 | endpointに対して指定HTTP methodが許可されない |
 | 409 | 現在状態、残高、重複、冪等性、同時実行等との競合 |
+| 415 | request media typeがendpointで受理されない |
 | 500 | 保存済みデータまたは内部状態の不整合。内部詳細は返さない |
 
 ### 16.3 固定コード
@@ -718,6 +722,9 @@ v0.1.0ではAudit Logの記録と検証証拠取得を必須とし、利用者�
 | `customer_not_found` | 404 | Customer不存在 |
 | `account_not_found` | 404 | Account不存在 |
 | `operator_not_found` | 404 | Operator不存在 |
+| `endpoint_not_found` | 404 | routingで一致するAPI endpointが存在しない |
+| `method_not_allowed` | 405 | endpointに対して指定HTTP methodが許可されない |
+| `unsupported_media_type` | 415 | request media typeがendpointで受理されない |
 | `email_already_registered` | 409 | 正規化後メールアドレスが重複 |
 | `account_closed` | 409 | 解約済みAccountへの禁止操作 |
 | `customer_closed` | 409 | 解約済みCustomerへの禁止更新 |
@@ -730,6 +737,7 @@ v0.1.0ではAudit Logの記録と検証証拠取得を必須とし、利用者�
 | `concurrent_operation_conflict` | 409 | 競合により安全に処理できない |
 | `customer_account_state_inconsistent` | 500 | CustomerとAccountの状態・解約日時等が不整合 |
 | `data_integrity_violation` | 500 | 負残高、残高・履歴等の内部不整合を検出 |
+| `internal_error` | 500 | 特定のbusiness semanticsを持たないapplication／infrastructure内部障害のgeneric fallback |
 
 ### 16.4 原因別の一意性
 
@@ -737,6 +745,9 @@ v0.1.0ではAudit Logの記録と検証証拠取得を必須とし、利用者�
 - Customer／Account状態不整合は`customer_account_state_inconsistent`、既解約・再有効化は`state_transition_not_allowed`とする。
 - 自己振込、解約済み、残高不足、振込元不存在、振込先不存在をそれぞれ異なる原因として扱う。
 - 認証失敗と認可失敗を401と403で区別する。
+- business resource不存在は`customer_not_found`、`account_not_found`、`operator_not_found`等を使用し、endpoint不存在の`endpoint_not_found`へ統合しない。
+- application pipeline内のrouting／method／media type errorは、それぞれ`endpoint_not_found`、`method_not_allowed`、`unsupported_media_type`を使用する。
+- `internal_error`はgeneric fallback専用とし、`data_integrity_violation`や`customer_account_state_inconsistent`等の意味を持つcodeを流用しない。
 
 ### 16.5 再試行
 
@@ -1342,9 +1353,10 @@ v0.1.0では冪等性保証の失効期限を設けない。対象となる冪�
 
 **AC-ERR-001 エラー形式**
 
-- Given 任意の業務エラー
+- Given 任意の業務エラーまたはapplication pipeline内のHTTP error
 - When APIが失敗を返す
 - Then HTTP状態、固定`code`、人向け`message`を返し、内部詳細やcredentialを含めない
+- And application pipeline到達前のtransport／protocol-level errorは、この共通形式の保証対象外とする
 
 ### 19.11 運用・ログ
 
@@ -1526,6 +1538,10 @@ NIT-R001対応として、REQ-VAL-001から識別子不一致のAC-TRF-013を除
    - 管理者専用REST API、最低操作集合、状態、固定3役割、管理者保護、Audit Logを採用する。
 6. F-008 Transaction 0件時の履歴レスポンス
    - HTTP 200と空配列`[]`を採用する。
+7. FND-02 共通API実行契約追補（Issue #40、2026-08-08）
+   - generic internal failureはHTTP 500 / `internal_error` / `An internal error occurred.`とする。
+   - application pipeline内の404、405、415は、それぞれ`endpoint_not_found`、`method_not_allowed`、`unsupported_media_type`で共通envelope化する。
+   - application pipeline到達前のtransport／protocol-level errorは、この保証対象外とする。
 
 ### 23.2 独立レビューNit対応
 
