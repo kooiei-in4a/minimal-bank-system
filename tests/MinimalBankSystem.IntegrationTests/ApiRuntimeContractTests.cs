@@ -335,19 +335,29 @@ public sealed class ApiRuntimeContractTests
     }
 
     [Fact]
-    public async Task ResponseStartedExceptionIsNotEscapedByTestServerPipeline()
+    public async Task ResponseStartedExceptionDoesNotCompleteAsSuccessInTestServerPipeline()
     {
         using ConsoleCapture capture = new();
 
+        bool completedAsSuccess = false;
         using (ContractWebApplicationFactory factory = new())
         using (HttpClient client = factory.CreateClient())
         {
-            using HttpResponseMessage response = await client.GetAsync("/__contract/response-started");
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("prefix", await response.Content.ReadAsStringAsync());
+            try
+            {
+                using HttpResponseMessage response = await client.GetAsync("/__contract/response-started");
+                completedAsSuccess = response.StatusCode == HttpStatusCode.OK &&
+                    await response.Content.ReadAsStringAsync() == "prefix";
+            }
+            catch (HttpRequestException)
+            {
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
 
+        Assert.False(completedAsSuccess);
         JsonElement[] entries = ParseJsonLogLines(capture.Content);
         Assert.Contains(entries, entry => ContainsStringProperty(entry, "ErrorCode", "internal_error"));
         Assert.DoesNotContain(
@@ -360,18 +370,28 @@ public sealed class ApiRuntimeContractTests
     public async Task KestrelResponseStartedExceptionDoesNotLeakSecretsOrEscapeToServerLogging()
     {
         using ConsoleCapture capture = new();
+        bool completedAsSuccess = false;
 
         using (ContractWebApplicationFactory factory = new())
         {
             factory.UseKestrel(0);
 
             using HttpClient client = factory.CreateClient();
-            using HttpResponseMessage response = await client.GetAsync("/__contract/response-started");
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("prefix", await response.Content.ReadAsStringAsync());
+            try
+            {
+                using HttpResponseMessage response = await client.GetAsync("/__contract/response-started");
+                completedAsSuccess = response.StatusCode == HttpStatusCode.OK &&
+                    await response.Content.ReadAsStringAsync() == "prefix";
+            }
+            catch (HttpRequestException)
+            {
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
 
+        Assert.False(completedAsSuccess);
         JsonElement[] entries = ParseJsonLogLines(capture.Content);
         Assert.Contains(entries, entry => ContainsStringProperty(entry, "ErrorCode", "internal_error"));
         Assert.DoesNotContain(SecretSentinels.ResponseStartedException, capture.Content, StringComparison.Ordinal);

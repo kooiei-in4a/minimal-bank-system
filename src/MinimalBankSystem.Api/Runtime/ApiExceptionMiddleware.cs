@@ -26,6 +26,7 @@ public sealed class ApiExceptionMiddleware(
                     ApiErrorMapping.InternalError.StatusCode,
                     exception.GetType().FullName ?? exception.GetType().Name,
                     context.TraceIdentifier);
+                context.Abort();
                 return;
             }
 
