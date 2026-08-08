@@ -812,8 +812,11 @@ internal sealed class ConsoleCapture : IDisposable
     {
         get
         {
-            synchronizedWriter.Flush();
-            return buffer.ToString();
+            lock (synchronizedWriter)
+            {
+                synchronizedWriter.Flush();
+                return buffer.ToString();
+            }
         }
     }
 
@@ -821,7 +824,11 @@ internal sealed class ConsoleCapture : IDisposable
     {
         Console.SetOut(originalOutput);
         Console.SetError(originalError);
-        synchronizedWriter.Dispose();
-        buffer.Dispose();
+
+        lock (synchronizedWriter)
+        {
+            synchronizedWriter.Dispose();
+            buffer.Dispose();
+        }
     }
 }
