@@ -36,3 +36,6 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build
+
+      - name: PostgreSQL integration test
+        run: dotnet test --no-build --filter "Category=PostgreSql"
