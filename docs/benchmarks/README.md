@@ -14,6 +14,10 @@
 ## Issue-specific reports
 
 - `fnd01-model-comparison/analysis.md`
-- `fnd02-model-comparison/analysis.md`
+- `fnd02-model-comparison/README.md`
+  - archive manifest
+  - 14モデル実装比較
+  - 17モデル独立第三者レビュー性能比較
+  - 各モデルのレビュー結果
 
 新しいbenchmarkを開始・archiveする場合は、最初に共通方法論を確認し、archive時は`archive-conventions.md`を併用してください。
