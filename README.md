@@ -24,6 +24,16 @@
 - 変更差分と検証証拠: Pull Requests
 - 実装状態: コードと自動テスト
 
+## テスト実行
+
+```bash
+dotnet test
+```
+
+`dotnet test`にはPostgreSQL integration testが含まれ、Docker互換のcontainer runtimeを必要とします。CIも同じcommandを使用します。runtimeが無い場合はskipせずfailします。
+
+PostgreSQL integration testだけを実行する場合は`dotnet test --filter "Category=PostgresIntegration"`、除外する場合は`dotnet test --filter "Category!=PostgresIntegration"`を使用します。fixtureの詳細は`tests/MinimalBankSystem.PostgresIntegrationTests/README.md`を参照してください。
+
 ## リリース境界
 
 本リポジトリで構築するシステムは開発手法検証用の内部デモです。実際の銀行業務、実口座、実送金、実顧客データには使用しません。
