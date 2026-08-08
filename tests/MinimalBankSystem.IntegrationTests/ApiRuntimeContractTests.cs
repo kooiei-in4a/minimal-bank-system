@@ -17,6 +17,7 @@ using MinimalBankSystem.Application.Runtime;
 
 namespace MinimalBankSystem.IntegrationTests;
 
+[Collection(ConsoleSensitiveTestGroup.Name)]
 public sealed class ApiRuntimeContractTests
 {
     private static readonly DateTimeOffset FixedUtcNow =
