@@ -56,3 +56,16 @@ jobs:
 
       - name: Run FND-03 archive operator
         run: bash .github/scripts/fnd03-archive.sh
+
+      - name: Delete temporary archive-operator branches
+        run: |
+          for branch in \
+            agent/fnd03-benchmark-archive-operator \
+            agent/fnd03-benchmark-archive-operator-trigger \
+            agent/fnd03-benchmark-archive-build-operator \
+            agent/fnd03-benchmark-archive-run-pr
+          do
+            if git ls-remote --exit-code origin "refs/heads/$branch" >/dev/null 2>&1; then
+              git push origin --delete "$branch"
+            fi
+          done
