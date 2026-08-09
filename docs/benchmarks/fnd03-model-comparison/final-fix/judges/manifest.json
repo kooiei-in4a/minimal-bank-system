@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-code-major-fix",
+  "artifact_type": "independent_judge_evaluations",
+  "storage_note": "Each submitted judge result is stored as ordered UTF-8 Markdown parts for repository readability. source_sha256 records the original uploaded file bytes; GitHub text storage may normalize line endings, so source_sha256 is provenance metadata rather than a hash of concatenated GitHub parts.",
+  "synthesis_status": "not_started",
+  "judges": [
+    {
+      "evaluator_model": "GPT-5.6 Sol",
+      "evaluator_harness": "Codex",
+      "evaluator_effort": "xHigh",
+      "evaluator_slug": "gpt-5.6-sol-codex",
+      "attempt": 1,
+      "source_sha256": "18c7706f35d4b3d3f06b697c3a3dff99f8289ccc169fd7b008ca595d3c89eb8d",
+      "source_bytes": 33143,
+      "source_lines": 866,
+      "directory": "judges/gpt-5.6-sol-codex",
+      "parts": [
+        "part-001.md",
+        "part-002.md",
+        "part-003.md",
+        "part-004.md",
+        "part-005.md",
+        "part-006.md"
+      ]
+    },
+    {
+      "evaluator_model": "Claude Opus 5",
+      "evaluator_harness": "Claude Code",
+      "evaluator_effort": "xhigh",
+      "evaluator_slug": "claude-opus-5-claude-code",
+      "attempt": 1,
+      "source_sha256": "e2bb7cc84f787eb204aab025d67eb125b27580557af181dfe33195a4562b2ce1",
+      "source_bytes": 87356,
+      "source_lines": 1153,
+      "directory": "judges/claude-opus-5-claude-code",
+      "parts": [
+        "part-001.md",
+        "part-002.md",
+        "part-003.md",
+        "part-004.md",
+        "part-005.md",
+        "part-006.md",
+        "part-007.md",
+        "part-008.md"
+      ]
+    },
+    {
+      "requested_label": "browser-sol",
+      "identity_note": "The uploaded result self-identifies as GPT-5.6 Pro / Browser / Pro. The repository artifact preserves that self-reported identity instead of rewriting it to Sol.",
+      "evaluator_model": "GPT-5.6 Pro",
+      "evaluator_harness": "Browser",
+      "evaluator_effort": "Pro",
+      "evaluator_slug": "gpt-5.6-pro-browser",
+      "attempt": 1,
+      "source_sha256": "ef8b951b64446c6d3a8564b8a92d51c7a960822c784a62e9f7b2054f4ea2fd7d",
+      "source_bytes": 44555,
+      "source_lines": 1082,
+      "directory": "judges/gpt-5.6-pro-browser",
+      "parts": [
+        "part-001.md",
+        "part-002.md",
+        "part-003.md",
+        "part-004.md",
+        "part-005.md",
+        "part-006.md",
+        "part-007.md"
+      ]
+    }
+  ]
+}
