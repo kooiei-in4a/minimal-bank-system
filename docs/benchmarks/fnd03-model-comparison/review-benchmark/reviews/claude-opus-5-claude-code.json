@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "claude-opus-5-claude-code",
+    "model": "Claude Opus 5",
+    "harness": "Claude Code",
+    "effort": "xhigh"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Image digest assertions are constant-vs-constant tautologies, not runtime image evidence",
+      "description": "PinnedPostgreSql184ContainerProvidesTheTestDatabase presents Assert.Equal(ImageReference, Fixture.Container.Image.FullName) and Assert.Equal(\"sha256:3a82e1f5...\", Fixture.Container.Image.Digest) as digest verification. In Testcontainers 4.13.0 both IImage.FullName and IImage.Digest are parsed from the reference string given to PostgreSqlBuilder, with no Docker daemon round trip, so each assertion compares a constant against a value derived from that same constant in the same process and cannot fail unless the reference parser is broken. They provide no evidence about the image the running container was actually created from. AC-02 is still satisfied because the digest-qualified reference is what is handed to Docker, which resolves and content-verifies by digest, and because InitializeAsync additionally enforces a genuine runtime guard that the live server reports server_version_num 180004. The defect is the strength of the automated digest-verification artifact requested by Issue #41 section 9, not the pin itself. A daemon-side check of the started container's actual image ID or RepoDigests would close the gap.",
+      "evidence": [
+        "tests/MinimalBankSystem.IntegrationTests/PostgreSql/PostgreSqlFixtureTests.cs:10-15 - the two assertions under review.",
+        "tests/MinimalBankSystem.IntegrationTests/PostgreSql/PostgreSqlContainerFixture.cs:9-11,30-33 - the ImageReference constant is the sole input to new PostgreSqlBuilder(ImageReference), and Container.Image is derived from it.",
+        "Independent runtime probe (scratch xUnit project, Testcontainers.PostgreSql 4.13.0, no Docker call): new PostgreSqlBuilder(\"postgres:18.4@sha256:0000000000000000000000000000000000000000000000000000000000000000\").Build(), read WITHOUT starting the container, returned FullName=postgres:18.4@sha256:0000000000000000000000000000000000000000000000000000000000000000 and Digest=sha256:0000000000000000000000000000000000000000000000000000000000000000. A fabricated all-zero digest round-trips unchanged, proving these properties are parse-only.",
+        "Counter-evidence limiting severity: PostgreSqlContainerFixture.cs:47-55 throws unless the live container reports server_version_num == 180004; both the local run and CI run 31277771209 exercised this against a real container."
+      ],
+      "affected_component": "tests/MinimalBankSystem.IntegrationTests/PostgreSql/PostgreSqlFixtureTests.cs",
+      "root_cause_candidate": null
+    }
+  ],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": true,
+    "summary": "Head 91e3fca exported via git archive into the session scratchpad (repository checkout, branches and tracked files left unmodified). Windows 11, .NET SDK 10.0.302, Docker 29.6.2. dotnet build MinimalBankSystem.slnx: succeeded, 0 warnings / 0 errors. Category!=PostgreSqlIntegration: Unit 3/3, Integration 27/27. Category=PostgreSqlIntegration: 7/7 in 9 s against a real digest-pinned container. Full single-process suite: Unit 3/3, Integration 34/34. docker ps -a before and after showed no PostgreSQL container left by the review (only two unrelated pre-existing exited containers, untouched), confirming deterministic teardown independent of Ryuk. Four independent probes were run in scratch projects. Probe 1 (xUnit 2.9.3 scheduling): a DisableParallelization=true collection ran strictly after and alone relative to two ordinary collections that overlapped each other, proving ApiRuntimeContractTests' process-global Console.Out/Console.Error replacement cannot overlap any other collection - the README parallel/serialize claim matches actual behavior. Probe 2 (TextWriter.Synchronized): holding lock(sync) blocked a concurrent sync.Write for 806 ms, confirming the ConsoleCapture fix makes Flush+ToString and Dispose atomic against the ASP.NET Core background console-logger thread, which is the real root cause and a race present even within a single test; disposal order is safe in all ConsoleCapture usages because capture is declared first and disposed last, after host teardown flushes the logger. Probe 3: a class-fixture DisposeAsync throw produced [Test Class Cleanup Failure] and failed the run despite all tests passing, confirming container cleanup failures are surfaced. Probe 4: see F-01. Audit of every catch block in the new code (PostgreSqlContainerFixture.cs:67,76,106,127,170,190,198) found no swallowed cleanup exception and no disposed/handle transition on a failed path. Repo-wide grep for Sqlite/InMemory/DbContext/EntityFrameworkCore/Migrate/Migration/docker-compose returned zero hits; Npgsql and Testcontainers are confined to the IntegrationTests project. CI run 31277771209 was verified independently through the GitHub Actions API: headSha equals the PR head, event pull_request, conclusion success, with Restore, Build (0 warnings/0 errors), Test (non-PostgreSQL) 3+27, and Test (real PostgreSQL) 7 passed / 0 skipped in 12 s, so the PostgreSQL filter did not silently match zero tests and no Docker-unavailable skip or fallback path exists."
+  },
+  "recorded_at": "2026-08-08T22:09:43Z",
+  "notes": "No benchmark or reviewer material was consulted: docs/benchmarks/fnd03-model-comparison/summary.md, implementation-evaluation.md, docs/benchmarks/fnd02-model-comparison/review-benchmark/, existing PR #104 reviews and review threads, Gold/Reference reviews, and ranking/normalization artifacts were all left unopened, and no accidental exposure occurred. The PR body was read as secondary evidence only; every reported claim was re-derived from code, runtime behavior, or the GitHub Actions API. Review-only was maintained: no file edit, commit, push, branch change, PR/Issue comment, or review posting; no unrelated container was stopped or removed and no prune was run. Environment caveat: local execution was on Windows + Docker Desktop while the original CI incident was Linux-specific and timing-sensitive, so the local passes alone do not refute a residual race; the conclusion rests on the platform-independent xUnit 2.9.3 and TextWriter.Synchronized semantics established by probes 1 and 2 plus the green Linux CI run on the exact Head. On the section 9.1 question, the cleanup-failure test is deterministic rather than accidentally passing - the pre-cancelled token fails inside OpenConnectionAsync, is wrapped, and is wrapped again by DropDatabaseAsync so the exact-type ThrowsAsync matches by construction, while the surrounding assertions verify real pg_database state before and after the retry; the only honest limitation is that the injection point is the connection rather than the DROP statement, which exercises an identical observable lease contract and was therefore not raised as a finding. The PR is still in draft state - a merge-gate process observation, not a code finding."
+}

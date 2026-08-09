@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "mimo-v2.5-pro-opencode",
+    "model": "MiMo-V2.5-Pro",
+    "harness": "Open Code",
+    "effort": null
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": true,
+    "summary": "dotnet restore succeeded. dotnet build succeeded (0 warnings, 0 errors). dotnet test --filter Category=PostgreSqlIntegration passed 7/7 tests in 19.8s. Docker containers created and destroyed successfully. PostgreSQL 18.4 image confirmed at runtime."
+  },
+  "recorded_at": "2026-08-09T07:01:00+09:00",
+  "notes": null
+}

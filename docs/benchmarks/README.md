@@ -33,9 +33,13 @@
   - 17モデル独立第三者レビュー性能比較
   - 各モデルのレビュー結果
 - `fnd03-model-comparison/README.md`
-  - FND-03 benchmarkの事前scaffold
-  - 新しい独立レビューartifact protocolを初回適用
+  - FND-03全実験系列のcanonical archive
+  - 初期実装、17-model review、post-hoc Gold、14-model Major-fix、3-Judge、production outcome
 
 新しいimplementation benchmarkを開始する場合は`model-implementation-benchmark-methodology.md`を確認する。
 独立レビューbenchmarkを行う場合は`independent-review-benchmark-protocol.md`と共通preambleを併用する。
 archive時は`archive-conventions.md`に従う。
+
+## Archive lifecycle
+
+- FND-03: **COMPLETE / ARCHIVED** — [`fnd03-model-comparison/README.md`](./fnd03-model-comparison/README.md)

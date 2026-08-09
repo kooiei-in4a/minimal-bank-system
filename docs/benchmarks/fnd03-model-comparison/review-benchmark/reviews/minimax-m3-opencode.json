@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "minimax-m3-opencode",
+    "model": "MiniMax M3",
+    "harness": "Open Code",
+    "effort": "指定値"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "ConsoleCapture の lock 対象と内部 lock の不一致",
+      "description": "PR は `lock (synchronizedWriter)` を `Content` getter と `Dispose` に追加したが、`TextWriter.Synchronized(buffer)` が返す SyncTextWriter は内部で `lock (_out)` (inner writer = buffer) を取るため、new outer lock (synchronizedWriter) と inner lock (buffer) は別オブジェクトである。Content 読取時の `buffer.ToString()` は内部 lock と排他にならず、background writer との間で微小な data race が残存する。CI evidence (run 31277771209, 27/27 integration + 7/7 PG) と PR body の '5 consecutive runs' からは practical な問題は観測されないが、対象ロックの選択が TextWriter.Synchronized の同期単位と一致していない。",
+      "evidence": [
+        "tests/MinimalBankSystem.IntegrationTests/ApiRuntimeContractTests.cs:797-833 で synchronizedWriter = TextWriter.Synchronized(buffer) を生成し、Content getter / Dispose を lock (synchronizedWriter) で囲む",
+        ".NET の TextWriter.Synchronized は内部で SyncTextWriter を生成し、lock (_out) で内部 writer を保護する (synchronizedWriter 自身ではない)",
+        "PR diff の head SHA 91e3fca はこの lock 追加のみの変更 (git show 91e3fca)",
+        "CI run 31277771209 で全 27 integration test と 7 PG test が success"
+      ],
+      "affected_component": "tests/MinimalBankSystem.IntegrationTests/ApiRuntimeContractTests.cs (ConsoleCapture)",
+      "root_cause_candidate": null
+    }
+  ],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": true,
+    "summary": "PostgreSQL test 7/7 を実 Docker コンテナで通過 (dotnet test --filter Category=PostgreSqlIntegration, 10s)。dotnet restore / build は success, 0 warnings / 0 errors。dotnet test --list-tests で 27 integration + 3 unit + 7 PG tests が discovery されることを確認。ApiRuntimeContractTests (FND-02) は local Windows testhost で process crash を起こすが、base commit 7946cc5 でも再現する pre-existing な Windows 環境依存問題であり、本 PR が原因ではない。CI (Linux) では 27/27 通過しており PR verification evidence としては十分。"
+  },
+  "recorded_at": "2026-08-09T07:55:00Z",
+  "notes": "local Windows (Docker Desktop 4.85.0) で ApiRuntimeContractTests 系の ConsoleCapture を使う test が testhost process crash を起こす。本 PR の head 91e3fca だけでなく base 7946cc5 でも再現するため、pre-existing な FND-02 由来の問題であり、本 PR (FND-03) が原因ではない。CI (Linux) では 27/27 通過しているため、PR verification evidence としては問題なし。レビュー中、benchmark scoring 結果 / 他 reviewer の verdict / Gold Review は一切参照していない (docs/benchmarks/fnd03-model-comparison/summary.md 等は開いていない)。docs/benchmarks/fnd02-model-comparison/review-benchmark/ 配下も参照していない。PR #104 上の既存 review / inline thread も参照していない。Microsoft.NET.Test.Sdk 18.8.1 という version は Release された version として実在する .NET testing SDK (preview を含む) であるかの独立確認はしていないが、CI で restore / build / test が成功しているため functional な問題は無い。"
+}

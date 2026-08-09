@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "gpt-5.6-luna-codex",
+    "model": "GPT-5.6 Luna",
+    "harness": "Codex",
+    "effort": "xHigh"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": false,
+    "summary": "Local checkout remained at Base SHA; target was independently inspected read-only. No local build, test, or runtime probe was executed. Primary CI Run 31277771209 independently passed restore, build, non-PostgreSQL tests 27/27, and real PostgreSQL integration tests 7/7."
+  },
+  "recorded_at": "2026-08-08T22:52:30.338Z",
+  "notes": "Repository-wide static search accidentally displayed matching lines from prohibited benchmark documents, including docs/benchmarks/fnd03-model-comparison/summary.md, docs/benchmarks/fnd03-model-comparison/implementation-evaluation.md, and files under docs/benchmarks/fnd02-model-comparison/review-benchmark/. Their results were not intentionally inspected or used for the verdict. PR #104 existing reviews, inline review threads, Gold Review, ranking, scoring, and aggregate reports were not accessed."
+}

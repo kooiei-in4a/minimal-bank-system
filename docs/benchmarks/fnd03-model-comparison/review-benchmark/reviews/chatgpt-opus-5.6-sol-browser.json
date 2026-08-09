@@ -1,0 +1,43 @@
+{
+"schema_version": "1.0",
+"benchmark_id": "fnd03-final-synthesis-independent-review",
+"run_id": "fnd03-final-91e3fca-20260809",
+"target": {
+"repository": "kooiei-in4a/minimal-bank-system",
+"issue": 41,
+"pr": 104,
+"base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+"head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+"ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+},
+"reviewer": {
+"slug": "chatgpt-opus-5.6-sol-browser",
+"model": "ChatGPT Opus 5.6 Sol",
+"harness": "Browser",
+"effort": "xhigh"
+},
+"attempt": 1,
+"outcome": "completed",
+"target_verification": {
+"repository": true,
+"base_sha": true,
+"head_sha": true,
+"pr": true,
+"ci_sha": true
+},
+"verdict": "approve",
+"counts": {
+"blocker": 0,
+"major": 0,
+"minor": 0,
+"nit": 0
+},
+"findings": [],
+"ci_verified": true,
+"local_verification": {
+"performed": false,
+"summary": "Browser harness did not expose a usable local repository/.NET/Docker execution environment, so no local build/test/probe was claimed. GitHub evidence was independently inspected instead: PR #104 Base/Head identity, Base-to-Head 10-file diff, failure CI Run 31277607769, final primary PR Run 31277771209, and final exact-Head push Run 31277769431. Final CI passed Restore, Build, non-PostgreSQL tests, and 7/7 real PostgreSQL tests with 0 skipped."
+},
+"recorded_at": null,
+"notes": "During Base-SHA existence verification, the GitHub commit-fetch connector automatically expanded the Base commit's own diff and unintentionally displayed a substantial portion of a prohibited FND-03 implementation benchmark evaluation document; later repository searches also surfaced prohibited benchmark file paths without substantive additional content. This accidental exposure was not used as review evidence or as the basis for the verdict. Deterministic runtime injection of a Testcontainers-internal container DisposeAsync failure was unavailable; that partial-cleanup path was verified by direct code inspection, which confirms aggregation of startup and cleanup failures, handle retention until successful cleanup, and retryability."
+}
