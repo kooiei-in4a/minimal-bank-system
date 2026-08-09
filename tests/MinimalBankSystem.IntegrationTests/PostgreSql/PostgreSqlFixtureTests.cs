@@ -104,6 +104,135 @@ public sealed class PostgreSqlFixtureTests(PostgreSqlContainerFixture fixture)
             $"Expected overlapping PostgreSQL work, but observed {intervals[0]} and {intervals[1]}.");
     }
 
+    [Fact]
+    public async Task ContainerCleanupHandleIsCapturedAfterStartup()
+    {
+        Assert.NotNull(Fixture.CleanupHandle);
+        Assert.NotEmpty(Fixture.CleanupHandle!.ContainerId);
+        Assert.True(Fixture.HasContainerReference);
+    }
+
+    [Fact]
+    public async Task ActualContainerIsRemovedAfterSuccessfulCleanup()
+    {
+        PostgreSqlContainerFixture standalone = new();
+
+        try
+        {
+            await standalone.InitializeAsync();
+
+            Assert.NotNull(standalone.CleanupHandle);
+            string containerId = standalone.CleanupHandle!.ContainerId;
+            Assert.NotEmpty(containerId);
+
+            bool existsBefore = await ContainerExistsViaDockerCli(containerId);
+            Assert.True(existsBefore, "Container should exist before cleanup.");
+
+            await standalone.DisposeAsync();
+
+            bool existsAfter = await ContainerExistsViaDockerCli(containerId);
+            Assert.False(existsAfter, "Container should be removed after successful cleanup.");
+        }
+        finally
+        {
+            await standalone.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task TestcontainersDisposedStateIsLatchedAfterFirstDispose()
+    {
+        Testcontainers.PostgreSql.PostgreSqlContainer directContainer =
+            new Testcontainers.PostgreSql.PostgreSqlBuilder(PostgreSqlContainerFixture.ImageReference)
+                .WithDatabase("test_disposed_state")
+                .WithUsername("postgres")
+                .WithPassword("test-only-password")
+                .Build();
+
+        try
+        {
+            await directContainer.StartAsync();
+            string containerId = directContainer.Id;
+
+            await directContainer.DisposeAsync();
+
+            bool existsAfterFirstDispose = await ContainerExistsViaDockerCli(containerId);
+            Assert.False(existsAfterFirstDispose, "Container should be removed after first DisposeAsync.");
+
+            await directContainer.DisposeAsync();
+
+            bool existsAfterSecondDispose = await ContainerExistsViaDockerCli(containerId);
+            Assert.False(existsAfterSecondDispose, "Second DisposeAsync should be a no-op.");
+        }
+        finally
+        {
+            await directContainer.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task FallbackCleanupRemovesContainerWhenPrimaryFails()
+    {
+        PostgreSqlContainerFixture standalone = new();
+
+        try
+        {
+            await standalone.InitializeAsync();
+
+            Assert.NotNull(standalone.CleanupHandle);
+            string containerId = standalone.CleanupHandle!.ContainerId;
+
+            bool existsBefore = await ContainerExistsViaDockerCli(containerId);
+            Assert.True(existsBefore, "Container should exist before cleanup.");
+
+            await standalone.CleanupHandle.ForceRemoveAsync();
+
+            bool existsAfterFallback = await ContainerExistsViaDockerCli(containerId);
+            Assert.False(existsAfterFallback, "Container should be removed after fallback cleanup.");
+
+            await standalone.DisposeAsync();
+        }
+        finally
+        {
+            await standalone.DisposeAsync();
+        }
+    }
+
+    private static async Task<bool> ContainerExistsViaDockerCli(string containerId)
+    {
+        System.Diagnostics.ProcessStartInfo startInfo = new("docker", $"ps -q --filter \"id={containerId}\"")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        using System.Diagnostics.Process process = new() { StartInfo = startInfo };
+
+        try
+        {
+            process.Start();
+        }
+        catch
+        {
+            return false;
+        }
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            string stdout = await process.StandardOutput.ReadToEndAsync(cts.Token);
+            await process.WaitForExitAsync(cts.Token);
+            return !string.IsNullOrWhiteSpace(stdout);
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(); } catch { }
+            return false;
+        }
+    }
+
     private static async Task<ExecutionInterval> MeasureServerExecutionAsync(string connectionString)
     {
         await using NpgsqlConnection connection = new(connectionString);

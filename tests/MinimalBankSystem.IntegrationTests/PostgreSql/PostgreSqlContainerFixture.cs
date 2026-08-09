@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using Npgsql;
@@ -17,6 +18,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
     private PostgreSqlContainer? container;
+    private ContainerCleanupHandle? cleanupHandle;
 
     public PostgreSqlContainerFixture()
     {
@@ -32,6 +34,20 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
             "The PostgreSQL test container is not running. Fixture initialization must succeed first.");
+
+    internal ContainerCleanupHandle? CleanupHandle => cleanupHandle;
+
+    internal bool HasContainerReference => container is not null;
+
+    internal async Task<bool> ActualContainerExistsAsync()
+    {
+        if (cleanupHandle is null)
+        {
+            return false;
+        }
+
+        return await cleanupHandle.IsContainerRunningAsync();
+    }
 
     public Task InitializeAsync() => InitializeAsync(CancellationToken.None);
 
@@ -54,6 +70,21 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+
+            string? containerId = null;
+            try
+            {
+                containerId = candidate.Id;
+            }
+            catch
+            {
+            }
+
+            if (containerId is not null)
+            {
+                cleanupHandle = new ContainerCleanupHandle(containerId);
+            }
+
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -66,49 +97,101 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         }
         catch (Exception startupException)
         {
-            Exception? cleanupException = null;
+            List<Exception> failures = [startupException];
 
             try
             {
                 await candidate.DisposeAsync();
                 container = null;
+                cleanupHandle = null;
             }
-            catch (Exception exception)
+            catch (Exception cleanupException)
             {
-                cleanupException = exception;
-            }
+                failures.Add(cleanupException);
 
-            Exception cause = cleanupException is null
-                ? startupException
-                : new AggregateException(startupException, cleanupException);
+                if (cleanupHandle is not null)
+                {
+                    try
+                    {
+                        await cleanupHandle.ForceRemoveAsync(cancellationToken);
+                        container = null;
+                        cleanupHandle = null;
+                    }
+                    catch (Exception fallbackException)
+                    {
+                        failures.Add(fallbackException);
+                    }
+                }
+            }
 
             throw new InvalidOperationException(
                 $"Failed to start and connect to the PostgreSQL test container using '{ImageReference}'. " +
                 "PostgreSQL integration tests require Docker and never fall back to another provider.",
-                cause);
+                failures.Count == 1 ? failures[0] : new AggregateException(failures));
         }
     }
 
     public async Task DisposeAsync()
     {
         PostgreSqlContainer? candidate = container;
+        ContainerCleanupHandle? handle = cleanupHandle;
 
-        if (candidate is null)
+        if (candidate is null && handle is null)
         {
             return;
         }
 
-        try
+        if (candidate is not null)
         {
-            await candidate.DisposeAsync();
-            container = null;
+            try
+            {
+                await candidate.DisposeAsync();
+                container = null;
+                cleanupHandle = null;
+                return;
+            }
+            catch (Exception disposeException)
+            {
+                if (handle is not null)
+                {
+                    try
+                    {
+                        await handle.ForceRemoveAsync();
+                        container = null;
+                        cleanupHandle = null;
+                        return;
+                    }
+                    catch (Exception fallbackException)
+                    {
+                        throw new InvalidOperationException(
+                            $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
+                            $"Container ID: {handle.ContainerId}. " +
+                            "Both primary and fallback cleanup failed.",
+                            new AggregateException(disposeException, fallbackException));
+                    }
+                }
+
+                throw new InvalidOperationException(
+                    $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
+                    "The Testcontainers instance is in a poisoned state and no independent cleanup handle exists.",
+                    disposeException);
+            }
         }
-        catch (Exception exception)
+
+        if (handle is not null)
         {
-            throw new InvalidOperationException(
-                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
-                exception);
+            try
+            {
+                await handle.ForceRemoveAsync();
+                cleanupHandle = null;
+            }
+            catch (Exception fallbackException)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to remove the PostgreSQL test container using fallback cleanup. " +
+                    $"Container ID: {handle.ContainerId}.",
+                    fallbackException);
+            }
         }
     }
 
@@ -298,5 +381,96 @@ public sealed class PostgreSqlTestDatabase : IAsyncDisposable
         {
             cleanupGate.Release();
         }
+    }
+}
+
+internal sealed class ContainerCleanupHandle
+{
+    public ContainerCleanupHandle(string containerId)
+    {
+        ContainerId = containerId;
+    }
+
+    public string ContainerId { get; }
+
+    public async Task ForceRemoveAsync(CancellationToken cancellationToken = default)
+    {
+        ProcessStartInfo startInfo = new("docker", $"rm -f {ContainerId}")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        using Process process = new() { StartInfo = startInfo };
+
+        try
+        {
+            process.Start();
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException(
+                $"Failed to start Docker CLI for container removal. Container ID: {ContainerId}.",
+                exception);
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+
+        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(timeout.Token);
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync(timeout.Token);
+
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(); } catch { }
+            throw new InvalidOperationException(
+                $"Docker CLI timed out while removing container {ContainerId}.");
+        }
+
+        await stdoutTask;
+        string stderr = await stderrTask;
+
+        if (process.ExitCode != 0 && !stderr.Contains("No such container", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Docker CLI failed to remove container {ContainerId}. Exit code: {process.ExitCode}. Error: {stderr.Trim()}");
+        }
+    }
+
+    public async Task<bool> IsContainerRunningAsync(CancellationToken cancellationToken = default)
+    {
+        ProcessStartInfo startInfo = new("docker", $"inspect {ContainerId}")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        using Process process = new() { StartInfo = startInfo };
+
+        try
+        {
+            process.Start();
+        }
+        catch
+        {
+            return false;
+        }
+
+        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+        await process.WaitForExitAsync(cancellationToken);
+        await stdoutTask;
+        await stderrTask;
+
+        return process.ExitCode == 0;
     }
 }
