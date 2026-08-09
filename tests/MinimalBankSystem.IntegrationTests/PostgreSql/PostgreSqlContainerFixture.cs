@@ -16,20 +16,41 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
-    private PostgreSqlContainer? container;
+    private readonly Func<IPostgreSqlTestContainer>? containerFactory;
+    private readonly IContainerResourceCleanup containerResourceCleanup;
+    private IPostgreSqlTestContainer? container;
+    private ContainerCleanupOwner? containerCleanupOwner;
 
     public PostgreSqlContainerFixture()
+        : this(null, new DockerCliContainerResourceCleanup(null), null)
     {
     }
 
     internal PostgreSqlContainerFixture(string dockerEndpoint)
+        : this(dockerEndpoint, new DockerCliContainerResourceCleanup(dockerEndpoint), null)
+    {
+    }
+
+    internal PostgreSqlContainerFixture(
+        Func<IPostgreSqlTestContainer> containerFactory,
+        IContainerResourceCleanup containerResourceCleanup)
+        : this(null, containerResourceCleanup, containerFactory)
+    {
+    }
+
+    private PostgreSqlContainerFixture(
+        string? dockerEndpoint,
+        IContainerResourceCleanup containerResourceCleanup,
+        Func<IPostgreSqlTestContainer>? containerFactory)
     {
         this.dockerEndpoint = dockerEndpoint;
+        this.containerResourceCleanup = containerResourceCleanup;
+        this.containerFactory = containerFactory;
     }
 
     public int ServerVersionNumber { get; private set; }
 
-    internal PostgreSqlContainer Container =>
+    internal IPostgreSqlTestContainer Container =>
         container ?? throw new InvalidOperationException(
             "The PostgreSQL test container is not running. Fixture initialization must succeed first.");
 
@@ -37,23 +58,15 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     internal async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        string password = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        PostgreSqlBuilder builder = new PostgreSqlBuilder(ImageReference)
-            .WithDatabase(AdministrativeDatabaseName)
-            .WithUsername("postgres")
-            .WithPassword(password);
-
-        if (dockerEndpoint is not null)
-        {
-            builder = builder.WithDockerEndpoint(dockerEndpoint);
-        }
-
-        PostgreSqlContainer candidate = builder.Build();
+        IPostgreSqlTestContainer candidate = CreateContainer();
         container = candidate;
+        ContainerCleanupOwner cleanupOwner = new(candidate.DisposeAsync, containerResourceCleanup);
+        containerCleanupOwner = cleanupOwner;
 
         try
         {
             await candidate.StartAsync(cancellationToken);
+            CaptureContainerIdentity(cleanupOwner, candidate);
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -70,12 +83,17 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
             try
             {
-                await candidate.DisposeAsync();
-                container = null;
+                CaptureContainerIdentity(cleanupOwner, candidate);
+                await cleanupOwner.DisposeAsync(cancellationToken);
             }
             catch (Exception exception)
             {
                 cleanupException = exception;
+            }
+
+            if (cleanupOwner.IsReleased)
+            {
+                ClearContainerOwnership(cleanupOwner);
             }
 
             Exception cause = cleanupException is null
@@ -91,25 +109,31 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        PostgreSqlContainer? candidate = container;
+        ContainerCleanupOwner? cleanupOwner = containerCleanupOwner;
 
-        if (candidate is null)
+        if (cleanupOwner is null)
         {
             return;
         }
 
         try
         {
-            await candidate.DisposeAsync();
-            container = null;
+            await cleanupOwner.DisposeAsync();
         }
         catch (Exception exception)
         {
+            if (cleanupOwner.IsReleased)
+            {
+                ClearContainerOwnership(cleanupOwner);
+            }
+
             throw new InvalidOperationException(
                 $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
+                "The original cleanup failure remains visible; any retry uses the independent Docker cleanup path.",
                 exception);
         }
+
+        ClearContainerOwnership(cleanupOwner);
     }
 
     public async Task<PostgreSqlTestDatabase> CreateDatabaseAsync(
@@ -240,7 +264,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     }
 
     private static string BuildConnectionString(
-        PostgreSqlContainer candidate,
+        IPostgreSqlTestContainer candidate,
         string databaseName)
     {
         NpgsqlConnectionStringBuilder builder = new(candidate.GetConnectionString())
@@ -256,6 +280,54 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     private static string QuoteIdentifier(string identifier) =>
         $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+
+    internal bool HasOutstandingContainerCleanup =>
+        containerCleanupOwner?.HasOutstandingResource == true;
+
+    private IPostgreSqlTestContainer CreateContainer()
+    {
+        if (containerFactory is not null)
+        {
+            return containerFactory();
+        }
+
+        string password = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        PostgreSqlBuilder builder = new PostgreSqlBuilder(ImageReference)
+            .WithDatabase(AdministrativeDatabaseName)
+            .WithUsername("postgres")
+            .WithPassword(password);
+
+        if (dockerEndpoint is not null)
+        {
+            builder = builder.WithDockerEndpoint(dockerEndpoint);
+        }
+
+        return new TestcontainersPostgreSqlTestContainer(builder.Build());
+    }
+
+    private static void CaptureContainerIdentity(
+        ContainerCleanupOwner cleanupOwner,
+        IPostgreSqlTestContainer candidate)
+    {
+        try
+        {
+            cleanupOwner.CaptureContainer(candidate.Id);
+        }
+        catch (InvalidOperationException)
+        {
+            // Docker did not create a container, so no independent cleanup identity exists.
+        }
+    }
+
+    private void ClearContainerOwnership(ContainerCleanupOwner cleanupOwner)
+    {
+        if (ReferenceEquals(containerCleanupOwner, cleanupOwner))
+        {
+            container = null;
+            containerCleanupOwner = null;
+            cleanupOwner.Dispose();
+        }
+    }
 }
 
 public sealed class PostgreSqlTestDatabase : IAsyncDisposable
