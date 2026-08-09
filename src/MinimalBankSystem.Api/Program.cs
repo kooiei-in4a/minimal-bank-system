@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,10 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+
+string? databaseConnectionString = builder.Configuration.GetConnectionString("Database");
+builder.Services.AddDbContext<BankDbContext>(
+    options => BankDbContextOptions.Configure(options, databaseConnectionString));
 
 WebApplication app = builder.Build();
 

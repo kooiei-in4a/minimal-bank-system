@@ -55,6 +55,23 @@ fallback.
 This fixture does not provide an application `DbContext`, migrations, business schema, or
 business tables. Those remain outside FND-03.
 
+## FND-04 migration tests
+
+FND-04 adds `Migrations/` tests on top of the FND-03 fixture:
+
+- `MigrationApplicationTests`: runs the real `MinimalBankSystem.Migrator` process against a clean
+  database, verifies exit 0, `public.__EFMigrationsHistory` records `InitialFoundation`, and no
+  business tables / sequences / triggers are created. A rerun is safe and does not duplicate history.
+- `MigrationFailureTests`: missing or unreachable connection configuration makes the migrator exit
+  non-zero without a provider fallback and without leaking the password.
+- `ApiNoAutoMigrationTests`: starts the real API process against a clean database and verifies
+  migration history and schema are unchanged before and after startup.
+- `PendingModelChangesTests`: verifies the real EF `HasPendingModelChanges()` mechanism reports no
+  drift for the baseline model.
+
+The migrator process is launched from its own build output so framework-dependent assemblies
+resolve exactly like a normal `dotnet run` execution.
+
 ## Parallel policy
 
 - Parallel-safe scope: work against independently owned databases. The concurrency test verifies

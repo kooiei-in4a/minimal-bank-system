@@ -10,6 +10,7 @@ public sealed class SolutionConfigurationTests
         "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
         "src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj",
         "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
+        "src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj",
         "tests/MinimalBankSystem.UnitTests/MinimalBankSystem.UnitTests.csproj",
         "tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj",
     ];
@@ -43,12 +44,18 @@ public sealed class SolutionConfigurationTests
         AssertProjectReferences(
             repositoryRoot,
             "src/MinimalBankSystem.Api/MinimalBankSystem.Api.csproj",
-            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj");
+            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
+            "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj");
 
         AssertProjectReferences(
             repositoryRoot,
-            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
+            "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
             "src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj");
+
+        AssertProjectReferences(
+            repositoryRoot,
+            "src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj",
+            "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj");
 
         AssertProjectReferences(
             repositoryRoot,
