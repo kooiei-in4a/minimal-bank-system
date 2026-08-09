@@ -16,18 +16,38 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
+    private readonly IDockerContainerReclaimer containerReclaimer;
+    private readonly Exception? startupFaultAfterContainerStart;
     private PostgreSqlContainer? container;
+    private string? ownedContainerId;
 
     public PostgreSqlContainerFixture()
+        : this(dockerEndpoint: null, containerReclaimer: null, startupFaultAfterContainerStart: null)
     {
     }
 
     internal PostgreSqlContainerFixture(string dockerEndpoint)
+        : this(dockerEndpoint, containerReclaimer: null, startupFaultAfterContainerStart: null)
+    {
+    }
+
+    internal PostgreSqlContainerFixture(
+        string? dockerEndpoint,
+        IDockerContainerReclaimer? containerReclaimer,
+        Exception? startupFaultAfterContainerStart = null)
     {
         this.dockerEndpoint = dockerEndpoint;
+        this.containerReclaimer = containerReclaimer ?? new CliDockerContainerReclaimer();
+        this.startupFaultAfterContainerStart = startupFaultAfterContainerStart;
     }
 
     public int ServerVersionNumber { get; private set; }
+
+    /// <summary>
+    /// Docker container identity retained for independent reclaim after a poisoned
+    /// Testcontainers dispose latch. Cleared only after the daemon resource is gone.
+    /// </summary>
+    internal string? OwnedContainerId => ownedContainerId;
 
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
@@ -54,6 +74,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+            CaptureOwnedContainerId(candidate);
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -63,15 +84,21 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
                     $"Expected PostgreSQL 18.4 (server_version_num {ExpectedServerVersionNumber}), " +
                     $"but the container reported {ServerVersionNumber}.");
             }
+
+            if (startupFaultAfterContainerStart is not null)
+            {
+                throw startupFaultAfterContainerStart;
+            }
         }
         catch (Exception startupException)
         {
+            CaptureOwnedContainerId(candidate);
+
             Exception? cleanupException = null;
 
             try
             {
-                await candidate.DisposeAsync();
-                container = null;
+                await ReclaimOwnedContainerAsync(cancellationToken);
             }
             catch (Exception exception)
             {
@@ -91,23 +118,21 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        PostgreSqlContainer? candidate = container;
-
-        if (candidate is null)
+        if (ownedContainerId is null && container is null)
         {
             return;
         }
 
         try
         {
-            await candidate.DisposeAsync();
-            container = null;
+            await ReclaimOwnedContainerAsync(CancellationToken.None);
         }
         catch (Exception exception)
         {
             throw new InvalidOperationException(
                 $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
+                "Docker container identity remains owned for an independent reclaim path; " +
+                "retrying DisposeAsync on a poisoned Testcontainers instance is not treated as cleanup success.",
                 exception);
         }
     }
@@ -207,6 +232,66 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
             throw new InvalidOperationException(
                 $"PostgreSQL connection failed while {operation}.",
                 cause);
+        }
+    }
+
+    private void CaptureOwnedContainerId(PostgreSqlContainer candidate)
+    {
+        if (ownedContainerId is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            ownedContainerId = candidate.Id;
+        }
+        catch (InvalidOperationException)
+        {
+            // Container was never created on the daemon.
+        }
+    }
+
+    private async Task ReclaimOwnedContainerAsync(CancellationToken cancellationToken)
+    {
+        string? id = ownedContainerId;
+        PostgreSqlContainer? candidate = container;
+
+        if (id is not null)
+        {
+            if (await containerReclaimer.ExistsAsync(id, cancellationToken))
+            {
+                await containerReclaimer.RemoveForceAsync(id, cancellationToken);
+
+                if (await containerReclaimer.ExistsAsync(id, cancellationToken))
+                {
+                    throw new InvalidOperationException(
+                        $"Docker container '{id}' still exists after forced removal.");
+                }
+            }
+
+            ownedContainerId = null;
+        }
+
+        container = null;
+        await DisposeManagedContainerBestEffortAsync(candidate);
+    }
+
+    private static async Task DisposeManagedContainerBestEffortAsync(PostgreSqlContainer? candidate)
+    {
+        if (candidate is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await candidate.DisposeAsync();
+        }
+        catch (Exception)
+        {
+            // Managed dispose is best-effort after authoritative Docker reclaim.
+            // A poisoned Testcontainers instance may no-op or throw; neither releases ownership.
         }
     }
 
