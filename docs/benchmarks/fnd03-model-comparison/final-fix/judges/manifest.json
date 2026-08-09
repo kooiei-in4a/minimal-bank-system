@@ -1,9 +1,18 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "benchmark_id": "fnd03-final-code-major-fix",
   "artifact_type": "independent_judge_evaluations",
   "storage_note": "Each submitted judge result is stored as ordered UTF-8 Markdown parts for repository readability. source_sha256 records the original uploaded file bytes; GitHub text storage may normalize line endings, so source_sha256 is provenance metadata rather than a hash of concatenated GitHub parts.",
-  "synthesis_status": "not_started",
+  "synthesis_status": "completed",
+  "synthesis": {
+    "path": "judges/synthesis.md",
+    "commit_sha": "2ab92be6463978a9f3d8a83f5768102dcb3fbe61",
+    "method": "primary-evidence finding adjudication; raw judge scores were not averaged",
+    "top_candidate": "gpt-5.6-sol-codex",
+    "top_score": 94,
+    "merge_ready_count": 1,
+    "recommendation": "B"
+  },
   "judges": [
     {
       "evaluator_model": "GPT-5.6 Sol",
