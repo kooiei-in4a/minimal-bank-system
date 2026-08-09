@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-code-major-fix",
+  "repository": "kooiei-in4a/minimal-bank-system",
+  "target_issue": 41,
+  "target_pr": 104,
+  "common_base_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+  "status": "prepared",
+  "candidates": [
+    {"slug":"gpt-5.6-sol-codex","model":"GPT-5.6 Sol","harness":"Codex","effort":"xHigh","branch":"agent/issue-41-fnd-03-fix-gpt-5.6-sol-codex","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"gpt-5.6-terra-codex","model":"GPT-5.6 Terra","harness":"Codex","effort":"xHigh","branch":"agent/issue-41-fnd-03-fix-gpt-5.6-terra-codex","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"gpt-5.6-luna-codex","model":"GPT-5.6 Luna","harness":"Codex","effort":"xHigh","branch":"agent/issue-41-fnd-03-fix-gpt-5.6-luna-codex","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"claude-opus-5-claude-code","model":"Claude Opus 5","harness":"Claude Code","effort":"xhigh","branch":"agent/issue-41-fnd-03-fix-claude-opus-5-claude-code","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"claude-sonnet-5-claude-code","model":"Claude Sonnet 5","harness":"Claude Code","effort":"xhigh","branch":"agent/issue-41-fnd-03-fix-claude-sonnet-5-claude-code","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"grok-4.5-cursor","model":"Grok 4.5","harness":"Cursor","effort":"high fast","branch":"agent/issue-41-fnd-03-fix-grok-4.5-cursor","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"composer-2.5-cursor","model":"Composer 2.5","harness":"Cursor","effort":null,"branch":"agent/issue-41-fnd-03-fix-composer-2.5-cursor","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"deepseek-v4-pro-opencode","model":"DeepSeek V4 Pro","harness":"Open Code","effort":"specified","branch":"agent/issue-41-fnd-03-fix-deepseek-v4-pro-opencode","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"deepseek-v4-flash-opencode","model":"DeepSeek V4 Flash","harness":"Open Code","effort":"specified","branch":"agent/issue-41-fnd-03-fix-deepseek-v4-flash-opencode","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"qwen3.7-plus-opencode","model":"Qwen3.7 Plus","harness":"Open Code","effort":"MAX","branch":"agent/issue-41-fnd-03-fix-qwen3.7-plus-opencode","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"gpt-5.6-luna-opencode","model":"GPT-5.6 Luna","harness":"Open Code","effort":"Xhigh","branch":"agent/issue-41-fnd-03-fix-gpt-5.6-luna-opencode","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"mimo-v2.5-pro-opencode","model":"MiMo-V2.5-Pro","harness":"Open Code","effort":null,"branch":"agent/issue-41-fnd-03-fix-mimo-v2.5-pro-opencode","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"mimo-v2.5-opencode","model":"MiMo-V2.5","harness":"Open Code","effort":null,"branch":"agent/issue-41-fnd-03-fix-mimo-v2.5-opencode","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"},
+    {"slug":"minimax-m3-opencode","model":"MiniMax M3","harness":"Open Code","effort":"specified","branch":"agent/issue-41-fnd-03-fix-minimax-m3-opencode","head_sha":null,"pr":null,"ci_run":null,"duration_minutes":null,"outcome":"pending"}
+  ]
+}
