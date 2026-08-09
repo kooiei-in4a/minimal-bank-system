@@ -263,3 +263,56 @@ FND-02の`review-benchmark/raw-results.md`は移行前のhistorical artifactと�
 - `templates/review-result-template.md`
 
 schema revisionを変更する場合、run identityへ使用schema versionを記録する。
+
+## 16. FND-04 review-design improvements
+
+FND-03では17 reviewerすべてが後に確定したmerge-blocking root causeを見逃した。FND-04以降は、同一promptを多数へ複製するだけでなく**review roleの異質性**を事前設計する。
+
+### 16.1 Reviewer role diversity
+
+標準reviewer poolは約6枠を目安とし、run identityへ各reviewerのprimary roleを固定する。
+
+代表role:
+
+- specification / scope
+- framework / official-source semantics
+- runtime / failure injection
+- test assurance / false assurance
+- minimality / maintainability
+- fast independent review
+
+同一reviewerが複数roleを兼ねてもよいが、全reviewerが同じ観点だけを見る構成を避ける。
+
+### 16.2 Pre-locked assumption audit
+
+Gold作成前に、Issue別assumption ledgerの外部library / framework前提を一次sourceまたはruntime probeで監査する。
+
+Goldは可能な限りraw reviewer結果を読む前に固定する。後からGold revisionが必要になった場合は従来どおりrevision reasonを残し、`post_hoc_adjudication`等で明示する。
+
+### 16.3 Real target and Controlled Mutant
+
+review能力測定では、必要に応じて2種類のtargetを分離する。
+
+- **Real target**: 実際のFinal Synthesis。未知の問題を探索し、product merge gateへ寄与する。
+- **Controlled Mutant**: 正しいsnapshotへ事前定義した欠陥を注入したreview専用target。TP / FP / FNとSeverity accuracyをpre-locked Goldで測る。
+
+Controlled Mutantはproduct branchへmergeしない。mutation specification / Goldはreviewer raw capture完了まで非公開とし、repository内のreviewer探索対象へ漏らさない。
+
+Real targetの未知findingとControlled Mutantの既知Gold scoreを同じ意味のTotalへ混ぜない。
+
+### 16.4 Judge quorum
+
+最終adjudicationは原則2 Judgeから開始する。
+
+- reference verdictと主要root causeが一致: 2 Judgeでsynthesis可能
+- verdict、Blocker/Major、主要root cause、merge-ready candidateが不一致: 第3 Judgeを追加
+
+第3 Judgeを常設しない。追加理由をmanifestへ記録する。
+
+Judgeはraw scoreを単純平均せず、一次証拠でFindingを裁定する。
+
+### 16.5 Best-effort identity masking
+
+Judgeへcandidateの過去rank / score /評判を与えない。可能な場合は評価sheet上でcandidateを`C-01`等へ匿名化し、採点完了後にModel + Harness identityへ戻す。
+
+GitHub branch / PR名からidentityが推測可能な場合は完全blindとは表現しない。

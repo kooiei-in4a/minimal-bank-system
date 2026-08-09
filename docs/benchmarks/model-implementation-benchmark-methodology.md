@@ -2,7 +2,7 @@
 
 - Status: Active
 - Initial version: 2026-08-08
-- Updated: 2026-08-08（Issue #40 FND-02の比較で得た再利用可能な検証知見を反映）
+- Updated: 2026-08-09（Issue #41 FND-03の実装・レビュー・Major修正benchmarkから得た知見を反映）
 - Origin: Issue #39 FND-01 model comparison experiment
 - Applies to: 同一Issueを複数のModel + Agent/Harnessで独立実装し、実コードを比較評価する実験
 
@@ -382,3 +382,126 @@ Issue固有の評価内容は各reportへ置き、共通方法論をこの文書
 - 特定モデルにだけ有利な変更をしない。
 - 実験途中の変更は理由と適用範囲を記録する。
 - 製品開発の通常フローよりbenchmark運用が優先されないようにする。
+
+## 19. Candidate pool lifecycle
+
+FND-04以降、候補数を毎回固定せず、過去のrepository内benchmark実績からcandidate poolを事前に分類してよい。
+
+分類:
+
+- `active`: 直近複数Issueで安定した実装品質または比較価値があり、primary poolへ継続参加する。
+- `challenger`: 速度、異なるHarness、異なる設計傾向等の比較価値を持ち、少数枠で参加する。
+- `reserve`: 現runでは参加しないが、次回rotationや課題適性により再参加できる。
+- `suspended`: no-result、no-change、低品質、同種Majorの反復等により一時休止する。
+
+`suspended`は永久除外を意味しない。model version変更、Harness大幅更新、または定期calibration slotで再参加できる。
+
+推奨suspension signal:
+
+- 2回連続の`no_result / wrong_target / no-change / incomplete`
+- 直近3 implementation attemptのうち2回で60点未満
+- Issueの核心に関する同種Majorを複数回反復
+
+candidate poolは**実装開始前に**Issue別run identityへ固定し、結果を見て途中追加・除外しない。
+
+## 20. Formal Self-Review experiment mode
+
+通常のAgent A責務としてのself-reviewは維持する。その上で、benchmarkでself-correction能力を測る場合は次の3段階を使用する。
+
+```text
+H0 — Implementation Snapshot
+  -> Formal Self-Review (SR)
+  -> H1 — Self-Review Fix Snapshot
+```
+
+### H0
+
+- 共通baseから実装する。
+- 必須local verificationを実行する。
+- Draft PRを作成し、H0 full HeadとCIを固定する。
+- H0固定後は、SR開始までコードを変更しない。
+
+### Formal Self-Review
+
+- 原則として同じModel + Harnessをfresh context / review-only modeで使用する。
+- 対象はH0 exact Headとする。
+- 他candidate、外部reviewer、Gold、score、rankingを参照しない。
+- review中はコードを変更しない。
+- `schemas/self-review-result.schema.json`と`templates/self-review-template.md`に従ってFindingを固定する。
+
+### H1
+
+- Agent Aへ戻り、SR Findingを`accepted / rejected`へ分類する。
+- accepted Findingだけを修正し、rejected理由を記録する。
+- 必須verificationとCIを再実行し、H1 full Headを最終candidate snapshotとする。
+
+H0はH1の履歴から失われないようfull SHAをrun registryへ保持する。H0とH1の処理時間も分けて記録する。
+
+### Self-Review metrics
+
+最終Coding Scoreは原則H1を主ランキングへ使用する。追加で次を別軸として記録する。
+
+- H0 Coding Score
+- H1 Coding Score
+- `Self-Review Gain = H1 - H0`
+- valid SR findings
+- SR false positives
+- accepted / rejected findings
+- fixed / unfixed valid findings
+- H1で新規導入したregression
+- self-review追加時間
+
+Self-Reviewの文章量やFinding件数自体は加点しない。
+
+## 21. Assumption ledger and evaluator-only probes
+
+外部framework / library semanticsがIssueの正しさへ影響する場合、candidate実装開始前にIssue別`reference/assumption-ledger.md`へ前提を固定する。
+
+最低限:
+
+- dependency / version
+- 前提とする挙動
+- authoritative source
+- 必要ならruntime probe
+- その前提を誤ると影響するAC / failure path
+
+candidate自身のvisible testだけでは品質差を識別できない場合、evaluator-only adversarial probeを事前定義してよい。probeは全candidateへ同一条件で適用し、candidateがprobe内容を事前に知る必要はない。
+
+`green CI`は有効な証拠だが、未テストのfailure pathや外部dependency semanticsの正しさを自動的に証明しない。
+
+## 22. Targeted fix round
+
+Final SynthesisまたはGold ReviewでMajorが確定した場合、全candidateを機械的に再実行することを標準としない。
+
+原則:
+
+- 上位implementation
+- 当該failure pathのtest / evidenceが強いcandidate
+- 異なる設計方式を代表するcandidate
+
+から**最大4候補程度**を事前選定してtargeted fix roundを行う。
+
+全candidate再実行が必要な場合は、研究上の理由をrun identityへ明記する。
+
+## 23. Multi-dimensional capability record
+
+1つのTotalだけでModel + Harnessを説明しない。Issue別scoreとは別に、継続比較では次を独立記録する。
+
+- Implementation Quality
+- Self-Review Gain
+- External Review Quality
+- Gold Alignment
+- Execution Reliability
+- Time / Cost
+
+実装、failure proof、review、速度のbest candidateが異なることを許容する。
+
+## 24. Product completion and benchmark archive separation
+
+productのMerge Ready / Issue Closeと、研究用benchmark archiveの完了は別gateとする。
+
+Final production implementationが通常のAgent B reviewを通過し、CI成功、merge、Issue closeまで完了した場合、次のproduct Issueの開始条件を満たす限り進行してよい。
+
+raw artifact整理、score report、annotated tag、candidate PR close、working branch cleanup等のarchive作業は別工程で実施できる。
+
+ただしarchive前にcandidate snapshotを失わないこと。archive規約のtag-before-delete順序は維持する。

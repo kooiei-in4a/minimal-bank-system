@@ -20,8 +20,10 @@
 - `schemas/review-result.schema.json`
 - `schemas/gold-review.schema.json`
 - `schemas/review-benchmark-manifest.schema.json`
+- `schemas/self-review-result.schema.json`
 - `templates/review-result-template.md`
 - `templates/review-benchmark-prompt-preamble.md`
+- `templates/self-review-template.md`
 
 ## Issue-specific reports
 
@@ -39,6 +41,11 @@
   - 14-model Major-fix
   - 3-Judge adjudication
   - final production outcome
+- `fnd04-model-comparison/README.md`
+  - PREPARED / NOT STARTED
+  - 8 implementation candidates
+  - H0 -> Formal Self-Review -> H1
+  - role-diverse review / 2+1 Judge quorum
 
 新しいimplementation benchmarkを開始する場合は`model-implementation-benchmark-methodology.md`を確認する。
 独立レビューbenchmarkを行う場合は`independent-review-benchmark-protocol.md`と共通preambleを併用する。

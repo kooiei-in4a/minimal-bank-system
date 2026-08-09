@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-implementation-self-review",
+  "repository": "kooiei-in4a/minimal-bank-system",
+  "target_issue": 42,
+  "status": "prepared_not_started",
+  "common_base_sha": null,
+  "prompt_revision": null,
+  "self_review_prompt_revision": null,
+  "workflow": [
+    "H0",
+    "formal_self_review",
+    "H1",
+    "implementation_evaluation",
+    "final_synthesis",
+    "independent_review",
+    "judge_adjudication",
+    "formal_agent_b"
+  ],
+  "implementation_candidates": [
+    {
+      "slug": "gpt-5.6-sol-codex",
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "pool": "active"
+    },
+    {
+      "slug": "gpt-5.6-terra-codex",
+      "model": "GPT-5.6 Terra",
+      "harness": "Codex",
+      "pool": "active"
+    },
+    {
+      "slug": "gpt-5.6-luna-codex",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "pool": "active"
+    },
+    {
+      "slug": "gpt-5.6-luna-opencode",
+      "model": "GPT-5.6 Luna",
+      "harness": "Open Code",
+      "pool": "active"
+    },
+    {
+      "slug": "claude-opus-5-claude-code",
+      "model": "Claude Opus 5",
+      "harness": "Claude Code",
+      "pool": "active"
+    },
+    {
+      "slug": "claude-sonnet-5-claude-code",
+      "model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "pool": "active"
+    },
+    {
+      "slug": "grok-4.5-cursor",
+      "model": "Grok 4.5",
+      "harness": "Cursor",
+      "pool": "challenger"
+    },
+    {
+      "slug": "deepseek-v4-flash-opencode",
+      "model": "DeepSeek V4 Flash",
+      "harness": "Open Code",
+      "pool": "challenger"
+    }
+  ],
+  "reserve": [
+    "qwen3.7-plus-opencode",
+    "composer-2.5-cursor",
+    "deepseek-v4-pro-opencode"
+  ],
+  "suspended": [
+    "minimax-m3-opencode",
+    "mimo-v2.5-opencode",
+    "mimo-v2.5-pro-opencode"
+  ],
+  "reviewer_slots": 6,
+  "judge_quorum": {
+    "initial": 2,
+    "conditional_tiebreaker": 1
+  },
+  "targeted_fix_max_candidates": 4,
+  "controlled_mutant": {
+    "planned": true,
+    "gold_publish_before_raw_capture": false
+  }
+}
