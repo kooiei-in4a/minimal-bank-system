@@ -1,12 +1,18 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "benchmark_id": "fnd04-implementation-self-review",
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
   "status": "prepared_not_started",
   "common_base_sha": null,
-  "prompt_revision": null,
-  "self_review_prompt_revision": null,
+  "revisions": {
+    "implementation_h0_prompt": "fnd04-h0-v1",
+    "formal_self_review_prompt": "fnd04-sr-v1",
+    "self_review_fix_h1_prompt": "fnd04-h1-v1",
+    "implementation_scoring": "fnd04-implementation-v1",
+    "evaluator_probes": "fnd04-evaluator-probes-v1",
+    "assumption_ledger": "fnd04-assumptions-v1"
+  },
   "workflow": [
     "H0",
     "formal_self_review",
@@ -18,54 +24,14 @@
     "formal_agent_b"
   ],
   "implementation_candidates": [
-    {
-      "slug": "gpt-5.6-sol-codex",
-      "model": "GPT-5.6 Sol",
-      "harness": "Codex",
-      "pool": "active"
-    },
-    {
-      "slug": "gpt-5.6-terra-codex",
-      "model": "GPT-5.6 Terra",
-      "harness": "Codex",
-      "pool": "active"
-    },
-    {
-      "slug": "gpt-5.6-luna-codex",
-      "model": "GPT-5.6 Luna",
-      "harness": "Codex",
-      "pool": "active"
-    },
-    {
-      "slug": "gpt-5.6-luna-opencode",
-      "model": "GPT-5.6 Luna",
-      "harness": "Open Code",
-      "pool": "active"
-    },
-    {
-      "slug": "claude-opus-5-claude-code",
-      "model": "Claude Opus 5",
-      "harness": "Claude Code",
-      "pool": "active"
-    },
-    {
-      "slug": "claude-sonnet-5-claude-code",
-      "model": "Claude Sonnet 5",
-      "harness": "Claude Code",
-      "pool": "active"
-    },
-    {
-      "slug": "grok-4.5-cursor",
-      "model": "Grok 4.5",
-      "harness": "Cursor",
-      "pool": "challenger"
-    },
-    {
-      "slug": "deepseek-v4-flash-opencode",
-      "model": "DeepSeek V4 Flash",
-      "harness": "Open Code",
-      "pool": "challenger"
-    }
+    {"slug":"gpt-5.6-sol-codex","model":"GPT-5.6 Sol","harness":"Codex","pool":"active"},
+    {"slug":"gpt-5.6-terra-codex","model":"GPT-5.6 Terra","harness":"Codex","pool":"active"},
+    {"slug":"gpt-5.6-luna-codex","model":"GPT-5.6 Luna","harness":"Codex","pool":"active"},
+    {"slug":"gpt-5.6-luna-opencode","model":"GPT-5.6 Luna","harness":"Open Code","pool":"active"},
+    {"slug":"claude-opus-5-claude-code","model":"Claude Opus 5","harness":"Claude Code","pool":"active"},
+    {"slug":"claude-sonnet-5-claude-code","model":"Claude Sonnet 5","harness":"Claude Code","pool":"active"},
+    {"slug":"grok-4.5-cursor","model":"Grok 4.5","harness":"Cursor","pool":"challenger"},
+    {"slug":"deepseek-v4-flash-opencode","model":"DeepSeek V4 Flash","harness":"Open Code","pool":"challenger"}
   ],
   "reserve": [
     "qwen3.7-plus-opencode",
@@ -77,14 +43,37 @@
     "mimo-v2.5-opencode",
     "mimo-v2.5-pro-opencode"
   ],
-  "reviewer_slots": 6,
+  "reviewers": [
+    {"slot":"R1","model":"GPT-5.6 Sol","harness":"Codex","role":"runtime_failure_path"},
+    {"slot":"R2","model":"Claude Opus 5","harness":"Claude Code","role":"deep_technical_test_assurance"},
+    {"slot":"R3","model":"Claude Sonnet 5","harness":"Claude Code","role":"specification_scope"},
+    {"slot":"R4","model":"ChatGPT Opus 5.6 Sol","harness":"Browser","role":"framework_official_source_cross_check","identity_reverify_before_execution":true},
+    {"slot":"R5","model":"GPT-5.6 Luna","harness":"Open Code","role":"tool_driven_independent_review"},
+    {"slot":"R6","model":"Grok 4.5","harness":"Cursor","role":"fast_independent_review"}
+  ],
   "judge_quorum": {
-    "initial": 2,
-    "conditional_tiebreaker": 1
+    "initial": [
+      {"model":"GPT-5.6 Sol","harness":"Codex"},
+      {"model":"Claude Opus 5","harness":"Claude Code"}
+    ],
+    "conditional_tiebreaker": {"model":"GPT-5.6 Pro","harness":"Browser","identity_reverify_before_execution":true},
+    "trigger": "verdict_or_blocking_root_cause_or_merge_ready_disagreement"
   },
   "targeted_fix_max_candidates": 4,
   "controlled_mutant": {
     "planned": true,
+    "mutation_spec_public_before_raw_capture": false,
     "gold_publish_before_raw_capture": false
+  },
+  "pre_run_gates": {
+    "issue_ready": "pass",
+    "package_contract": "locked",
+    "assumption_ledger": "locked",
+    "prompts": "locked",
+    "scoring": "locked",
+    "evaluator_probes": "locked",
+    "common_base": "pending",
+    "candidate_branches": "pending",
+    "candidate_execution": "not_started"
   }
 }
