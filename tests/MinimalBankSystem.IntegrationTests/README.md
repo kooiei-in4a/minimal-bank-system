@@ -26,8 +26,31 @@ fallback.
   database lease.
 - Cleanup ownership: `PostgreSqlTestDatabase` performs `DROP DATABASE ... WITH (FORCE)` and only
   becomes disposed after a successful drop. A failed cleanup is reported and remains retryable.
-  `PostgreSqlContainerFixture` removes its container and preserves a failed-start error together
-  with any partial-container cleanup error.
+  `PostgreSqlContainerFixture` creates a unique ownership label before the container create
+  request and keeps an independent Docker resource owner for that label. The container ID and
+  the Testcontainers object are not the cleanup identity, so a partial create remains recoverable
+  even when `candidate.Id` is unavailable.
+
+## Container cleanup contract
+
+- Testcontainers 4.13.0 latches its disposed state before Docker removal completes. If removal
+  fails, a second `DisposeAsync()` on that same instance can return without retrying removal.
+- Native Testcontainers disposal is therefore attempted at most once during the fixture lifetime.
+  Regardless of native success, failure, or no-op behavior, the independent owner lists all
+  containers with the unique ownership label (`All=true`), force-removes every match, and lists
+  again.
+- The fixture releases the Testcontainers handle, ownership label, and independent owner only
+  after the second label query succeeds and reports zero matching containers. Docker query,
+  transport, authentication, daemon, and removal failures are cleanup failures, never evidence
+  that a container is absent.
+- Native cleanup failures remain visible even when independent cleanup succeeds. If both paths
+  fail, both exceptions remain visible and the owner stays retryable; a later retry uses only the
+  independent path and never calls the poisoned Testcontainers instance again.
+- Startup failure uses the same state machine, preserving the primary startup failure together
+  with any cleanup failure. Explicit endpoints and the platform/`DOCKER_HOST` endpoint resolved
+  by Testcontainers are shared with the independent Docker client.
+- Resource Reaper and process termination are defense-in-depth only, not the final cleanup
+  guarantee. Cleanup failures are not swallowed.
 
 This fixture does not provide an application `DbContext`, migrations, business schema, or
 business tables. Those remain outside FND-03.
