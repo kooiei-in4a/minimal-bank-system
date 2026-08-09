@@ -8,7 +8,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-test-${{ github.workflow }}-${{ github.ref }}
@@ -39,3 +39,19 @@ jobs:
 
       - name: Test (real PostgreSQL)
         run: dotnet test tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj --no-build --filter "Category=PostgreSqlIntegration"
+
+  remove-temporary-fnd03-branches:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'agent/fnd03-temp-branch-cleaner'
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Delete temporary branches
+        run: |
+          for branch in agent/fnd03-benchmark-archive-operator-cleanup agent/fnd03-temp-branch-cleaner; do
+            if git ls-remote --exit-code origin "refs/heads/$branch" >/dev/null 2>&1; then
+              git push origin --delete "$branch"
+            fi
+          done
