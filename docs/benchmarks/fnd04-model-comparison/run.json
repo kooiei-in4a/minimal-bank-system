@@ -30,6 +30,7 @@
       "slug": "gpt-5.6-sol-codex",
       "model": "GPT-5.6 Sol",
       "harness": "Codex",
+      "effort": "xHigh",
       "pool": "active",
       "branch": "agent/issue-42-fnd-04-gpt-5.6-sol-codex",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -40,6 +41,7 @@
       "slug": "gpt-5.6-terra-codex",
       "model": "GPT-5.6 Terra",
       "harness": "Codex",
+      "effort": "xHigh",
       "pool": "active",
       "branch": "agent/issue-42-fnd-04-gpt-5.6-terra-codex",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -50,6 +52,7 @@
       "slug": "gpt-5.6-luna-codex",
       "model": "GPT-5.6 Luna",
       "harness": "Codex",
+      "effort": "xHigh",
       "pool": "active",
       "branch": "agent/issue-42-fnd-04-gpt-5.6-luna-codex",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -60,6 +63,7 @@
       "slug": "gpt-5.6-luna-opencode",
       "model": "GPT-5.6 Luna",
       "harness": "Open Code",
+      "effort": "Max",
       "pool": "active",
       "branch": "agent/issue-42-fnd-04-gpt-5.6-luna-opencode",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -70,6 +74,7 @@
       "slug": "claude-opus-5-claude-code",
       "model": "Claude Opus 5",
       "harness": "Claude Code",
+      "effort": "xHigh",
       "pool": "active",
       "branch": "agent/issue-42-fnd-04-claude-opus-5-claude-code",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -80,6 +85,7 @@
       "slug": "claude-sonnet-5-claude-code",
       "model": "Claude Sonnet 5",
       "harness": "Claude Code",
+      "effort": "high",
       "pool": "active",
       "branch": "agent/issue-42-fnd-04-claude-sonnet-5-claude-code",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -90,6 +96,7 @@
       "slug": "grok-4.5-cursor",
       "model": "Grok 4.5",
       "harness": "Cursor",
+      "effort": "high fast",
       "pool": "challenger",
       "branch": "agent/issue-42-fnd-04-grok-4.5-cursor",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -100,6 +107,7 @@
       "slug": "deepseek-v4-flash-opencode",
       "model": "DeepSeek V4 Flash",
       "harness": "Open Code",
+      "effort": "Max",
       "pool": "challenger",
       "branch": "agent/issue-42-fnd-04-deepseek-v4-flash-opencode",
       "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -118,19 +126,60 @@
     "mimo-v2.5-pro-opencode"
   ],
   "reviewers": [
-    {"slot":"R1","model":"GPT-5.6 Sol","harness":"Codex","role":"runtime_failure_path"},
-    {"slot":"R2","model":"Claude Opus 5","harness":"Claude Code","role":"deep_technical_test_assurance"},
-    {"slot":"R3","model":"Claude Sonnet 5","harness":"Claude Code","role":"specification_scope"},
-    {"slot":"R4","model":"ChatGPT Opus 5.6 Sol","harness":"Browser","role":"framework_official_source_cross_check","identity_reverify_before_execution":true},
-    {"slot":"R5","model":"GPT-5.6 Luna","harness":"Open Code","role":"tool_driven_independent_review"},
-    {"slot":"R6","model":"Grok 4.5","harness":"Cursor","role":"fast_independent_review"}
+    {
+      "slot": "R1",
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "role": "runtime_failure_path"
+    },
+    {
+      "slot": "R2",
+      "model": "Claude Opus 5",
+      "harness": "Claude Code",
+      "role": "deep_technical_test_assurance"
+    },
+    {
+      "slot": "R3",
+      "model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "role": "specification_scope"
+    },
+    {
+      "slot": "R4",
+      "model": "ChatGPT Opus 5.6 Sol",
+      "harness": "Browser",
+      "role": "framework_official_source_cross_check",
+      "identity_reverify_before_execution": true
+    },
+    {
+      "slot": "R5",
+      "model": "GPT-5.6 Luna",
+      "harness": "Open Code",
+      "role": "tool_driven_independent_review"
+    },
+    {
+      "slot": "R6",
+      "model": "Grok 4.5",
+      "harness": "Cursor",
+      "role": "fast_independent_review"
+    }
   ],
   "judge_quorum": {
     "initial": [
-      {"model":"GPT-5.6 Sol","harness":"Codex"},
-      {"model":"Claude Opus 5","harness":"Claude Code"}
+      {
+        "model": "GPT-5.6 Sol",
+        "harness": "Codex"
+      },
+      {
+        "model": "Claude Opus 5",
+        "harness": "Claude Code"
+      }
     ],
-    "conditional_tiebreaker": {"model":"GPT-5.6 Pro","harness":"Browser","identity_reverify_before_execution":true},
+    "conditional_tiebreaker": {
+      "model": "GPT-5.6 Pro",
+      "harness": "Browser",
+      "identity_reverify_before_execution": true
+    },
     "trigger": "verdict_or_blocking_root_cause_or_merge_ready_disagreement"
   },
   "targeted_fix_max_candidates": 4,
@@ -148,6 +197,7 @@
     "evaluator_probes": "locked",
     "common_base": "locked",
     "candidate_branches": "prepared_8_of_8_identical",
+    "candidate_effort": "locked",
     "candidate_execution": "not_started"
   }
 }
