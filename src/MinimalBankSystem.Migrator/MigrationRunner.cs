@@ -7,9 +7,14 @@ public static class MigrationRunner
     public static async Task<int> RunAsync(
         Func<CancellationToken, Task> migrateAsync,
         TextWriter output,
-        TextWriter error)
+        TextWriter error,
+        TimeProvider? timeProvider = null)
     {
-        using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(TimeoutSeconds));
+        // The budget stays fixed at TimeoutSeconds (Issue #42 §8.6). TimeProvider is only a seam
+        // so tests can elapse that exact budget without sleeping for it.
+        using CancellationTokenSource timeoutSource = new(
+            TimeSpan.FromSeconds(TimeoutSeconds),
+            timeProvider ?? TimeProvider.System);
 
         try
         {
