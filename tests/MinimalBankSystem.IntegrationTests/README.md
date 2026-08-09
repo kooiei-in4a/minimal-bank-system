@@ -28,6 +28,13 @@ fallback.
   becomes disposed after a successful drop. A failed cleanup is reported and remains retryable.
   `PostgreSqlContainerFixture` removes its container and preserves a failed-start error together
   with any partial-container cleanup error.
+- Container cleanup after a failed dispose: Testcontainers 4.13.0 latches its internal disposed
+  state on the first `DisposeAsync()` call, before resource removal is confirmed, so a second call
+  on the same container instance silently no-ops instead of retrying. `PostgreSqlContainerFixture`
+  never trusts that instance's own cleanup again once it has failed once; it falls back to
+  `DockerContainerCleanup`, an independent path keyed by the Docker container id captured at
+  start-up, and only releases ownership once that path verifies the container is actually gone.
+  The original Testcontainers failure is still surfaced even when the fallback succeeds.
 
 This fixture does not provide an application `DbContext`, migrations, business schema, or
 business tables. Those remain outside FND-03.

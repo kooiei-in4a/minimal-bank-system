@@ -17,6 +17,20 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
     private PostgreSqlContainer? container;
+    private string? containerId;
+
+    /// <summary>
+    /// Testcontainers 4.13.0 latches its internal disposed state on the first
+    /// <see cref="IAsyncDisposable.DisposeAsync" /> call, before resource removal is confirmed, so a
+    /// second call on the same instance silently no-ops instead of retrying. Once a
+    /// <see cref="PostgreSqlContainer.DisposeAsync" /> call fails, this flag stops the fixture from
+    /// trusting that instance's own cleanup again; retries go through <see cref="DockerContainerCleanup" />
+    /// instead, keyed by <see cref="containerId" />.
+    /// </summary>
+    private bool containerDisposeIsPoisoned;
+
+    private readonly Func<ValueTask>? containerDisposeOverride;
+    private readonly Func<string, CancellationToken, Task<bool>>? forceRemoveOverride;
 
     public PostgreSqlContainerFixture()
     {
@@ -27,11 +41,41 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         this.dockerEndpoint = dockerEndpoint;
     }
 
+    /// <summary>
+    /// Test-only seam for the cleanup retry/fallback state machine in <see cref="CleanupContainerAsync" />.
+    /// Reliably reproducing a genuine Testcontainers-level container removal failure needs a real
+    /// Docker daemon connectivity fault; injecting one deterministically (without an unreliable
+    /// custom network relay) was not achievable within scope. This constructor lets tests replace
+    /// the two I/O boundaries — the native Testcontainers dispose call and the independent
+    /// <see cref="DockerContainerCleanup" /> fallback — with controllable doubles, so the exact
+    /// production orchestration (no retry on a poisoned instance, fallback invocation, ownership
+    /// tracking, exception aggregation) can be exercised deterministically. <paramref name="container" />
+    /// and <paramref name="containerId" /> seed the fixture as if start-up had already succeeded.
+    /// </summary>
+    internal PostgreSqlContainerFixture(
+        PostgreSqlContainer container,
+        string containerId,
+        Func<ValueTask> containerDisposeOverride,
+        Func<string, CancellationToken, Task<bool>> forceRemoveOverride)
+    {
+        this.container = container;
+        this.containerId = containerId;
+        this.containerDisposeOverride = containerDisposeOverride;
+        this.forceRemoveOverride = forceRemoveOverride;
+    }
+
     public int ServerVersionNumber { get; private set; }
 
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
             "The PostgreSQL test container is not running. Fixture initialization must succeed first.");
+
+    /// <summary>
+    /// The Docker container id captured immediately after a successful start-up. Exposed so tests
+    /// can independently verify actual daemon state, and to support constructing deterministic
+    /// container-cleanup-failure scenarios.
+    /// </summary>
+    internal string? ContainerId => containerId;
 
     public Task InitializeAsync() => InitializeAsync(CancellationToken.None);
 
@@ -54,6 +98,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+            containerId = candidate.Id;
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -70,8 +115,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
             try
             {
-                await candidate.DisposeAsync();
-                container = null;
+                await CleanupContainerAsync(CancellationToken.None);
             }
             catch (Exception exception)
             {
@@ -89,7 +133,18 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         }
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync() => CleanupContainerAsync(CancellationToken.None);
+
+    /// <summary>
+    /// Disposes the container. The first failure of <see cref="PostgreSqlContainer.DisposeAsync" />
+    /// permanently poisons that instance (see <see cref="containerDisposeIsPoisoned" />), so this
+    /// method never calls it a second time. Instead, retries and the initial fallback both go
+    /// through <see cref="DockerContainerCleanup" />, an independent path keyed by the Docker
+    /// container id captured at start-up, which is the only way to confirm the real resource state
+    /// after Testcontainers can no longer be trusted. Ownership (<see cref="container" /> and
+    /// <see cref="containerId" />) is released only once removal is independently verified.
+    /// </summary>
+    internal async Task CleanupContainerAsync(CancellationToken cancellationToken)
     {
         PostgreSqlContainer? candidate = container;
 
@@ -98,17 +153,84 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
             return;
         }
 
+        Exception? containerDisposeException = null;
+
+        if (!containerDisposeIsPoisoned)
+        {
+            try
+            {
+                if (containerDisposeOverride is not null)
+                {
+                    await containerDisposeOverride().ConfigureAwait(false);
+                }
+                else
+                {
+                    await candidate.DisposeAsync();
+                }
+
+                container = null;
+                containerId = null;
+                return;
+            }
+            catch (Exception exception)
+            {
+                containerDisposeIsPoisoned = true;
+                containerDisposeException = exception;
+            }
+        }
+
+        string? id = containerId;
+
+        if (id is null)
+        {
+            container = null;
+            throw new InvalidOperationException(
+                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
+                "No Docker container id was captured, so independent low-level cleanup could not be attempted.",
+                containerDisposeException);
+        }
+
+        bool removed;
+        Exception? fallbackException = null;
+
         try
         {
-            await candidate.DisposeAsync();
-            container = null;
+            removed = forceRemoveOverride is not null
+                ? await forceRemoveOverride(id, cancellationToken).ConfigureAwait(false)
+                : await DockerContainerCleanup.TryForceRemoveAsync(id, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
+            removed = false;
+            fallbackException = exception;
+        }
+
+        if (!removed)
+        {
+            Exception fallbackCause = fallbackException
+                ?? new InvalidOperationException(
+                    $"The independent low-level cleanup path did not confirm removal of container '{id}'.");
+            Exception cause = containerDisposeException is null
+                ? fallbackCause
+                : new AggregateException(containerDisposeException, fallbackCause);
+
             throw new InvalidOperationException(
-                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
-                exception);
+                $"Failed to remove the PostgreSQL test container '{id}' using '{ImageReference}' through both " +
+                "Testcontainers and the independent low-level Docker cleanup path. The fixture retains ownership " +
+                "of the container id so cleanup can be retried.",
+                cause);
+        }
+
+        container = null;
+        containerId = null;
+
+        if (containerDisposeException is not null)
+        {
+            throw new InvalidOperationException(
+                $"Testcontainers reported a failure while disposing the PostgreSQL test container '{id}' using " +
+                $"'{ImageReference}'. The underlying Docker container has since been verified removed through an " +
+                "independent low-level cleanup path.",
+                containerDisposeException);
         }
     }
 
