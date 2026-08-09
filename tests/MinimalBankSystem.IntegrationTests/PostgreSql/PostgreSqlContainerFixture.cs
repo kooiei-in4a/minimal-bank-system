@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using Npgsql;
@@ -108,6 +109,41 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
             throw new InvalidOperationException(
                 $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
                 "The fixture retains ownership so cleanup can be retried.",
+                exception);
+        }
+    }
+
+    public async Task ForceCleanupAsync()
+    {
+        PostgreSqlContainer? candidate = container;
+        if (candidate is null)
+        {
+            return;
+        }
+
+        string containerId = candidate.Id;
+        try
+        {
+            using Process process = new();
+            process.StartInfo.FileName = "docker";
+            process.StartInfo.Arguments = $"rm -f {containerId}";
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+            await process.WaitForExitAsync();
+            if (process.ExitCode != 0)
+            {
+                string error = await process.StandardError.ReadToEndAsync();
+                throw new InvalidOperationException($"Failed to remove container {containerId}: {error}");
+            }
+            container = null;
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException(
+                $"Failed to force cleanup the PostgreSQL test container using '{ImageReference}'.",
                 exception);
         }
     }
