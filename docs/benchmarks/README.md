@@ -33,7 +33,7 @@
   - 17モデル独立第三者レビュー性能比較
   - 各モデルのレビュー結果
 - `fnd03-model-comparison/README.md`
-  - FND-03全実験系列のcanonical archive
+  - FND-03全実験系列のcanonical archive preparation
   - 初期実装、17-model review、post-hoc Gold、14-model Major-fix、3-Judge、production outcome
 
 新しいimplementation benchmarkを開始する場合は`model-implementation-benchmark-methodology.md`を確認する。
@@ -42,4 +42,7 @@ archive時は`archive-conventions.md`に従う。
 
 ## Archive lifecycle
 
-- FND-03: **COMPLETE / ARCHIVED** — [`fnd03-model-comparison/README.md`](./fnd03-model-comparison/README.md)
+- FND-03: **FINALIZATION IN PROGRESS** — [`fnd03-model-comparison/README.md`](./fnd03-model-comparison/README.md)
+  - experiment corpus / canonical documentation: prepared
+  - candidate snapshot tags / unmerged PR close / working branch cleanup: pending
+  - `COMPLETE / ARCHIVED`への遷移はcandidate archive lifecycle完了後
