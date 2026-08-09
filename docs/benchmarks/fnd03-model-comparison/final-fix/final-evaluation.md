@@ -60,7 +60,9 @@ PR #109:
   transport-fault proofはoptional / test-only
 ```
 
-G-01のpartial-create pathは、Docker create成功後・inspect結果格納前に失敗すると実resourceが存在してもcandidate IDが取得できず、native Disposeがno-opになり得るという問題である。PR #108のcreate前ownership labelと、native結果に依存しないlabel query / remove / re-queryがこのpathを構造的に閉じるため、唯一merge-readyと裁定された。
+3-Judge adjudicationの**D-02 partial-create path**は、Docker create成功後・inspect結果格納前に失敗すると実resourceが存在してもcandidate IDが取得できず、native Disposeがno-opになり得るという問題である。PR #108のcreate前ownership labelと、native結果に依存しないlabel query / remove / re-queryがこのpathを構造的に閉じるため、唯一merge-readyと裁定された。
+
+Stage 4 review benchmarkの`G-01`はdispose-state latch / same-instance retry no-opを指す。Stage 6の`D-02`とは別のFinding ID空間であり、混同しない。
 
 ## Provenance
 
