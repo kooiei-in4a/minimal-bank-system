@@ -78,22 +78,46 @@ Judge C is used only if the first two Judges disagree on reference verdict, bloc
 - Real target: actual FND-04 Final Synthesis
 - Controlled Mutant: optional reviewer-capability target with pre-locked Gold; mutation details remain collector-private until raw reviews are fixed
 
+## Locked revisions
+
+```text
+H0 implementation prompt:       fnd04-h0-v1
+Formal Self-Review prompt:      fnd04-sr-v1
+H1 fix prompt:                  fnd04-h1-v1
+Implementation scoring:         fnd04-implementation-v1
+Evaluator probes:               fnd04-evaluator-probes-v1
+Assumption ledger:              fnd04-assumptions-v1
+```
+
 ## Pre-run gates
 
-- [ ] Issue #42 Issue Ready = PASS
+- [x] Issue #42 Issue Ready = PASS
 - [ ] common base full SHA fixed
 - [ ] all 8 candidate branches created from common base
-- [ ] package/version contract fixed
-- [ ] `reference/assumption-ledger.md` locked
-- [ ] candidate prompt revision fixed
-- [ ] self-review prompt revision fixed
-- [ ] scoring rubric fixed
-- [ ] evaluator-only probe plan fixed
-- [ ] no candidate execution started
+- [x] package/version contract fixed
+- [x] `reference/assumption-ledger.md` locked
+- [x] H0 candidate prompt revision fixed
+- [x] Formal Self-Review / H1 prompt revisions fixed
+- [x] scoring rubric fixed
+- [x] evaluator-only probe plan fixed
+- [x] no candidate execution started
 
 ## Files
 
 - `run.json`: machine-readable pre-run identity
+- `scoring.md`: H0/H1共通implementation scoring rubric
 - `reference/assumption-ledger.md`: external-library and project assumptions locked before candidate outputs
+- `reference/evaluator-probes.md`: candidate共通のadversarial verification plan
+- `prompts/implementation-h0.md`: H0 implementation prompt
+- `prompts/formal-self-review.md`: fresh-context review-only prompt
+- `prompts/self-review-fix-h1.md`: SR Finding disposition / H1 fix prompt
 
-Benchmark execution must not start while status is `PREPARED / NOT STARTED`.
+## Start boundary
+
+このpreparationがmainへmergeされた後、そのmerge commitをbenchmark common baseとして固定する。
+
+次に8 candidate branchをそのexact SHAから事前作成し、branch / Headが8 / 8一致することを確認する。
+
+**そこまで完了してもcandidate model executionは開始しない。**
+
+Benchmark execution開始はKooが実行プロンプトを各Harnessへ投入した時点とする。
