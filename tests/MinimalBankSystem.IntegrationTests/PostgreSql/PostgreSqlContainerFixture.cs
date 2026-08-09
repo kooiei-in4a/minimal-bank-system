@@ -1,5 +1,8 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using Docker.DotNet;
+using Docker.DotNet.Models;
+using DotNet.Testcontainers.Configurations;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -17,14 +20,25 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
     private PostgreSqlContainer? container;
+    private string? containerId;
+    private bool instanceDisposalAttempted;
+    private bool containerRemovalConfirmed;
 
     public PostgreSqlContainerFixture()
+        : this(TestcontainersSettings.OS.DockerEndpointAuthConfig?.Endpoint.ToString())
     {
     }
 
-    internal PostgreSqlContainerFixture(string dockerEndpoint)
+    internal PostgreSqlContainerFixture(string? dockerEndpoint)
     {
         this.dockerEndpoint = dockerEndpoint;
+    }
+
+    internal PostgreSqlContainerFixture(PostgreSqlContainer container, string dockerEndpoint)
+    {
+        this.container = container;
+        this.dockerEndpoint = dockerEndpoint;
+        containerId = TryGetContainerId(container);
     }
 
     public int ServerVersionNumber { get; private set; }
@@ -32,6 +46,13 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
             "The PostgreSQL test container is not running. Fixture initialization must succeed first.");
+
+    /// <summary>
+    /// Gets the Docker container identity whose removal has not yet been confirmed by the daemon,
+    /// or null when no removal is outstanding. This is the deterministic cleanup owner that is
+    /// kept while a real Docker container may still exist.
+    /// </summary>
+    internal string? PendingContainerId => containerRemovalConfirmed ? null : containerId;
 
     public Task InitializeAsync() => InitializeAsync(CancellationToken.None);
 
@@ -54,6 +75,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+            containerId = TryGetContainerId(candidate);
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -72,10 +94,15 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
             {
                 await candidate.DisposeAsync();
                 container = null;
+                containerRemovalConfirmed = true;
             }
             catch (Exception exception)
             {
+                // Testcontainers latches its internal disposed state before the Docker removal
+                // call, so this instance must never be disposed again.
                 cleanupException = exception;
+                instanceDisposalAttempted = true;
+                containerId ??= TryGetContainerId(candidate);
             }
 
             Exception cause = cleanupException is null
@@ -84,7 +111,11 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
             throw new InvalidOperationException(
                 $"Failed to start and connect to the PostgreSQL test container using '{ImageReference}'. " +
-                "PostgreSQL integration tests require Docker and never fall back to another provider.",
+                "PostgreSQL integration tests require Docker and never fall back to another provider." +
+                (cleanupException is null
+                    ? string.Empty
+                    : " Partial cleanup also failed; the fixture keeps the Docker container identity and the " +
+                      "next DisposeAsync call removes the container through the direct Docker API cleanup path."),
                 cause);
         }
     }
@@ -98,16 +129,77 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
             return;
         }
 
+        if (!instanceDisposalAttempted)
+        {
+            try
+            {
+                await candidate.DisposeAsync();
+                container = null;
+                containerRemovalConfirmed = true;
+                return;
+            }
+            catch (Exception exception)
+            {
+                // Testcontainers latches its internal disposed state before the Docker removal
+                // call. Retrying DisposeAsync on this same instance would silently no-op while
+                // the Docker container may still exist, so the instance is never used again.
+                instanceDisposalAttempted = true;
+                throw new InvalidOperationException(
+                    $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
+                    "The Testcontainers instance latched its internal disposed state before the Docker " +
+                    "removal call, so disposing it again would silently no-op while the Docker container " +
+                    "may still exist. The fixture keeps the container identity and the next DisposeAsync " +
+                    "call removes the container through the direct Docker API cleanup path.",
+                    exception);
+            }
+        }
+
+        await RemoveContainerThroughDockerApiAsync();
+    }
+
+    private async Task RemoveContainerThroughDockerApiAsync()
+    {
+        if (containerRemovalConfirmed)
+        {
+            return;
+        }
+
+        string? resourceId = containerId;
+
+        if (resourceId is null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot finalize the cleanup of the PostgreSQL test container using '{ImageReference}': " +
+                "no Docker container identity was captured. The fixture keeps ownership of the container " +
+                "instance, but the removal cannot be retried without a resource identity.");
+        }
+
         try
         {
-            await candidate.DisposeAsync();
+            using DockerClient client = dockerEndpoint is null
+                ? new DockerClientBuilder().Build()
+                : new DockerClientBuilder().WithEndpoint(new Uri(dockerEndpoint)).Build();
+
+            try
+            {
+                await client.Containers.RemoveContainerAsync(
+                    resourceId,
+                    new ContainerRemoveParameters { Force = true, RemoveVolumes = true });
+            }
+            catch (DockerContainerNotFoundException)
+            {
+                // The daemon confirms that the container is absent, so the resource is gone.
+            }
+
             container = null;
+            containerRemovalConfirmed = true;
         }
         catch (Exception exception)
         {
             throw new InvalidOperationException(
-                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
+                $"Failed to remove the PostgreSQL test container '{resourceId}' using '{ImageReference}' " +
+                "through the direct Docker API cleanup path. The fixture keeps the container identity; " +
+                "call DisposeAsync again to retry the removal.",
                 exception);
         }
     }
@@ -252,6 +344,19 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         };
 
         return builder.ConnectionString;
+    }
+
+    private static string? TryGetContainerId(PostgreSqlContainer candidate)
+    {
+        try
+        {
+            string id = candidate.Id;
+            return string.IsNullOrEmpty(id) ? null : id;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private static string QuoteIdentifier(string identifier) =>
