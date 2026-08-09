@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure;
