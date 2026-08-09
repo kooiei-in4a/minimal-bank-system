@@ -17,19 +17,37 @@ Status: **CANONICAL / POST-HOC ADJUDICATED**
 | Raw review pairs | 17 Markdown + 17 JSON |
 | Raw JSON schema status | 15 valid / 2 invalid but preserved |
 
+## Artifact roles
+
+- [`manifest.json`](./manifest.json): raw capture integrity manifest。raw artifactのbytes / SHA-256 / capture statusを保持する。
+- [`collector-results.json`](./collector-results.json): post-hoc Collector scoreとblocking-Gold alignmentの機械可読結果。
+- [`gold-review.md`](./gold-review.md) / [`gold-review.json`](./gold-review.json): protocol-compatible Gold。
+- 本書: 人間向けcanonical aggregate evaluation。
+
+raw capture integrityと後付けadjudication結果を同じmanifestへ混ぜず、責務を分離する。
+
 ## Gold and methodology
 
 Final Gold: `REQUEST CHANGES / NOT MERGE READY`、Blocker 0 / Major 1 / Minor 1。root causeは[`gold-review.md`](./gold-review.md)のG-01 / G-02を使用する。
 
-G-01はTestcontainers 4.13.0のdispose state latchとsame-instance retry no-opによるcleanup ownership loss、G-02はdigest assertionのdaemon-side evidence不足である。
+- **G-01 — Major / blocking:** Testcontainers 4.13.0のdispose state latchとsame-instance retry no-opによるcleanup ownership loss。
+- **G-02 — Minor / non-blocking:** digest assertionのdaemon-side evidence不足。
 
 `post_hoc_adjudication: true`。Gold Majorは最初のReference lock後に追加一次source突合で明確化されたため、完全blindな事前locked Goldの結果として解釈しない。
 
-## Reviewer-level TP / FP / FN
+## Blocking-Gold TP / FP / FN scope
 
-全17 reviewerについて、G-01を実質検出した reviewer は0件、blocking FPは0件、G-01未検出のFNは各1件である。`chatgpt-o3-browser`はINCOMPLETEだが、benchmark結果から除外せず記録する。
+本benchmarkのTP / FN表は、**merge-blocking root cause G-01の検出性能**を表す。G-02はnon-blocking MinorとしてGoldに保持するが、このTP / FN denominatorには含めない。
 
-| Reviewer | Outcome / Verdict | TP | FP | FN |
+理由:
+
+- protocol上、merge-blocking root causeの検出がmerge verdict accuracyを左右する。
+- G-02を同じTP/FN母数へ混ぜると、「merge blocker検出」と「non-blocking evidence weakness検出」を同じ指標で表現することになる。
+- G-02への到達度は既存JudgeのEvidence / Severity / Review Quality score側で評価済みであり、このarchiveで再採点しない。
+
+全17 reviewerについて、G-01を実質検出したreviewerは0件、unsupported blocking FPは0件、G-01未検出のFNは各1件である。`chatgpt-o3-browser`はINCOMPLETE / no_resultだがbenchmark結果から除外しない。
+
+| Reviewer | Outcome / Verdict | TP(G-01) | Blocking FP | FN(G-01) |
 | --- | --- | ---: | ---: | ---: |
 | Claude Opus 5 / Claude Code | completed / APPROVE | 0 | 0 | 1 |
 | Claude Sonnet 5 / Claude Code | completed / APPROVE | 0 | 0 | 1 |
@@ -47,11 +65,13 @@ G-01はTestcontainers 4.13.0のdispose state latchとsame-instance retry no-op�
 | GPT-5.6 Luna / Open Code | completed / APPROVE | 0 | 0 | 1 |
 | MiniMax M3 / Open Code | completed / APPROVE | 0 | 0 | 1 |
 | DeepSeek V4 Flash / Open Code | completed / APPROVE | 0 | 0 | 1 |
-| ChatGPT o3 / Browser | stopped / INCOMPLETE | 0 | 0 | 1 |
+| ChatGPT o3 / Browser | no_result / INCOMPLETE | 0 | 0 | 1 |
+
+機械可読版は[`collector-results.json`](./collector-results.json)を参照する。
 
 ## Review Quality / Gold Alignment / Final score
 
-既存 synthesisのscore semanticsを維持する。Review Qualityは60点、Gold Alignmentは40点で、単純平均や新規補正は行っていない。
+既存`implementation-evaluation-synthesis.md`のscore semanticsを維持する。Review Qualityは60点、Gold Alignmentは40点で、単純平均や新規補正は行っていない。
 
 | Rank | Model + Harness | Review Quality /60 | Gold Alignment /40 | Final score | Grade |
 | ---: | --- | ---: | ---: | ---: | :---: |
@@ -73,13 +93,26 @@ G-01はTestcontainers 4.13.0のdispose state latchとsame-instance retry no-op�
 | 16 | DeepSeek V4 Flash / Open Code | 36.50 | 0.5 | **37.0** | F |
 | 17 | ChatGPT o3 / Browser | 17.00 | 0.0 | **17.0** | F |
 
+Final scoreは既存post-hoc synthesisの値をそのまま使用している。このarchiveでは再計算していない。
+
 ## Interpretation
 
-- 1位 Claude Opus 5 / Claude Code: 66.0
-- 2位 Claude Sonnet 5 / Claude Code: 65.5
-- 3位 GPT-5.6 Sol / Codex: 60.5
-- Final Gold Majorを検出した reviewerは0件だが、これは全reviewerのReview Qualityを否定するものではない。
+- 1位 Claude Opus 5 / Claude Code: 66.0。Review Quality 59.25 / 60で最高。
+- 2位 Claude Sonnet 5 / Claude Code: 65.5。G-01そのものは未検出だが、container dispose failure path未検証へ最も近く到達した。
+- 3位 GPT-5.6 Sol / Codex: 60.5。
+- Final Gold Major G-01を検出したreviewerは0件だが、これは各reviewerのEvidence / Scope / CI分析能力まで否定するものではない。
 - `green CI != failure-path correctness`。正常系CIはG-01の反証にならない。
+- G-02はClaude Opus等がevidence weaknessとして捉えており、Review Quality / severity評価へ反映済みである。
+
+## Historical Judge relationship
+
+既存Judgeは同一Goldを前提としていなかったため、最終scoreはJudge scoreの単純平均ではない。
+
+- ChatGPT Judge: `REQUEST CHANGES / Major 1`
+- Claude Judge: `APPROVE / Major 0`
+- Final synthesis: 一次sourceでTestcontainers semanticsを裁定し、`REQUEST CHANGES / Major 1 / Minor 1`をtechnical Goldとした。
+
+詳細な軸別score、Judge間差、tie-breakは[`implementation-evaluation-synthesis.md`](./implementation-evaluation-synthesis.md)を正本sourceとして参照する。
 
 ## Source documents
 
@@ -88,3 +121,6 @@ G-01はTestcontainers 4.13.0のdispose state latchとsame-instance retry no-op�
 - [`implementation-evaluation-synthesis.md`](./implementation-evaluation-synthesis.md)
 - [`summary.md`](./summary.md)
 - [`manifest.json`](./manifest.json)
+- [`collector-results.json`](./collector-results.json)
+- [`gold-review.md`](./gold-review.md)
+- [`gold-review.json`](./gold-review.json)
