@@ -2,7 +2,9 @@
 
 Target Issue: #41 `[FND-03] 実PostgreSQL integration test基盤を確立する`
 
-Status: **COMPLETE / ARCHIVED**
+Status: **ARCHIVE FINALIZATION IN PROGRESS**
+
+実験corpus、評価、Gold、Major-fix adjudication、production outcomeは収集済みである。candidate snapshot lifecycle（annotated tag作成・remote解決確認・candidate PR close・working branch削除）が未完了のため、repository archiveとしての最終状態はまだ `COMPLETE / ARCHIVED` ではない。
 
 このページは、FND-03で実施した7段階の実験・レビュー・実装結果を、候補ランキングと実際のproduction outcomeを混同せずに辿るためのcanonical entry pointである。
 
@@ -64,7 +66,8 @@ Final Synthesis Head `91e3fca...`を17組のModel + Agent/Harnessが独立レビ
 
 - [`review-benchmark/README.md`](./review-benchmark/README.md)
 - [`review-benchmark/run.json`](./review-benchmark/run.json)
-- [`review-benchmark/manifest.json`](./review-benchmark/manifest.json)
+- [`review-benchmark/manifest.json`](./review-benchmark/manifest.json): raw capture integrity manifest
+- [`review-benchmark/collector-results.json`](./review-benchmark/collector-results.json): post-hoc Collector score / blocking-Gold alignment
 - [`review-benchmark/full-evaluation.md`](./review-benchmark/full-evaluation.md)
 - [`review-benchmark/gold-review.md`](./review-benchmark/gold-review.md)
 - [`review-benchmark/gold-review.json`](./review-benchmark/gold-review.json)
@@ -113,10 +116,25 @@ Final Synthesis Head `91e3fca...`を17組のModel + Agent/Harnessが独立レビ
 - provisional `98 / 100`は削除せず、`SUPERSEDED / HISTORICAL`として保存する。
 - 17 reviewer raw Markdown / JSONは内容を変更していない。
 - 2件のraw JSON schema deviationはmanifestのcapture statusで保持する。
+- `review-benchmark/manifest.json`はraw capture integrity用として維持し、後付けscore / Gold alignmentは`collector-results.json`へ分離する。
 - post-hoc Goldを完全blind locked-Gold benchmarkとは表現しない。
 - 3 Judgeのartifact identity、特に `GPT-5.6 Pro / Browser / Pro` を変更しない。
 - Final production implementationは候補ランキングへ追加しない。
 
 ## Archive operation boundary
 
-このarchiveはdocumentation / benchmark archiveのみを対象とする。candidate tag作成、candidate PRのclose、branch削除、Issue更新はarchive PR merge後の別工程で行う。
+PR #121はcanonical documentationをmainへ統合するためのDraft archive PRである。次のcandidate archive lifecycleが完了するまで、このarchiveを `COMPLETE / ARCHIVED` と宣言しない。
+
+```text
+candidate branch / full Head SHA確認
+→ candidate PR / CI確認
+→ annotated benchmark tag作成
+→ remote tagがexpected Headへ解決することを確認
+→ archive manifestへfinal dispositionを記録
+→ candidate PRを未mergeでClose
+→ candidate working branch削除
+→ PR #121のmanifest / statusを最終更新
+→ PR #121 merge
+```
+
+現在、candidate tag作成、candidate PR close、working branch削除は未実施である。
