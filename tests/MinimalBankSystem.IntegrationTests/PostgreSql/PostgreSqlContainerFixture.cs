@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using Npgsql;
@@ -17,6 +18,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
     private PostgreSqlContainer? container;
+    private string? containerId;
 
     public PostgreSqlContainerFixture()
     {
@@ -32,6 +34,8 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
             "The PostgreSQL test container is not running. Fixture initialization must succeed first.");
+
+    internal string? RetainedContainerId => containerId;
 
     public Task InitializeAsync() => InitializeAsync(CancellationToken.None);
 
@@ -54,6 +58,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+            containerId = candidate.Id;
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -66,16 +71,20 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         }
         catch (Exception startupException)
         {
+            string? capturedId = TryCaptureContainerId(candidate);
             Exception? cleanupException = null;
 
             try
             {
                 await candidate.DisposeAsync();
                 container = null;
+                containerId = null;
             }
             catch (Exception exception)
             {
                 cleanupException = exception;
+                container = null;
+                containerId = capturedId;
             }
 
             Exception cause = cleanupException is null
@@ -91,24 +100,68 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        PostgreSqlContainer? candidate = container;
-
-        if (candidate is null)
+        if (containerId is null)
         {
             return;
         }
 
-        try
+        if (container is not null)
         {
-            await candidate.DisposeAsync();
+            try
+            {
+                await container.DisposeAsync();
+            }
+            catch
+            {
+            }
+
             container = null;
         }
-        catch (Exception exception)
+
+        await ForceRemoveContainerAsync(containerId);
+        containerId = null;
+    }
+
+    internal static async Task ForceRemoveContainerAsync(string targetContainerId)
+    {
+        using Process process = new()
         {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = $"rm -f {targetContainerId}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            },
+        };
+
+        process.Start();
+        string stderr = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        if (process.ExitCode != 0)
+        {
+            if (stderr.Contains("No such container", StringComparison.Ordinal))
+            {
+                return;
+            }
+
             throw new InvalidOperationException(
-                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
-                exception);
+                $"docker rm -f {targetContainerId} failed (exit code {process.ExitCode}): {stderr.Trim()}");
+        }
+    }
+
+    private static string? TryCaptureContainerId(PostgreSqlContainer candidate)
+    {
+        try
+        {
+            return candidate.Id;
+        }
+        catch
+        {
+            return null;
         }
     }
 
