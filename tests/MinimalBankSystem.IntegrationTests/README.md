@@ -28,6 +28,14 @@ fallback.
   becomes disposed after a successful drop. A failed cleanup is reported and remains retryable.
   `PostgreSqlContainerFixture` removes its container and preserves a failed-start error together
   with any partial-container cleanup error.
+- Container cleanup ownership is the Docker container id, not the Testcontainers instance.
+  Testcontainers evaluates its disposed guard as a test-and-set before it deletes the container, so
+  the first `DisposeAsync` marks the instance disposed even when the Docker removal that follows
+  fails, and every later `DisposeAsync` on that instance returns without contacting Docker. The
+  fixture therefore uses the container instance for exactly one removal attempt, keeps the
+  container id while a container may still exist, and reclaims a leftover container by id through
+  the Docker Engine API. Ownership is released only once the daemon reports the container gone;
+  process exit and the Resource Reaper are not treated as cleanup.
 
 This fixture does not provide an application `DbContext`, migrations, business schema, or
 business tables. Those remain outside FND-03.

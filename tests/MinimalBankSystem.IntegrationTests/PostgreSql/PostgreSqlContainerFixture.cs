@@ -16,18 +16,44 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
+    private readonly Func<CancellationToken, Task>? postStartFaultInjector;
     private PostgreSqlContainer? container;
+    private string? containerId;
+    private bool containerDisposeAttempted;
 
     public PostgreSqlContainerFixture()
     {
     }
 
-    internal PostgreSqlContainerFixture(string dockerEndpoint)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PostgreSqlContainerFixture" /> class for
+    /// lifecycle tests.
+    /// </summary>
+    /// <param name="dockerEndpoint">The Docker endpoint the container is created through.</param>
+    /// <param name="postStartFaultInjector">
+    /// Test-only hook invoked once the container is running and before the server version is
+    /// verified. It exists so a startup failure can be raised while a real container exists.
+    /// </param>
+    internal PostgreSqlContainerFixture(
+        string dockerEndpoint,
+        Func<CancellationToken, Task>? postStartFaultInjector = null)
     {
         this.dockerEndpoint = dockerEndpoint;
+        this.postStartFaultInjector = postStartFaultInjector;
     }
 
     public int ServerVersionNumber { get; private set; }
+
+    /// <summary>
+    /// Gets the Docker container id this fixture is still responsible for removing, or
+    /// <see langword="null" /> once the Docker daemon has confirmed the container is gone.
+    /// </summary>
+    /// <remarks>
+    /// This id, not the Testcontainers instance, is the durable cleanup ownership token. A
+    /// container instance whose <c>DisposeAsync</c> failed cannot remove its container again, so
+    /// the id is retained until an independent removal succeeds.
+    /// </remarks>
+    internal string? UnreclaimedContainerId => containerId;
 
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
@@ -54,6 +80,16 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+
+            // Take the Docker resource identity as soon as it exists. It outlives the container
+            // instance and is the only thing that can still remove a leftover container.
+            containerId = candidate.Id;
+
+            if (postStartFaultInjector is not null)
+            {
+                await postStartFaultInjector(cancellationToken);
+            }
+
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -66,12 +102,15 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         }
         catch (Exception startupException)
         {
+            // A container may have been created before startup failed. Recover its id so the
+            // partial resource keeps an owner even when the cleanup below also fails.
+            containerId ??= TryReadContainerId(candidate);
+
             Exception? cleanupException = null;
 
             try
             {
-                await candidate.DisposeAsync();
-                container = null;
+                await ReclaimContainerAsync(cancellationToken);
             }
             catch (Exception exception)
             {
@@ -89,26 +128,88 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         }
     }
 
-    public async Task DisposeAsync()
-    {
-        PostgreSqlContainer? candidate = container;
+    public Task DisposeAsync() => DisposeAsync(CancellationToken.None);
 
-        if (candidate is null)
+    internal async Task DisposeAsync(CancellationToken cancellationToken)
+    {
+        if (container is null && containerId is null)
         {
             return;
         }
 
         try
         {
-            await candidate.DisposeAsync();
-            container = null;
+            await ReclaimContainerAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             throw new InvalidOperationException(
-                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
+                $"Failed to remove the PostgreSQL test container using '{ImageReference}'. " +
+                $"Container id '{containerId ?? "unknown"}' stays owned by this fixture so cleanup " +
+                "can be retried without reusing the already disposed container instance.",
                 exception);
+        }
+    }
+
+    /// <summary>
+    /// Removes the container and only releases ownership once the resource is really gone.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task that completes when the container has been reclaimed.</returns>
+    /// <remarks>
+    /// Testcontainers evaluates its disposed guard before it deletes the container, and that
+    /// evaluation is a test-and-set. The first <c>DisposeAsync</c> therefore latches the instance
+    /// as disposed even when the Docker removal that follows fails, and every later
+    /// <c>DisposeAsync</c> on that instance returns without contacting Docker at all. Treating that
+    /// silence as success would drop the last owner of a container that is still running, so the
+    /// instance is used for exactly one removal attempt and the Docker container id takes over
+    /// afterwards.
+    /// </remarks>
+    private async Task ReclaimContainerAsync(CancellationToken cancellationToken)
+    {
+        PostgreSqlContainer? candidate = container;
+
+        if (candidate is not null && !containerDisposeAttempted)
+        {
+            containerDisposeAttempted = true;
+
+            // The guard inside Testcontainers has not been tripped yet, so this call really does
+            // reach Docker and really does report a removal failure.
+            await candidate.DisposeAsync();
+
+            container = null;
+            containerId = null;
+            return;
+        }
+
+        string? reclaimableContainerId = containerId;
+
+        if (reclaimableContainerId is null)
+        {
+            // No container was ever created, so there is no resource left to own.
+            container = null;
+            return;
+        }
+
+        await DockerEngineEndpoint.RemoveContainerAsync(
+            DockerEngineEndpoint.Resolve(dockerEndpoint),
+            reclaimableContainerId,
+            cancellationToken);
+
+        container = null;
+        containerId = null;
+    }
+
+    private static string? TryReadContainerId(PostgreSqlContainer candidate)
+    {
+        try
+        {
+            return candidate.Id;
+        }
+        catch (InvalidOperationException)
+        {
+            // Testcontainers throws when no container was created, which means nothing to reclaim.
+            return null;
         }
     }
 
