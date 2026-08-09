@@ -29,7 +29,9 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore MinimalBankSystem.slnx --verbosity minimal
+        run: |
+          dotnet restore MinimalBankSystem.slnx --verbosity minimal
+          dotnet tool restore
 
       - name: Build
         run: dotnet build MinimalBankSystem.slnx --no-restore --verbosity minimal

@@ -239,6 +239,27 @@ public sealed class SolutionConfigurationTests
     {
         DirectoryInfo repositoryRoot = FindRepositoryRoot();
 
+        ProcessStartInfo restoreInfo = new()
+        {
+            FileName = "dotnet",
+            Arguments = "tool restore",
+            WorkingDirectory = repositoryRoot.FullName,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        using (Process restore = Process.Start(restoreInfo)
+            ?? throw new InvalidOperationException("Failed to start dotnet tool restore."))
+        {
+            string restoreStdout = restore.StandardOutput.ReadToEnd();
+            string restoreStderr = restore.StandardError.ReadToEnd();
+            restore.WaitForExit();
+            Assert.True(
+                restore.ExitCode == 0,
+                $"dotnet tool restore failed.\nstdout:\n{restoreStdout}\nstderr:\n{restoreStderr}");
+        }
+
         ProcessStartInfo startInfo = new()
         {
             FileName = "dotnet",
