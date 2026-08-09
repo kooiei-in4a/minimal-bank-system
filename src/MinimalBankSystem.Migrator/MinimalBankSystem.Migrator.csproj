@@ -1,11 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
-    <ProjectReference Include="../MinimalBankSystem.Application/MinimalBankSystem.Application.csproj" />
     <ProjectReference Include="../MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

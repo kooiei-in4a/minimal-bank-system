@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Text.Json;
 
 namespace MinimalBankSystem.UnitTests;
 
@@ -10,6 +11,7 @@ public sealed class SolutionConfigurationTests
         "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
         "src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj",
         "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
+        "src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj",
         "tests/MinimalBankSystem.UnitTests/MinimalBankSystem.UnitTests.csproj",
         "tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj",
     ];
@@ -43,7 +45,8 @@ public sealed class SolutionConfigurationTests
         AssertProjectReferences(
             repositoryRoot,
             "src/MinimalBankSystem.Api/MinimalBankSystem.Api.csproj",
-            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj");
+            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
+            "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj");
 
         AssertProjectReferences(
             repositoryRoot,
@@ -58,6 +61,11 @@ public sealed class SolutionConfigurationTests
             repositoryRoot,
             "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
             "src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj");
+
+        AssertProjectReferences(
+            repositoryRoot,
+            "src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj",
+            "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj");
     }
 
     [Fact]
@@ -79,6 +87,43 @@ public sealed class SolutionConfigurationTests
                 Assert.False(string.IsNullOrWhiteSpace(version));
                 Assert.True(Version.TryParse(version, out _), $"Package version '{version}' is not exact.");
             });
+    }
+
+    [Fact]
+    public void Fnd04EfCoreAndNpgsqlVersionsArePinnedExactly()
+    {
+        DirectoryInfo repositoryRoot = FindRepositoryRoot();
+        XDocument packages = XDocument.Load(Path.Combine(repositoryRoot.FullName, "Directory.Packages.props"));
+        Dictionary<string, string?> versions = packages
+            .Descendants("PackageVersion")
+            .ToDictionary(
+                package => package.Attribute("Include")?.Value
+                    ?? throw new InvalidOperationException("PackageVersion must have Include."),
+                package => package.Attribute("Version")?.Value,
+                StringComparer.Ordinal);
+
+        Assert.Equal("10.0.10", versions["Microsoft.EntityFrameworkCore"]);
+        Assert.Equal("10.0.10", versions["Microsoft.EntityFrameworkCore.Design"]);
+        Assert.Equal("10.0.10", versions["Microsoft.EntityFrameworkCore.Relational"]);
+        Assert.Equal("10.0.3", versions["Npgsql"]);
+        Assert.Equal("10.0.3", versions["Npgsql.EntityFrameworkCore.PostgreSQL"]);
+    }
+
+    [Fact]
+    public void Fnd04DotnetEfToolIsPinnedInTheRepositoryLocalManifest()
+    {
+        DirectoryInfo repositoryRoot = FindRepositoryRoot();
+        string manifestPath = Path.Combine(repositoryRoot.FullName, ".config", "dotnet-tools.json");
+        using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+
+        string version = manifest.RootElement
+            .GetProperty("tools")
+            .GetProperty("dotnet-ef")
+            .GetProperty("version")
+            .GetString()
+            ?? throw new InvalidOperationException("dotnet-ef tool version must be present.");
+
+        Assert.Equal("10.0.10", version);
     }
 
     private static void AssertProjectReferences(
