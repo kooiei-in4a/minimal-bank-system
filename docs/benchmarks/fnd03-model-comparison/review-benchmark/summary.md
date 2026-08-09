@@ -1,218 +1,126 @@
-# Issue #41 FND-03 — 独立レビュー性能評価の比較サマリー
+# Issue #41 FND-03 — 独立レビュー性能評価サマリー
 
-## 1. 目的
+## 1. 最終結論
 
-Issue #41 `[FND-03] 実PostgreSQL integration test基盤を確立する` のFinal Synthesisに対して作成された、次の2つのJudge評価を併存保存し、共通結論・相違点・採用判断を短く確認できるようにする。
+GPT JudgeとClaude Opus 5 / Claude Code Judgeの2評価を、単純平均ではなく一次証拠で不一致裁定し、`implementation-evaluation-synthesis.md`に統合した。
 
-| 評価文書 | Judge / Harness | Reference Verdict | Blocker / Major / Minor / Nit |
-| --- | --- | --- | --- |
-| `implementation-evaluation.md` | ChatGPT / Browser・GitHub一次source突合 | **REQUEST CHANGES** | `0 / 1 / 1 / 0` |
-| `implementation-evaluation-claude-opus-5.md` | Claude Opus 5 / Claude Code xhigh | **APPROVE** | `0 / 0 / 2 / 3` |
-
-Target identityは両文書で共通である。
+最終技術Goldは次の通り。
 
 ```text
-Repository: kooiei-in4a/minimal-bank-system
-Issue:      #41
-PR:         #104
-Base SHA:   7946cc55e49c0c6e21ad7b86c20a8435b4976269
-Head SHA:   91e3fca181558cd1523390347f4f2f80d6014d26
-CI Run:     31277771209
-```
-
----
-
-## 2. 両評価で一致した事項
-
-両Judgeは、次の点では実質的に一致している。
-
-1. PostgreSQL 18.4の実containerがCIで起動し、PostgreSQL category 7件がskipなしで成功している。
-2. image referenceはdigest-qualifiedで固定されており、InMemory / SQLite fallbackは存在しない。
-3. test単位database、GUID名、`template0`、`Pooling=false`、`DROP DATABASE ... WITH (FORCE)`というdatabase isolation方針は妥当である。
-4. application `DbContext`、migration、business schema/table、Docker Compose等のFND-04以降へのscope creepはない。
-5. `Fixture.Container.Image.FullName` / `Digest`はDocker daemonのinspect結果ではなく、builderへ渡したreference stringのparse結果である。したがってdigest assertionはdaemon-side runtime evidenceではない。
-6. .NET 10の`TextWriter.Synchronized`が返す`SyncTextWriter`は、現runtimeでは返却instance自身のmonitorを使用する。`lock(synchronizedWriter)`はconcurrent writeと相互排他になる。
-7. `deepseek-v4-flash-opencode`と`minimax-m3-opencode`の`SyncTextWriter`同期semanticsに関するFindingは一次sourceと矛盾する。
-8. `chatgpt-o3-browser`はreviewを完遂できず、`INCOMPLETE`として扱うべきである。
-
-したがって、両評価の差はPostgreSQL test基盤全体の出来ではなく、**container cleanup failure後のTestcontainers内部stateをmerge blockerとして扱うか**に集中している。
-
----
-
-## 3. 決定的な相違点
-
-### 3.1 Claude Opus 5版
-
-Claude版は次のように判断した。
-
-```text
-Reference Verdict: APPROVE
-Blocker: 0
-Major:   0
-Minor:   2
-Nit:     3
-```
-
-container `DisposeAsync` failureについては、主に次を確認している。
-
-- fixture codeは例外を握り潰さない。
-- container fieldは失敗時に保持される。
-- xUnitはfixture cleanup exceptionをtest class cleanup failureとして可視化する。
-- deterministic failure injection testがないことはcoverage gapだが、機能欠陥とは確定しない。
-
-この前提ではGold Blocker / Majorは0件となり、16件の`APPROVE`は正しい。差はverification depth、framework理解、non-blocking findingの精度で付く。
-
-### 3.2 ChatGPT版
-
-ChatGPT版はTestcontainers .NET 4.13.0のdependency sourceまで追跡し、次のstate transitionをMajorとした。
-
-```text
-Resource.Disposed
-  = 1.Equals(Interlocked.CompareExchange(ref _disposed, 1, 0))
-```
-
-`DockerContainer.DisposeAsyncCore()`は、Docker resource削除より前に`Disposed`を評価する。
-
-```text
-1回目のDisposeAsync
-  _disposed: 0 -> 1
-  Docker RemoveAsync: failure
-  container resource: 残存
-
-2回目のDisposeAsync
-  Disposed == true
-  即return（Docker RemoveAsyncは再実行されない）
-
-repository fixture
-  2回目を成功と判断
-  container fieldをnullへ変更
-```
-
-このため、fixtureがC# referenceを保持していても、**同じTestcontainers instanceでのcleanup retryは実際には成立しない**。2回目のno-opを成功と誤認すると、未回収containerのdeterministic handleを失う可能性がある。
-
-このroot causeを採用すると、Referenceは次になる。
-
-```text
-Reference Verdict: REQUEST CHANGES
+Reference Verdict: REQUEST CHANGES / NOT MERGE READY
 Blocker: 0
 Major:   1
 Minor:   1
-Nit:     0〜1
 ```
 
-17 reviewer全件がこのdependency stateを検出していないため、全件が`TP=0 / FN=1`となる。
+争点はTestcontainers .NET 4.13.0のcontainer disposal state。最初のDocker remove failure前に内部disposed flagがlatchされるため、同じcontainer instanceへの2回目の`DisposeAsync()`がno-opとなり、repository fixtureが未回収resourceのhandleを失い得る。
 
 ---
 
-## 4. 一次sourceに基づく採用判断
+## 2. 3つの評価文書
 
-現時点では、**ChatGPT版のREQUEST CHANGESをcanonicalなmerge判断として扱う方が妥当**である。
+| 文書 | 役割 | Verdict |
+| --- | --- | --- |
+| `implementation-evaluation.md` | ChatGPT独立Judge | REQUEST CHANGES / Major 1 |
+| `implementation-evaluation-claude-opus-5.md` | Claude Opus 5独立Judge | APPROVE / Major 0 |
+| `implementation-evaluation-synthesis.md` | **GPT + Claude統合Judge / canonical** | **REQUEST CHANGES / Major 1** |
 
-理由は次の通り。
-
-- Testcontainersのdisposed flagがresource削除成功前にlatchされることは、source上で決定論的に確認できる。
-- Docker remove failure後にdisposed flagをresetするpathはない。
-- 同じinstanceへの2回目のdisposeはno-opとなる。
-- repository fixtureはno-opを識別できず、成功時と同じくfieldを`null`へ変更する。
-- green CIと通常cleanup成功は、Docker remove自体が失敗したpathを通らないため反証にならない。
-- Issue #41の重点確認には、cleanup retry、final cleanup、deterministic owner、failed dispose後のhandle保持が明示されている。
-
-ただしAC-06の表現は次のように分離するのが正確である。
-
-| 論点 | 判定 |
-| --- | --- |
-| 最初のcleanup failureを黙って無視しない | **PASS** — 例外として可視化される |
-| failure後に同一container handleでretryできる | **FAIL** |
-| final cleanupをdeterministically成立させる | **FAIL** |
-| failed dispose後も有効なowner/handleを保持する | **FAIL** |
-
-したがって、Majorは単純な「例外を握り潰した」問題ではなく、**container lifecycle全体のretry / final cleanup contractが実dependency semanticsと一致しない問題**である。
+元2文書は監査用として変更せず、統合Judgeを最終synthesisとして追加した。
 
 ---
 
-## 5. ランキング差
+## 3. なぜ元Scoreが大きく違ったか
 
-Reference Verdictの違いにより、絶対scoreとGradeは大きく異なる。ただし相対順位には一定の共通性がある。
+採点基準は同じだったが、Goldが逆だった。
 
-| Model + Harness | ChatGPT版 Rank / Score | Claude版 Rank / Score |
-| --- | ---: | ---: |
-| Claude Opus 5 / Claude Code | **1 / 65.5** | **1 / 99.0** |
-| Claude Sonnet 5 / Claude Code | **2 / 65.0** | 3 / 95.5 |
-| GPT-5.6 Sol / Codex | 3 / 59.5 | **2 / 97.0** |
-| ChatGPT Opus 5.6 Sol / Browser | 4 / 57.5 | 4 / 90.5 |
-| DeepSeek V4 Pro / Open Code | 5 / 57.0 | 7 / 85.0 |
-| Grok 4.5 / Cursor | 6 / 56.5 | 5 / 90.0 |
-| GPT-5.6 Terra / Codex | 7 / 56.0 | 6 / 89.5 |
-| ChatGPT GPT 5.5 / Browser | 8 / 55.0 | 8 / 84.0 |
-| MiMo-V2.5-Pro / Open Code | 9 / 51.5 | 11 / 80.5 |
-| Composer 2.5 / Cursor | 10 / 50.0 | 9 / 83.5 |
-| GPT-5.6 Luna / Codex | 11 / 47.5 | 10 / 82.5 |
-| Qwen3.7 Plus / Open Code | 12 / 46.0 | 13 / 76.5 |
-| MiMo-V2.5 / Open Code | 13 / 45.5 | 12 / 78.0 |
-| GPT-5.6 Luna / Open Code | 14 / 41.5 | 14 / 72.0 |
-| DeepSeek V4 Flash / Open Code | 15 / 35.5 | 16 / 65.0 |
-| MiniMax M3 / Open Code | 16 / 34.5 | 15 / 70.0 |
-| ChatGPT o3 / Browser | 17 / 14.0 | 17 / 28.0 |
+- Claude Judge: 「Major 0。APPROVEが正解」
+- ChatGPT Judge: 「Major 1。REQUEST CHANGESが正解」
 
-共通傾向は次の通り。
-
-- Claude Opus 5 / Claude Codeは両評価で1位。
-- 上位3件はClaude Opus 5、Claude Sonnet 5、GPT-5.6 Solの組合せで共通。
-- ChatGPT Opus 5.6 Sol / Browserは両評価で4位。
-- DeepSeek V4 Flash、MiniMax M3、ChatGPT o3は両評価で下位。
-- 相対的なverification depth評価は近いが、**全員がGold Majorを見逃したとするかどうか**で絶対scoreが変わる。
+この差が`A.重大問題検出 /25`、`D.Severity /10`、`H.Verdict /5`の計40点へ波及し、同じreviewerでも30点以上の差が生じた。
 
 ---
 
-## 6. 各文書の利用目的
+## 4. 統合採点の考え方
 
-### `implementation-evaluation.md`
+8軸100点は維持し、Gold依存度で2つに分離した。
 
-- dependency sourceを含むadversarialなmerge-gate判定
-- container lifecycle / cleanup ownershipを重視
-- canonical Referenceとして使用
-- PR #104を修正前にmergeしない判断の根拠
+| Subscore | 配点 | 軸 | 統合方法 |
+| --- | ---: | --- | --- |
+| Review Quality | 60 | B + C + E + F + G | GPT JudgeとClaude Judgeの平均 |
+| Gold Alignment | 40 | A + D + H | 最終Gold `Major 1 / REQUEST CHANGES`へ再評価 |
 
-### `implementation-evaluation-claude-opus-5.md`
+このため、レビュー内容そのものが深いReviewerはReview Qualityで高得点を維持しつつ、唯一のMajorを見逃した事実はGold Alignment側で明確に減点される。
 
-- framework/runtime probe、CI incident、digest assertion、reviewer verification depthの詳細分析
-- clean implementationに対するprecision benchmarkとしての別解
-- Reference disagreementを再検証するための比較資料
-- reviewer相対評価の補助資料
-
-両文書を残すことには意味がある。Claude版は誤った文書として廃棄するのではなく、**Testcontainers disposal stateを除く大部分のtechnical analysisが高品質な独立評価**として保持する。
-
----
-
-## 7. 次の技術確認
-
-source読解だけでもMajorは成立するが、最終的な議論を閉じるためには次のruntime probeが有効である。
-
-1. Testcontainers 4.13.0でcontainerを作成する。
-2. 最初のDocker removeだけを決定論的に失敗させる。
-3. 同じcontainer instanceへ2回目の`DisposeAsync()`を呼ぶ。
-4. Docker remove APIの呼出回数を確認する。
-5. containerがdaemon上に残っているか確認する。
-6. repository fixtureがfieldを`null`へ落とすか確認する。
-
-期待結果は、source上では次である。
+例: Claude Opus 5 / Claude Code
 
 ```text
-Remove call count: 1
-Second DisposeAsync: successful no-op
-Daemon container: remains
-Fixture field: null after second call
+Review Quality:  59.25 / 60
+Gold Alignment:   6.50 / 40
+Final Score:      66.0 / 100
 ```
 
-この期待結果が再現されればChatGPT版Majorがruntimeでも確定する。反対の結果が出る場合のみ、Testcontainers sourceの別pathまたは外部cleanup mechanismを再調査する。
+つまり66点は「レビュー能力が低い」という意味ではなく、**証拠品質はほぼ満点だが、今回の唯一のmerge blockerを見逃した**という意味である。
 
 ---
 
-## 8. 結論
+## 5. 最終統合ランキング
 
-1. 両評価はtarget identity、CI成功、database isolation、scope、digest assertionの弱さ、`SyncTextWriter` semanticsでは概ね一致している。
-2. 唯一merge判断を反転させる相違は、Testcontainers disposal failure後の内部disposed-state latchである。
-3. 一次source上、同じcontainer instanceでのdispose retryは成立しないため、現時点のcanonical判定は**REQUEST CHANGES / Major 1**が妥当である。
-4. 17 reviewerは全件このMajorを見逃しており、canonical normalizationでは全件`FN=1`となる。
-5. Claude版のreviewer相対評価とruntime probe分析は依然として有用であり、別評価文書として併存保存する。
-6. PR #104の修正後にReference Reviewとランキングを再評価する場合は、raw reviewer結果を変更せず、新しいtarget Head / RUN_IDで別benchmarkとして実施する。
+| Rank | Model + Harness | Quality /60 | Gold /40 | Final | Grade | 分 |
+| ---: | --- | ---: | ---: | ---: | :---: | ---: |
+| 1 | Claude Opus 5 / Claude Code | 59.25 | 6.5 | **66.0** | C | 12 |
+| 2 | Claude Sonnet 5 / Claude Code | 57.75 | 7.5 | **65.5** | C | 7 |
+| 3 | GPT-5.6 Sol / Codex | 57.75 | 2.5 | **60.5** | D | 11 |
+| 4 | ChatGPT Opus 5.6 Sol / Browser | 54.50 | 2.5 | **57.0** | D | 7 |
+| 5 | Grok 4.5 / Cursor | 54.25 | 2.5 | **57.0** | D | 6 |
+| 6 | GPT-5.6 Terra / Codex | 53.75 | 2.5 | **56.5** | D | 8 |
+| 7 | DeepSeek V4 Pro / Open Code | 52.75 | 2.5 | **55.5** | D | 20 |
+| 8 | ChatGPT GPT 5.5 / Browser | 51.50 | 2.5 | **54.0** | D | 6 |
+| 9 | Composer 2.5 / Cursor | 49.25 | 1.5 | **51.0** | D | 3 |
+| 10 | MiMo-V2.5-Pro / Open Code | 48.75 | 1.5 | **50.5** | D | 7 |
+| 11 | GPT-5.6 Luna / Codex | 47.75 | 1.5 | **49.5** | F | 11 |
+| 12 | MiMo-V2.5 / Open Code | 45.25 | 1.0 | **46.5** | F | 4 |
+| 13 | Qwen3.7 Plus / Open Code | 45.00 | 1.0 | **46.0** | F | 10 |
+| 14 | GPT-5.6 Luna / Open Code | 42.00 | 1.0 | **43.0** | F | 7 |
+| 15 | MiniMax M3 / Open Code | 38.25 | 0.5 | **39.0** | F | 36 |
+| 16 | DeepSeek V4 Flash / Open Code | 36.50 | 0.5 | **37.0** | F | 13 |
+| 17 | ChatGPT o3 / Browser | 17.00 | 0.0 | **17.0** | F | 5 |
+
+表示上4位と5位は57.0で同点だが、丸め前TotalはChatGPT Opus 5.6 Sol = 57.00、Grok 4.5 = 56.75のため、この順とした。
+
+---
+
+## 6. 両Judgeで一致した主な技術事項
+
+- PostgreSQL 18.4 real container / PG category 7件 / skip 0は成立。
+- digest-qualified image reference、database isolation、fallbackなし、scope管理は成立。
+- `Image.FullName` / `Digest` assertionはdaemon-side evidenceではなくconfiguration referenceのparse結果。
+- .NET 10現runtimeでは`lock(synchronizedWriter)`はconcurrent writeと相互排他になる。
+- DeepSeek V4 Flash / MiniMax M3の`SyncTextWriter` findingは支持されない。
+- ChatGPT o3 / BrowserはINCOMPLETE。
+
+---
+
+## 7. 統合Judgeでの使い分け
+
+- **Formal merge-gate候補:** Claude Opus 5 / Claude Code、Claude Sonnet 5 / Claude Code、GPT-5.6 Sol / Codex。ただし今回3件ともGold Majorを見逃したため、dependency lifecycle監査を追加する。
+- **高速一次review:** Grok 4.5 / Cursor、Composer 2.5 / Cursor。
+- **specification / documentary review:** ChatGPT Opus 5.6 Sol / Browser、GPT-5.6 Terra / Codex、ChatGPT GPT 5.5 / Browser。
+- **単独gate非推奨:** DeepSeek V4 Flash、MiniMax M3（framework semantics誤り）、ChatGPT o3（未完遂）。
+
+---
+
+## 8. 手続き上の注意
+
+統合結果は**post-hoc adjudicated synthesis**である。ChatGPT側のTestcontainers Majorは最初のReference lock後の追加一次source突合で明確化されたため、このFinal Scoreを「元プロトコルどおり完全blindに固定されたGoldへのscore」とは扱わない。
+
+技術的なmerge判断としては統合Goldを採用する。一方、厳密なblind benchmarkとして再確定する場合は、同じ修正前Headを別RUN_IDで新しいJudgeに評価させ、raw reviewerを読む前にMajor 1を含むReferenceを固定する。
+
+---
+
+## 9. 結論
+
+最終的なGPT + Claude統合結果は、**REQUEST CHANGES / Major 1**。
+
+Reviewer順位は、1位 Claude Opus 5 / Claude Code、2位 Claude Sonnet 5 / Claude Code、3位 GPT-5.6 Sol / Codex。
+
+今後は単一Totalだけでなく、`Review Quality /60`と`Gold Alignment /40`を併記する。これにより、JudgeのGold判断差で絶対点が大きく動いても、「レビューそのものの深さ」と「今回の正解への一致度」を分けて読める。
