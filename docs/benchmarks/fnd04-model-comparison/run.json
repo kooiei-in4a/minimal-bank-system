@@ -1,10 +1,12 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "benchmark_id": "fnd04-implementation-self-review",
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
-  "status": "prepared_not_started",
-  "common_base_sha": null,
+  "status": "locked_not_started",
+  "common_base_branch": "main",
+  "common_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+  "control_branch": "agent/fnd04-benchmark-control",
   "revisions": {
     "implementation_h0_prompt": "fnd04-h0-v1",
     "formal_self_review_prompt": "fnd04-sr-v1",
@@ -24,14 +26,86 @@
     "formal_agent_b"
   ],
   "implementation_candidates": [
-    {"slug":"gpt-5.6-sol-codex","model":"GPT-5.6 Sol","harness":"Codex","pool":"active"},
-    {"slug":"gpt-5.6-terra-codex","model":"GPT-5.6 Terra","harness":"Codex","pool":"active"},
-    {"slug":"gpt-5.6-luna-codex","model":"GPT-5.6 Luna","harness":"Codex","pool":"active"},
-    {"slug":"gpt-5.6-luna-opencode","model":"GPT-5.6 Luna","harness":"Open Code","pool":"active"},
-    {"slug":"claude-opus-5-claude-code","model":"Claude Opus 5","harness":"Claude Code","pool":"active"},
-    {"slug":"claude-sonnet-5-claude-code","model":"Claude Sonnet 5","harness":"Claude Code","pool":"active"},
-    {"slug":"grok-4.5-cursor","model":"Grok 4.5","harness":"Cursor","pool":"challenger"},
-    {"slug":"deepseek-v4-flash-opencode","model":"DeepSeek V4 Flash","harness":"Open Code","pool":"challenger"}
+    {
+      "slug": "gpt-5.6-sol-codex",
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "pool": "active",
+      "branch": "agent/issue-42-fnd-04-gpt-5.6-sol-codex",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    },
+    {
+      "slug": "gpt-5.6-terra-codex",
+      "model": "GPT-5.6 Terra",
+      "harness": "Codex",
+      "pool": "active",
+      "branch": "agent/issue-42-fnd-04-gpt-5.6-terra-codex",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    },
+    {
+      "slug": "gpt-5.6-luna-codex",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "pool": "active",
+      "branch": "agent/issue-42-fnd-04-gpt-5.6-luna-codex",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    },
+    {
+      "slug": "gpt-5.6-luna-opencode",
+      "model": "GPT-5.6 Luna",
+      "harness": "Open Code",
+      "pool": "active",
+      "branch": "agent/issue-42-fnd-04-gpt-5.6-luna-opencode",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    },
+    {
+      "slug": "claude-opus-5-claude-code",
+      "model": "Claude Opus 5",
+      "harness": "Claude Code",
+      "pool": "active",
+      "branch": "agent/issue-42-fnd-04-claude-opus-5-claude-code",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    },
+    {
+      "slug": "claude-sonnet-5-claude-code",
+      "model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "pool": "active",
+      "branch": "agent/issue-42-fnd-04-claude-sonnet-5-claude-code",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    },
+    {
+      "slug": "grok-4.5-cursor",
+      "model": "Grok 4.5",
+      "harness": "Cursor",
+      "pool": "challenger",
+      "branch": "agent/issue-42-fnd-04-grok-4.5-cursor",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    },
+    {
+      "slug": "deepseek-v4-flash-opencode",
+      "model": "DeepSeek V4 Flash",
+      "harness": "Open Code",
+      "pool": "challenger",
+      "branch": "agent/issue-42-fnd-04-deepseek-v4-flash-opencode",
+      "initial_head_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+      "branch_status": "prepared_identical",
+      "execution_status": "not_started"
+    }
   ],
   "reserve": [
     "qwen3.7-plus-opencode",
@@ -72,8 +146,8 @@
     "prompts": "locked",
     "scoring": "locked",
     "evaluator_probes": "locked",
-    "common_base": "pending",
-    "candidate_branches": "pending",
+    "common_base": "locked",
+    "candidate_branches": "prepared_8_of_8_identical",
     "candidate_execution": "not_started"
   }
 }
