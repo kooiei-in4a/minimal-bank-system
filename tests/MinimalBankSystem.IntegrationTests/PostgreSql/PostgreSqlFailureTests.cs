@@ -1,3 +1,6 @@
+using System.Net;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -29,8 +32,8 @@ public sealed class PostgreSqlFailureTests
                 PoisoningContainerDisposer.FailureMessage,
                 EnumerateExceptions(failure).Select(exception => exception.Message));
             Assert.Contains(
-                FailOnceContainerResourceOwner.FailureMessage,
-                EnumerateExceptions(failure).Select(exception => exception.Message));
+                EnumerateExceptions(failure),
+                exception => exception is DockerApiException { StatusCode: HttpStatusCode.Conflict });
             Assert.True(fixture.HasPendingContainerCleanup);
             Assert.Equal(1, disposer.CallCount);
             Assert.True(await DockerContainerResourceProbe.ExistsAsync(containerId));
@@ -78,7 +81,9 @@ public sealed class PostgreSqlFailureTests
             Assert.Contains("Failed to start and connect", failure.Message, StringComparison.Ordinal);
             Assert.Contains(startupFailureMessage, failureMessages);
             Assert.Contains(PoisoningContainerDisposer.FailureMessage, failureMessages);
-            Assert.Contains(FailOnceContainerResourceOwner.FailureMessage, failureMessages);
+            Assert.Contains(
+                EnumerateExceptions(failure),
+                exception => exception is DockerApiException { StatusCode: HttpStatusCode.Conflict });
             Assert.NotNull(containerId);
             Assert.True(fixture.HasPendingContainerCleanup);
             Assert.Equal(1, disposer.CallCount);
@@ -194,22 +199,36 @@ public sealed class PostgreSqlFailureTests
     private sealed class FailOnceContainerResourceOwner(
         IContainerResourceOwner inner) : IContainerResourceOwner
     {
-        public const string FailureMessage = "Injected independent Docker removal failure.";
-
         private int removeCallCount;
 
         public Task<IReadOnlyList<string>> GetContainerIdsAsync(
             CancellationToken cancellationToken = default) =>
             inner.GetContainerIdsAsync(cancellationToken);
 
-        public Task RemoveContainersAsync(CancellationToken cancellationToken = default)
+        public async Task RemoveContainersAsync(CancellationToken cancellationToken = default)
         {
             if (Interlocked.Increment(ref removeCallCount) == 1)
             {
-                throw new IOException(FailureMessage);
+                IReadOnlyList<string> containerIds = await inner.GetContainerIdsAsync(cancellationToken);
+                string containerId = Assert.Single(containerIds);
+                using DockerClient client = new DockerClientBuilder().Build();
+
+                // Reach the Docker remove endpoint and deterministically get a daemon-side
+                // conflict by trying to remove the running container without force.
+                await client.Containers.RemoveContainerAsync(
+                    containerId,
+                    new ContainerRemoveParameters
+                    {
+                        Force = false,
+                        RemoveVolumes = true,
+                    },
+                    cancellationToken);
+
+                throw new InvalidOperationException(
+                    "Expected Docker to reject removal of the running container.");
             }
 
-            return inner.RemoveContainersAsync(cancellationToken);
+            await inner.RemoveContainersAsync(cancellationToken);
         }
 
         public void Dispose() => inner.Dispose();
