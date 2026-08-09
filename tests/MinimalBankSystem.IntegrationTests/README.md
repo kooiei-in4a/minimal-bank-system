@@ -26,8 +26,12 @@ fallback.
   database lease.
 - Cleanup ownership: `PostgreSqlTestDatabase` performs `DROP DATABASE ... WITH (FORCE)` and only
   becomes disposed after a successful drop. A failed cleanup is reported and remains retryable.
-  `PostgreSqlContainerFixture` removes its container and preserves a failed-start error together
-  with any partial-container cleanup error.
+  `PostgreSqlContainerFixture` gives each container a stable name and captures its Docker ID when
+  available. If Testcontainers disposal fails, the poisoned Testcontainers instance is never
+  retried: a new Docker client removes the retained name/ID and verifies that the daemon no longer
+  contains the container. If that independent cleanup also fails, the owner remains available for
+  a later fixture cleanup attempt. Startup failures preserve both the primary failure and any
+  partial-container cleanup failure.
 
 This fixture does not provide an application `DbContext`, migrations, business schema, or
 business tables. Those remain outside FND-03.
