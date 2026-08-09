@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Persistence;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,14 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+
+// Registration only: DI construction of BankDbContext never applies migrations or creates
+// schema. Schema evolution runs exclusively through MinimalBankSystem.Migrator (ADR-0009).
+builder.Services.AddDbContext<BankDbContext>(options => options.UseBankPostgreSql(
+    builder.Configuration.GetConnectionString("Database")
+        ?? throw new InvalidOperationException(
+            $"The '{BankDbContextConnectionStringResolver.ConnectionStringConfigurationKey}' " +
+            "connection string is not configured.")));
 
 WebApplication app = builder.Build();
 
