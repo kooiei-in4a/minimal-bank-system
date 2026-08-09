@@ -128,3 +128,41 @@ Final synthesisがある場合は、candidate表とは分離してbranch / Head 
 - `docs/benchmarks/fnd02-model-comparison/analysis.md`
 
 新しいbenchmarkでは、parent policyと本規約を確認したうえで、直近のarchive実績を参考例として使用します。
+
+## 10. H0 / H1 snapshot handling
+
+Formal Self-Review modeを使用したcandidateでは、最終archive tagは原則H1へ付与する。
+
+H0は削除せず、run / manifestへfull SHAとして記録する。H0がH1のancestorとしてrepository historyから到達可能であることを確認する。
+
+H0を別tagへ固定する必要があるのは、history rewrite等で到達不能になる場合、またはH0自体を独立公開artifactとして扱う場合に限る。
+
+## 11. Product completion is not blocked by research archive
+
+Final production PRのmerge / Issue close後、candidate archiveが未完了でも、次のproduct Issueの開始条件を満たしていれば進行してよい。
+
+archive作業は別のbenchmark operationとして実施する。ただし次を維持する。
+
+```text
+expected Head確認
+-> annotated tag作成
+-> remote dereference確認
+-> manifest更新
+-> candidate PR unmerged Close
+-> candidate working branch削除
+```
+
+product進行を優先することは、snapshot保全を省略する理由にはしない。
+
+## 12. Archive automation
+
+候補数が多いbenchmarkでは、tag / dereference verification / PR close / branch cleanupを再利用可能なoperatorで自動化してよい。
+
+operatorは次を満たすこと。
+
+- mutation前に全candidate identityを検証する
+- tag mismatch時はfail closed
+- tag確認前にbranchを削除しない
+- candidate PRをmergeしない
+- final-code / artifact / archive branchをcandidate cleanupへ含めない
+- 一時的に権限を拡張したworkflow / scriptは作業後に除去する
