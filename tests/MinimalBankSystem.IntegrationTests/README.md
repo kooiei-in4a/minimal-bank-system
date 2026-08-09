@@ -52,8 +52,9 @@ fallback.
 - Resource Reaper and process termination are defense-in-depth only, not the final cleanup
   guarantee. Cleanup failures are not swallowed.
 
-This fixture does not provide an application `DbContext`, migrations, business schema, or
-business tables. Those remain outside FND-03.
+FND-03 owns the real PostgreSQL fixture only. FND-04 adds EF Core / migrator verification on
+top of this fixture. Business tables remain outside both Issues; see
+`docs/operations/ef-core-migration-procedure.md`.
 
 ## Parallel policy
 

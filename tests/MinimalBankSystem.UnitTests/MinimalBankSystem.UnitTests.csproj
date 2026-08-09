@@ -20,5 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj" />
     <ProjectReference Include="../../src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj" />
+    <ProjectReference Include="../../src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj" />
   </ItemGroup>
 </Project>

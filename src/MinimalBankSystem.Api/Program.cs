@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Persistence;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,10 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+
+// Register EF Core / Npgsql persistence. Normal API startup must not apply migrations
+// or call EnsureCreated; schema evolution is owned by MinimalBankSystem.Migrator.
+builder.Services.AddBankPersistence(builder.Configuration);
 
 WebApplication app = builder.Build();
 

@@ -10,6 +10,7 @@ public sealed class BoundaryAssemblyTests
     [Theory]
     [InlineData("MinimalBankSystem.Api")]
     [InlineData("MinimalBankSystem.Infrastructure")]
+    [InlineData("MinimalBankSystem.Migrator")]
     public void FoundationAssembliesTargetNet10(string assemblyName)
     {
         Assembly assembly = Assembly.Load(new AssemblyName(assemblyName));
