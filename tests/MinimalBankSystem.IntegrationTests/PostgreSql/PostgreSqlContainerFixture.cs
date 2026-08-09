@@ -5,7 +5,9 @@ using Testcontainers.PostgreSql;
 
 namespace MinimalBankSystem.IntegrationTests.PostgreSql;
 
+#pragma warning disable CA1001 // reclaimGate lifetime matches the xUnit class fixture lifetime.
 public sealed class PostgreSqlContainerFixture : IAsyncLifetime
+#pragma warning restore CA1001
 {
     public const string ImageReference =
         "postgres:18.4@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a";
@@ -15,19 +17,42 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     internal const string DatabaseNamePrefix = "mbs_test_";
 
     private const string AdministrativeDatabaseName = "fixture_admin";
+
     private readonly string? dockerEndpoint;
+    private readonly IDockerContainerReclaimer reclaimer;
+    private readonly IContainerDisposeInvoker disposeInvoker;
+    private readonly bool failConnectionAfterContainerStartForTests;
+    private readonly SemaphoreSlim reclaimGate = new(1, 1);
+
     private PostgreSqlContainer? container;
+    private string? ownedContainerId;
+    private bool testcontainersDisposeAttempted;
 
     public PostgreSqlContainerFixture()
+        : this(dockerEndpoint: null, reclaimer: null, disposeInvoker: null, failConnectionAfterContainerStartForTests: false)
     {
     }
 
     internal PostgreSqlContainerFixture(string dockerEndpoint)
+        : this(dockerEndpoint, reclaimer: null, disposeInvoker: null, failConnectionAfterContainerStartForTests: false)
+    {
+    }
+
+    internal PostgreSqlContainerFixture(
+        string? dockerEndpoint,
+        IDockerContainerReclaimer? reclaimer,
+        IContainerDisposeInvoker? disposeInvoker,
+        bool failConnectionAfterContainerStartForTests = false)
     {
         this.dockerEndpoint = dockerEndpoint;
+        this.reclaimer = reclaimer ?? new DockerCliContainerReclaimer(dockerEndpoint);
+        this.disposeInvoker = disposeInvoker ?? new TestcontainersContainerDisposeInvoker();
+        this.failConnectionAfterContainerStartForTests = failConnectionAfterContainerStartForTests;
     }
 
     public int ServerVersionNumber { get; private set; }
+
+    internal string? OwnedContainerId => ownedContainerId;
 
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
@@ -54,6 +79,14 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+            ownedContainerId = candidate.Id;
+
+            if (failConnectionAfterContainerStartForTests)
+            {
+                throw new InvalidOperationException(
+                    "Intentional post-start failure for startup cleanup verification.");
+            }
+
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -70,8 +103,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
             try
             {
-                await candidate.DisposeAsync();
-                container = null;
+                await ReclaimContainerAsync(cancellationToken);
             }
             catch (Exception exception)
             {
@@ -89,27 +121,84 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         }
     }
 
-    public async Task DisposeAsync()
-    {
-        PostgreSqlContainer? candidate = container;
+    public Task DisposeAsync() => DisposeAsync(CancellationToken.None);
 
-        if (candidate is null)
+    internal async Task DisposeAsync(CancellationToken cancellationToken)
+    {
+        await reclaimGate.WaitAsync(cancellationToken);
+
+        try
+        {
+            await ReclaimContainerAsync(cancellationToken);
+        }
+        finally
+        {
+            reclaimGate.Release();
+        }
+    }
+
+    private async Task ReclaimContainerAsync(CancellationToken cancellationToken)
+    {
+        if (ownedContainerId is null)
         {
             return;
         }
 
-        try
+        string containerId = ownedContainerId;
+        PostgreSqlContainer? candidate = container;
+        Exception? testcontainersDisposeException = null;
+
+        if (candidate is not null && !testcontainersDisposeAttempted)
         {
-            await candidate.DisposeAsync();
-            container = null;
+            testcontainersDisposeAttempted = true;
+
+            try
+            {
+                await disposeInvoker.InvokeAsync(candidate, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                testcontainersDisposeException = exception;
+            }
         }
-        catch (Exception exception)
+
+        if (await reclaimer.ExistsAsync(containerId, cancellationToken))
         {
+            try
+            {
+                await reclaimer.RemoveAsync(containerId, cancellationToken);
+            }
+            catch (Exception reclaimerException)
+            {
+                Exception cause = testcontainersDisposeException is null
+                    ? reclaimerException
+                    : new AggregateException(testcontainersDisposeException, reclaimerException);
+
+                throw new InvalidOperationException(
+                    $"Failed to reclaim the PostgreSQL test container '{containerId}' using '{ImageReference}'. " +
+                    "The fixture retains ownership by container id so cleanup can be retried through an independent path.",
+                    cause);
+            }
+        }
+
+        if (await reclaimer.ExistsAsync(containerId, cancellationToken))
+        {
+            Exception cause = testcontainersDisposeException is null
+                ? new InvalidOperationException(
+                    $"Docker container '{containerId}' still exists after reclamation was attempted.")
+                : new AggregateException(
+                    testcontainersDisposeException,
+                    new InvalidOperationException(
+                        $"Docker container '{containerId}' still exists after reclamation was attempted."));
+
             throw new InvalidOperationException(
-                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
-                exception);
+                $"Failed to reclaim the PostgreSQL test container '{containerId}' using '{ImageReference}'. " +
+                "The fixture retains ownership by container id so cleanup can be retried through an independent path.",
+                cause);
         }
+
+        ownedContainerId = null;
+        container = null;
     }
 
     public async Task<PostgreSqlTestDatabase> CreateDatabaseAsync(
