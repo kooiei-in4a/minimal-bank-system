@@ -1,3 +1,4 @@
+# Temporary workflow for FND-03 archive finalization; removed before PR #121 merge.
 name: FND-03 Archive Finalizer
 
 on:
@@ -164,7 +165,6 @@ The candidate is intentionally not merged. Its source snapshot is fixed by the a
             IFS='|' read -r tag branch head pr rank score <<< "$row"
             cleanup_branches+=("$branch")
           done
-          # Historical branch-name-correction branches associated with already-closed superseded PRs.
           cleanup_branches+=(
             'agent/issue-41-fnd-03-agent-a'
             'agent/issue-41-fnd-03-claude-sonnet-5-claude-code'
@@ -180,7 +180,6 @@ The candidate is intentionally not merged. Its source snapshot is fixed by the a
           done
           if (( ${#delete_refs[@]} > 0 )); then
             git push --atomic origin "${delete_refs[@]/#/--delete }" || {
-              # Older git shells cannot combine --delete refs through array prefix reliably; fall back one by one.
               for ref in "${delete_refs[@]}"; do
                 git push origin --delete "${ref#refs/heads/}"
               done
