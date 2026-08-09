@@ -63,10 +63,14 @@ Final Synthesis reviewで確定したTestcontainers disposal Majorについて�
 ## Isolation
 
 - candidate同士のbranch / PR / implementationを相互参照しない。
-- 全candidateの結果固定前に比較評価を開始しない。**この条件は現在満たされた。**
-- PR #104 / `agent/issue-41-fnd-03-final-code` はcandidate比較完了まで変更しない。
+- 全candidateの結果固定前に比較評価を開始しない。この条件はcollection時点で満たされた。
+- PR #104 / `agent/issue-41-fnd-03-final-code` はcandidate比較完了まで変更しない運用だった。
 - benchmark raw reviewer artifactsは変更しない。
 
-## Next
+## Completion / downstream outcome
 
-次工程は14 candidateの比較評価である。比較開始後は、各branchの現在tipではなく、本registryで固定したHead SHAを必ず対象とする。
+14 candidate比較と3-Judge adjudicationは完了している。最終decisionは[`final-evaluation.md`](./final-evaluation.md)および[`judges/synthesis.md`](./judges/synthesis.md)に記録済み。
+
+その後、PR #108のproduction architectureを基礎にFinal Code Major Fixを実装し、Agent B独立レビューでBlocker 0 / Major 0を確認したうえでPR #104をmergeし、Issue #41をcloseした。production outcomeは[`../final-outcome.md`](../final-outcome.md)を参照する。
+
+candidate snapshot tag / PR close / working branch deletionはrepository archive lifecycleとして別管理し、`archive-manifest.json`のpending状態が解消されるまでarchive全体を`COMPLETE / ARCHIVED`とは宣言しない。
