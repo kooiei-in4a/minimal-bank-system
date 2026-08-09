@@ -53,7 +53,10 @@ fallback.
   guarantee. Cleanup failures are not swallowed.
 
 This fixture does not provide an application `DbContext`, migrations, business schema, or
-business tables. Those remain outside FND-03.
+business tables. FND-04 reuses the fixture from `MigrationInfrastructureTests` to verify the
+dedicated migrator, migration history, failure propagation, the 60-second timeout, actual EF
+model drift detection, and normal API startup without schema mutation. These checks remain in
+the `PostgreSqlIntegration` category and never fall back to another provider.
 
 ## Parallel policy
 

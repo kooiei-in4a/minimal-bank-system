@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Persistence;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,16 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+builder.Services.AddDbContext<BankDbContext>((serviceProvider, optionsBuilder) =>
+{
+    IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    string connectionString = configuration.GetConnectionString(
+        BankDbContextConfiguration.ConnectionStringName)
+        ?? throw new InvalidOperationException(
+            $"Connection string '{BankDbContextConfiguration.ConfigurationKey}' is required.");
+
+    optionsBuilder.UseBankPostgreSql(connectionString);
+});
 
 WebApplication app = builder.Build();
 
