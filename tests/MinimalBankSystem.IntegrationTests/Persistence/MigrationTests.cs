@@ -58,6 +58,42 @@ public sealed class MigrationTests(PostgreSqlContainerFixture fixture)
     }
 
     [Fact]
+    public async Task MigratorMigrationFailureReturnsNonZero()
+    {
+        await ExecuteNonQueryAsync(
+            "CREATE TABLE \"__EFMigrationsHistory\" (\"MigrationId\" text NOT NULL);");
+
+        ConfigurationManager configuration = new();
+        configuration["ConnectionStrings:Database"] = Database.ConnectionString;
+        using StringWriter errors = new();
+
+        int exitCode = await MigratorApplication.RunAsync(
+            configuration,
+            errors);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Database migration failed", errors.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MigratorCancellationReturnsNonZero()
+    {
+        ConfigurationManager configuration = new();
+        configuration["ConnectionStrings:Database"] = Database.ConnectionString;
+        using StringWriter errors = new();
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+
+        int exitCode = await MigratorApplication.RunAsync(
+            configuration,
+            errors,
+            cancellation.Token);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Database migration failed", errors.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task NormalApiStartupDoesNotCreateMigrationHistoryOrApplicationTables()
     {
         Assert.False(await RelationExistsAsync("__EFMigrationsHistory"));
@@ -100,6 +136,14 @@ public sealed class MigrationTests(PostgreSqlContainerFixture fixture)
             connection);
         command.Parameters.AddWithValue($"public.\"{relationName}\"");
         return (bool)(await command.ExecuteScalarAsync() ?? false);
+    }
+
+    private async Task ExecuteNonQueryAsync(string commandText)
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(commandText, connection);
+        await command.ExecuteNonQueryAsync();
     }
 
     private async Task<int> CountApplicationTablesAsync()
