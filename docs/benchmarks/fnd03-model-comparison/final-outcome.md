@@ -27,6 +27,7 @@ CLOSE_EVIDENCE_COMMENT: 5230369633
 | Pre-merge push CI `31300321067` | SUCCESS |
 | Post-merge main CI `31301204377` | SUCCESS |
 | Agent B findings | Blocker 0 / Major 0 / Minor 0 / Nit 0 |
+| Agent B GitHub state | COMMENTED — self-approval restriction; technical verdict is APPROVE |
 | PR #104 | MERGED |
 | Merge commit | `6c5534fdb72e76d6ef5c3268cdb8558d7f344e7a` |
 | Issue #41 | CLOSED / COMPLETED |
@@ -41,5 +42,5 @@ Final implementationは、PR #108で選ばれたproduction architectureを基礎
 
 - [PR #104](https://github.com/kooiei-in4a/minimal-bank-system/pull/104)
 - [Issue #41](https://github.com/kooiei-in4a/minimal-bank-system/issues/41)
-- [Agent B review comment #4890768131](https://github.com/kooiei-in4a/minimal-bank-system/pull/104#issuecomment-4890768131)
+- [Agent B review #4890768131](https://github.com/kooiei-in4a/minimal-bank-system/pull/104#pullrequestreview-4890768131)
 - [Issue close evidence #5230369633](https://github.com/kooiei-in4a/minimal-bank-system/issues/41#issuecomment-5230369633)
