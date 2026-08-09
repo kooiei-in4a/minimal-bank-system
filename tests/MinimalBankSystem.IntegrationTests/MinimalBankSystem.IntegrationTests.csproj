@@ -24,5 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/MinimalBankSystem.Api/MinimalBankSystem.Api.csproj" />
     <ProjectReference Include="../../src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj" />
+    <!-- Exercised as a real process; referenced so tests assert against its exit-code contract. -->
+    <ProjectReference Include="../../src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj" />
   </ItemGroup>
 </Project>

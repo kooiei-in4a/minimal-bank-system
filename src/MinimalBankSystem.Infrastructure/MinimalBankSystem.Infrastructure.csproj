@@ -1,5 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <!--
+      Npgsql 10.0.3 only requires Relational 10.0.4. Referencing it directly keeps every Microsoft
+      EF Core assembly on the same 10.0.10 patch line for all consumers of this project, instead of
+      letting design-time and runtime resolve different Relational versions.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj" />
   </ItemGroup>
 </Project>

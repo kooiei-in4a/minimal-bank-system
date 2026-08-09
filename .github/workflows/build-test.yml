@@ -31,8 +31,14 @@ jobs:
       - name: Restore
         run: dotnet restore MinimalBankSystem.slnx --verbosity minimal
 
+      - name: Restore local tools
+        run: dotnet tool restore
+
       - name: Build
         run: dotnet build MinimalBankSystem.slnx --no-restore --verbosity minimal
+
+      - name: Verify no pending EF model changes
+        run: dotnet tool run dotnet-ef migrations has-pending-model-changes --project src/MinimalBankSystem.Infrastructure --startup-project src/MinimalBankSystem.Migrator --no-build
 
       - name: Test (non-PostgreSQL)
         run: dotnet test MinimalBankSystem.slnx --no-build --filter "Category!=PostgreSqlIntegration"

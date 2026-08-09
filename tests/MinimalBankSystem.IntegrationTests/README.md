@@ -55,6 +55,23 @@ fallback.
 This fixture does not provide an application `DbContext`, migrations, business schema, or
 business tables. Those remain outside FND-03.
 
+## Migration tests
+
+`PostgreSql/MigrationBaselineTests` reuses this fixture for the FND-04 migration machinery. Each
+test leases its own database and then:
+
+- runs the real `MinimalBankSystem.Migrator` process so exit codes are observed the way a
+  deployment step observes them, rather than simulated in-process;
+- inspects `public.__EFMigrationsHistory` and `information_schema.tables` directly through Npgsql,
+  so schema claims come from the server rather than from EF state;
+- starts the API through `WebApplicationFactory` against the same database and compares the schema
+  before and after, instead of relying on a source scan for the no-auto-migration guarantee.
+
+The bounded-budget test holds an uncommitted `CREATE TABLE` on the migration history relation, so
+the migrator blocks the way a stuck deployment would. It therefore takes just over the fixed
+60-second budget. Those tests need no process-global state, so they stay outside the
+`DisableParallelization` collection.
+
 ## Parallel policy
 
 - Parallel-safe scope: work against independently owned databases. The concurrency test verifies

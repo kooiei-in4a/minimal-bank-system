@@ -10,6 +10,7 @@ public sealed class SolutionConfigurationTests
         "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
         "src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj",
         "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
+        "src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj",
         "tests/MinimalBankSystem.UnitTests/MinimalBankSystem.UnitTests.csproj",
         "tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj",
     ];
@@ -40,10 +41,13 @@ public sealed class SolutionConfigurationTests
     {
         DirectoryInfo repositoryRoot = FindRepositoryRoot();
 
+        // The API host is the composition root, so it references Infrastructure to register the
+        // application DbContext (Issue #42 section 8.7). Registration alone never migrates.
         AssertProjectReferences(
             repositoryRoot,
             "src/MinimalBankSystem.Api/MinimalBankSystem.Api.csproj",
-            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj");
+            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
+            "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj");
 
         AssertProjectReferences(
             repositoryRoot,
@@ -58,6 +62,12 @@ public sealed class SolutionConfigurationTests
             repositoryRoot,
             "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
             "src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj");
+
+        // The explicit migrator reaches persistence directly and must never reference the API host.
+        AssertProjectReferences(
+            repositoryRoot,
+            "src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj",
+            "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj");
     }
 
     [Fact]
