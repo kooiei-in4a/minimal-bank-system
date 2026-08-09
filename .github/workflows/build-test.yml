@@ -8,7 +8,8 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: build-test-${{ github.workflow }}-${{ github.ref }}
@@ -39,3 +40,19 @@ jobs:
 
       - name: Test (real PostgreSQL)
         run: dotnet test tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj --no-build --filter "Category=PostgreSqlIntegration"
+
+  fnd03-archive:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'FND-03 archive operator')
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out repository with full history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Run FND-03 archive operator
+        run: bash .github/scripts/fnd03-archive.sh
