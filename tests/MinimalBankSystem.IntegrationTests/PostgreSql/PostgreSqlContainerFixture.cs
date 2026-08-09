@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using Npgsql;
@@ -17,6 +18,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
     private PostgreSqlContainer? container;
+    private string? ownedContainerId;
 
     public PostgreSqlContainerFixture()
     {
@@ -28,6 +30,8 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     }
 
     public int ServerVersionNumber { get; private set; }
+
+    internal string? OwnedContainerId => ownedContainerId;
 
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
@@ -54,6 +58,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
+            ownedContainerId = candidate.Id;
             string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
             ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
 
@@ -71,12 +76,39 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
             try
             {
                 await candidate.DisposeAsync();
-                container = null;
             }
-            catch (Exception exception)
+            catch (Exception disposeException)
             {
-                cleanupException = exception;
+                cleanupException = disposeException;
             }
+
+            if (ownedContainerId is not null)
+            {
+                Exception? forceRemoveException = null;
+
+                try
+                {
+                    await ForceRemoveContainerAsync(ownedContainerId);
+                    ownedContainerId = null;
+                }
+                catch (Exception exception)
+                {
+                    forceRemoveException = exception;
+                }
+
+                if (forceRemoveException is not null)
+                {
+                    cleanupException = cleanupException is null
+                        ? forceRemoveException
+                        : new AggregateException(cleanupException, forceRemoveException);
+                }
+                else
+                {
+                    ownedContainerId = null;
+                }
+            }
+
+            container = null;
 
             Exception cause = cleanupException is null
                 ? startupException
@@ -102,13 +134,60 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         {
             await candidate.DisposeAsync();
             container = null;
+            ownedContainerId = null;
         }
-        catch (Exception exception)
+        catch (Exception disposeException)
         {
+            if (ownedContainerId is not null)
+            {
+                try
+                {
+                    await ForceRemoveContainerAsync(ownedContainerId);
+                    ownedContainerId = null;
+                    container = null;
+                    return;
+                }
+                catch (Exception forceRemoveException)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
+                        $"Testcontainers dispose failed and Docker CLI force-remove of container '{ownedContainerId}' also failed.",
+                        new AggregateException(disposeException, forceRemoveException));
+                }
+            }
+
             throw new InvalidOperationException(
                 $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
-                exception);
+                "No container ID is available for independent cleanup.",
+                disposeException);
+        }
+    }
+
+    internal static async Task ForceRemoveContainerAsync(string containerId)
+    {
+        using Process process = new();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "docker",
+            Arguments = $"rm -f {containerId}",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        process.Start();
+
+        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        string stdout = await stdoutTask;
+        string stderr = await stderrTask;
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Docker CLI force-remove of container '{containerId}' failed with exit code {process.ExitCode}: {stderr}");
         }
     }
 
