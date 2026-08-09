@@ -16,7 +16,12 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
+    private readonly object containerGate = new();
     private PostgreSqlContainer? container;
+    private string? containerId;
+    private bool containerDisposalFailed;
+    private Exception? containerDisposalFailure;
+    private bool containerFinalized;
 
     public PostgreSqlContainerFixture()
     {
@@ -32,6 +37,50 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
             "The PostgreSQL test container is not running. Fixture initialization must succeed first.");
+
+    internal string? ContainerId
+    {
+        get
+        {
+            lock (containerGate)
+            {
+                return containerId;
+            }
+        }
+    }
+
+    internal bool IsContainerDisposalFailed
+    {
+        get
+        {
+            lock (containerGate)
+            {
+                return containerDisposalFailed;
+            }
+        }
+    }
+
+    internal Exception? ContainerDisposalFailure
+    {
+        get
+        {
+            lock (containerGate)
+            {
+                return containerDisposalFailure;
+            }
+        }
+    }
+
+    internal bool IsContainerFinalized
+    {
+        get
+        {
+            lock (containerGate)
+            {
+                return containerFinalized;
+            }
+        }
+    }
 
     public Task InitializeAsync() => InitializeAsync(CancellationToken.None);
 
@@ -50,6 +99,10 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
         PostgreSqlContainer candidate = builder.Build();
         container = candidate;
+        containerId = null;
+        containerDisposalFailed = false;
+        containerDisposalFailure = null;
+        containerFinalized = false;
 
         try
         {
@@ -63,6 +116,11 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
                     $"Expected PostgreSQL 18.4 (server_version_num {ExpectedServerVersionNumber}), " +
                     $"but the container reported {ServerVersionNumber}.");
             }
+
+            lock (containerGate)
+            {
+                containerId = candidate.Id;
+            }
         }
         catch (Exception startupException)
         {
@@ -71,7 +129,6 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
             try
             {
                 await candidate.DisposeAsync();
-                container = null;
             }
             catch (Exception exception)
             {
@@ -82,6 +139,14 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
                 ? startupException
                 : new AggregateException(startupException, cleanupException);
 
+            lock (containerGate)
+            {
+                container = null;
+                containerId = null;
+                containerDisposalFailed = false;
+                containerDisposalFailure = null;
+            }
+
             throw new InvalidOperationException(
                 $"Failed to start and connect to the PostgreSQL test container using '{ImageReference}'. " +
                 "PostgreSQL integration tests require Docker and never fall back to another provider.",
@@ -91,9 +156,21 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        PostgreSqlContainer? candidate = container;
+        PostgreSqlContainer? candidate;
+        bool wasAlreadyFailed;
+
+        lock (containerGate)
+        {
+            candidate = container;
+            wasAlreadyFailed = containerDisposalFailed;
+        }
 
         if (candidate is null)
+        {
+            return;
+        }
+
+        if (wasAlreadyFailed)
         {
             return;
         }
@@ -101,14 +178,73 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.DisposeAsync();
+        }
+        catch (Exception exception)
+        {
+            lock (containerGate)
+            {
+                containerDisposalFailed = true;
+                containerDisposalFailure = exception;
+            }
+
+            throw new InvalidOperationException(
+                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
+                "The fixture retains ownership so a final cleanup path can be attempted.",
+                exception);
+        }
+
+        lock (containerGate)
+        {
             container = null;
+            containerId = null;
+            containerDisposalFailed = false;
+            containerDisposalFailure = null;
+        }
+    }
+
+    internal async Task ForceContainerRemoveAsync(CancellationToken cancellationToken)
+    {
+        string? candidateId;
+
+        lock (containerGate)
+        {
+            candidateId = containerId;
+        }
+
+        if (candidateId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await ContainerResourceInspector.RemoveForceAsync(candidateId, cancellationToken);
         }
         catch (Exception exception)
         {
             throw new InvalidOperationException(
-                $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
+                $"Failed to perform final cleanup for the PostgreSQL test container '{candidateId}' using '{ImageReference}'.",
                 exception);
+        }
+    }
+
+    internal void MarkContainerFinalizedForTest()
+    {
+        lock (containerGate)
+        {
+            containerFinalized = true;
+        }
+    }
+
+    internal void ReleaseContainerForTest()
+    {
+        lock (containerGate)
+        {
+            container = null;
+            containerId = null;
+            containerDisposalFailed = false;
+            containerDisposalFailure = null;
+            containerFinalized = true;
         }
     }
 
