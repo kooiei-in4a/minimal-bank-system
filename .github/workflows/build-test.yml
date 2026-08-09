@@ -42,7 +42,7 @@ jobs:
         run: dotnet test tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj --no-build --filter "Category=PostgreSqlIntegration"
 
   fnd03-archive:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'FND-03 archive operator')
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'agent/fnd03-benchmark-archive-run-pr'
     needs: build-test
     runs-on: ubuntu-latest
     timeout-minutes: 20
