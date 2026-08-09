@@ -147,7 +147,10 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
 
         await StartApiAndIssueRequestAsync();
 
-        // The API started, served traffic and resolved a real DbContext, yet created nothing.
+        // The API started against the real database and served traffic, yet created nothing. This is
+        // startup evidence only: the request never resolves BankDbContext, so the stronger case where
+        // the API actually resolves it is covered by
+        // ApiResolvesTheSamePostgreSqlContextAsTheMigratorWithoutTouchingTheSchema.
         Assert.Empty(await ReadPublicTablesAsync());
         Assert.False(await MigrationHistoryExistsAsync());
 
