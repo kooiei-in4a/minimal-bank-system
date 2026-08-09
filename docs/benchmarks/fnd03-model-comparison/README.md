@@ -2,11 +2,9 @@
 
 Target Issue: #41 `[FND-03] 実PostgreSQL integration test基盤を確立する`
 
-Status: **ARCHIVE FINALIZATION IN PROGRESS**
+Status: **COMPLETE / ARCHIVED**
 
-実験corpus、評価、Gold、Major-fix adjudication、production outcomeは収集済みである。candidate snapshot lifecycle（annotated tag作成・remote解決確認・candidate PR close・working branch削除）が未完了のため、repository archiveとしての最終状態はまだ `COMPLETE / ARCHIVED` ではない。
-
-このページは、FND-03で実施した7段階の実験・レビュー・実装結果を、候補ランキングと実際のproduction outcomeを混同せずに辿るためのcanonical entry pointである。
+このページは、FND-03で実施した実装比較、独立レビュー、Major修正比較、Judge裁定、最終production outcomeを一つのcanonical archiveとして辿るためのentry pointである。各stageは目的とscore semanticsが異なるため、ランキングを相互に混ぜない。
 
 ## Canonical timeline
 
@@ -31,40 +29,42 @@ Final implementation Head 31e957e
     ↓
 Agent B APPROVE / Blocker 0 / Major 0
     ↓
-PR #104 merge
-    ↓
-post-merge CI SUCCESS
+PR #104 merge / post-merge CI SUCCESS
     ↓
 Issue #41 CLOSED / COMPLETED
+    ↓
+28 annotated candidate snapshots verified
+    ↓
+27 canonical candidate PRs CLOSED / unmerged
+    ↓
+28 candidate working branches deleted
 ```
 
 ## Stage index
 
 ### Stage 1 — Initial implementation benchmark
 
-初期実装候補のcanonical resultであり、後続のFinal SynthesisやMajor-fix scoreで上書きしていない。
-
 - [`summary.md`](./summary.md)
 - [`implementation-evaluation.md`](./implementation-evaluation.md)
 - [`archive-manifest.json`](./archive-manifest.json)
 - Common base: `95a8e50e6b68025e3386fdd0672bd73bcbaa60a0`
 - 14 candidates: 13 scored、MiniMax M3 / Open Codeは `stopped / no-change`
+- Initial rank 1: GPT-5.6 Sol / Codex — `96 / 100`
+- PR #91→#94、#92→#95はbranch-name correctionによるsuperseded PRであり、候補数へ二重計上しない。
 
 ### Stage 2 — Curated Final Synthesis provisional evaluation
-
-PR #105の当時の評価を保存する。`98 / 100`は歴史的な実験結果であり、現在のmerge-readiness verdictではない。
 
 - [`final-synthesis/README.md`](./final-synthesis/README.md)
 - [`final-synthesis/provisional-summary.md`](./final-synthesis/provisional-summary.md)
 - [`final-synthesis/provisional-evaluation.md`](./final-synthesis/provisional-evaluation.md)
-- Source PR: [#105](https://github.com/kooiei-in4a/minimal-bank-system/pull/105)
+- Source PR: #105
+- Historical score: `98 / 100`
 - Status: **SUPERSEDED / HISTORICAL**
+
+`98 / 100`はMajor発見前の当時の評価として保存する。現在のmerge-readiness verdictとして使用しない。
 
 ### Stage 3 — 17-model independent review benchmark
 
-Final Synthesis Head `91e3fca...`を17組のModel + Agent/Harnessが独立レビューしたraw artifactと集計結果を保存する。
-
-- [`review-benchmark/README.md`](./review-benchmark/README.md)
 - [`review-benchmark/run.json`](./review-benchmark/run.json)
 - [`review-benchmark/manifest.json`](./review-benchmark/manifest.json): raw capture integrity manifest
 - [`review-benchmark/collector-results.json`](./review-benchmark/collector-results.json): post-hoc Collector score / blocking-Gold alignment
@@ -72,17 +72,16 @@ Final Synthesis Head `91e3fca...`を17組のModel + Agent/Harnessが独立レビ
 - [`review-benchmark/gold-review.md`](./review-benchmark/gold-review.md)
 - [`review-benchmark/gold-review.json`](./review-benchmark/gold-review.json)
 - Raw reviews: [`review-benchmark/reviews/`](./review-benchmark/reviews/)
-- Source PR: [#106](https://github.com/kooiei-in4a/minimal-bank-system/pull/106)
+- 17 Markdown / 17 JSONを保存。raw内容は変更していない。
 
 ### Stage 4 — Post-hoc Gold / Major discovery
 
-完全blindな事前locked Goldではない。最初のReference lock後にTestcontainers 4.13.0一次sourceを追加突合して、Majorを明確化したpost-hoc adjudicationである。
+完全blindな事前locked Goldではない。最初のReference lock後にTestcontainers 4.13.0一次sourceを追加突合し、Majorを明確化したpost-hoc adjudicationである。
 
 - Final technical Gold: `REQUEST CHANGES / NOT MERGE READY`
-- Blocker: 0 / Major: 1 / Minor: 1
-- Major root cause: `G-01`
-- [`gold-review.md`](./review-benchmark/gold-review.md)
-- [`full-evaluation.md`](./review-benchmark/full-evaluation.md)
+- Blocker 0 / Major 1 / Minor 1
+- G-01: disposed-state latch / same-instance retry no-op
+- G-02: digest assertionのdaemon-side evidence不足
 
 ### Stage 5 — 14-model Major-fix implementation benchmark
 
@@ -94,47 +93,60 @@ Final Synthesis Head `91e3fca...`を17組のModel + Agent/Harnessが独立レビ
 ### Stage 6 — 3-Judge Major-fix adjudication
 
 - [`final-fix/final-evaluation.md`](./final-fix/final-evaluation.md)
-- Raw Judge manifest: [`final-fix/judges/manifest.json`](./final-fix/judges/manifest.json)
-- Raw Judge synthesis: [`final-fix/judges/synthesis.md`](./final-fix/judges/synthesis.md)
-- Judge raw parts: [`final-fix/judges/`](./final-fix/judges/)
-- Final rank 1: GPT-5.6 Sol / Codex, PR #108, `94 / 100`
+- [`final-fix/judges/manifest.json`](./final-fix/judges/manifest.json)
+- [`final-fix/judges/synthesis.md`](./final-fix/judges/synthesis.md)
+- Judge count: 3
+- Final rank 1: GPT-5.6 Sol / Codex / PR #108 — `94 / 100`
 - Merge-ready: `1 / 14`
+- D-02 partial-create / ID-unavailable riskを含め、raw Judge scoreを単純平均せず一次証拠で裁定した。
 
 ### Stage 7 — Final production outcome
-
-これはbenchmark rankingではなく、実際に採用・mergeされたproduction implementationの記録である。
 
 - [`final-outcome.md`](./final-outcome.md)
 - Final Fix Head: `31e957e88d93e0e81fdc97eac7ba65dbd7ca3039`
 - Merge commit: `6c5534fdb72e76d6ef5c3268cdb8558d7f344e7a`
-- [PR #104](https://github.com/kooiei-in4a/minimal-bank-system/pull/104): MERGED
-- [Issue #41](https://github.com/kooiei-in4a/minimal-bank-system/issues/41): CLOSED / COMPLETED
+- PR #104: MERGED
+- Agent B: APPROVE / Blocker 0 / Major 0 / Minor 0 / Nit 0
+- Post-merge CI `31301204377`: SUCCESS
+- Issue #41: CLOSED / COMPLETED
+
+## Archive completion evidence
+
+Candidate archiveは`docs/benchmarks/archive-conventions.md`の順序に従って完了した。
+
+```text
+candidate identity verification
+→ annotated tag creation
+→ remote tag dereference verification
+→ benchmark completion record
+→ candidate PR unmerged Close
+→ candidate working branch deletion
+→ final remote verification
+```
+
+Final state:
+
+- Annotated benchmark tags: **28 / 28 verified**
+  - initial implementation: 14
+  - Major-fix: 14
+- Canonical candidate PRs: **27 / 27 CLOSED / unmerged**
+  - initial MiniMax no-change candidateはPRなし
+- Superseded historical PR #91 / #92: CLOSED / unmerged
+- Candidate working branches: **28 / 28 deleted**
+- `agent/issue-41-fnd-03-final-code`: preserved
+- Final verification: GitHub Actions run `31305415766` SUCCESS
+- Re-verification / temporary operator branch cleanup: run `31305570995` SUCCESS
+- Temporary archive operator removal: PR #126 / merge `26cc3238e77ba3682aab842f78ee010bbec61c2d`
+
+各candidateのfull Head、PR、CI、score、tag、Selected、final dispositionは[`archive-manifest.json`](./archive-manifest.json)を参照する。
 
 ## Historical integrity
 
-- 初期implementation benchmarkのscoreはcanonical resultとして維持する。
-- provisional `98 / 100`は削除せず、`SUPERSEDED / HISTORICAL`として保存する。
-- 17 reviewer raw Markdown / JSONは内容を変更していない。
-- 2件のraw JSON schema deviationはmanifestのcapture statusで保持する。
-- `review-benchmark/manifest.json`はraw capture integrity用として維持し、後付けscore / Gold alignmentは`collector-results.json`へ分離する。
-- post-hoc Goldを完全blind locked-Gold benchmarkとは表現しない。
-- 3 Judgeのartifact identity、特に `GPT-5.6 Pro / Browser / Pro` を変更しない。
-- Final production implementationは候補ランキングへ追加しない。
+- 初期implementation benchmarkのscoreを後続benchmarkで上書きしない。
+- provisional `98 / 100`を削除せず、SUPERSEDEDとして保存する。
+- raw reviewer / Judge artifactの意味内容を変更しない。
+- post-hoc Goldを完全blind pre-locked Goldとは表現しない。
+- `GPT-5.6 Pro / Browser / Pro`などartifact自身のidentityを維持する。
+- Final production implementationはModel candidateランキングへ追加しない。
 
-## Archive operation boundary
-
-PR #121はcanonical documentationをmainへ統合するためのDraft archive PRである。次のcandidate archive lifecycleが完了するまで、このarchiveを `COMPLETE / ARCHIVED` と宣言しない。
-
-```text
-candidate branch / full Head SHA確認
-→ candidate PR / CI確認
-→ annotated benchmark tag作成
-→ remote tagがexpected Headへ解決することを確認
-→ archive manifestへfinal dispositionを記録
-→ candidate PRを未mergeでClose
-→ candidate working branch削除
-→ PR #121のmanifest / statusを最終更新
-→ PR #121 merge
-```
-
-現在、candidate tag作成、candidate PR close、working branch削除は未実施である。
+FND-03のbenchmark archiveはこれで完了している。
