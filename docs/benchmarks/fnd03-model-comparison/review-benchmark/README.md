@@ -15,14 +15,12 @@
 ## Canonical outputs
 
 - [`run.json`](./run.json): 元のrun identity。raw capture metadataとして保持
-- [`manifest.json`](./manifest.json): **raw capture integrity manifest**。raw artifactのbytes、SHA-256、capture statusを保持し、後付けscoreやGold alignmentは混ぜない
-- [`collector-results.json`](./collector-results.json): post-hoc Collector結果。final scoreとblocking Gold G-01に対するTP / FP / FNを機械可読化
+- [`manifest.json`](./manifest.json): raw artifactのbytes、SHA-256、capture status
 - [`gold-review.md`](./gold-review.md): protocol-compatible Gold Review
 - [`gold-review.json`](./gold-review.json): Gold root causeの正規データ
 - [`full-evaluation.md`](./full-evaluation.md): Collector形式の全体評価
 - [`summary.md`](./summary.md): source branchのhistorical summary
 - [`implementation-evaluation.md`](./implementation-evaluation.md): source branchのhistorical Judge evaluation
-- [`implementation-evaluation-claude-opus-5.md`](./implementation-evaluation-claude-opus-5.md): source branchのhistorical Claude Judge evaluation
 - [`implementation-evaluation-synthesis.md`](./implementation-evaluation-synthesis.md): source branchのhistorical synthesis
 
 ## Target and verdict
@@ -42,17 +40,10 @@ Nit:     0
 ## Raw artifact policy
 
 - `reviews/*.md` と `reviews/*.json` はraw artifactとして内容を変更していない。
-- `run.json`とsource branchのhistorical Judge documentsも意味内容を変更していない。
+- `run.json`とsource branchのhistorical Judge documentsも変更していない。
 - `deepseek-v4-pro-opencode.json` は既知のextra fieldsにより schema invalid のまま保存する。
 - `chatgpt-o3-browser.json` は `outcome = incomplete` が現行schema enum外のため invalid のまま保存する。
 - raw artifactのcapture statusとschema deviationは[`manifest.json`](./manifest.json)で確認できる。
-- archive段階で追加したGold / Full Evaluation / score alignmentはraw integrity manifestへ遡及混入せず、`gold-review.*` / `full-evaluation.md` / `collector-results.json`へ分離する。
-
-## TP / FP / FN scope
-
-`collector-results.json`と`full-evaluation.md`のTP / FNは、**merge-blocking Gold root cause G-01のみ**を母数とする。G-02はnon-blocking MinorとしてGold Reviewへ保持し、evidence / severity qualityには反映されるが、このTP / FN denominatorには含めない。
-
-これにより「Gold root cause全件のTP/FN」と「merge blocker検出性能」を混同しない。
 
 ## Methodology caveat
 
