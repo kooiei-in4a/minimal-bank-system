@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "deepseek-v4-flash-opencode",
+    "model": "DeepSeek V4 Flash",
+    "harness": "Open Code",
+    "effort": "指定値"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "Nit",
+      "blocking": false,
+      "title": "ConsoleCaptureのlockは.NET 10のSyncTextWriterがロックレス実装のためwrite-read排他には寄与しない",
+      "description": "CI race修正のlock(synchronizedWriter)は同一ConsoleCaptureインスタンスの複数reader/disposerアクセスを直列化するが、書き込み側(Console.Out/Console.Error経由)とは相互排他されない。TextWriter.Synchronizedが返すSyncTextWriterは.NET 10ではMonitorを一切使用しないロックレスデコレータであり、writeとbuffer.ToString()読み取りのraceはこのlockでは防げない。raceの実質的解決は[Collection(ConsoleSensitive)]直列化とCIカテゴリ分割による。実害は観測されず(CI 2 runs、ローカル4 runsで25/25安定)、capture.Content読み取りはテスト構造上write完了後に発生するためNitとする。",
+      "evidence": [
+        ".NET 10.0.302 runtime probe: SyncTextWriterのWrite(char)/Flush()/Dispose(bool)のILにMonitor.Enter/Exitが存在せず、フィールドは_outのみ。lock(sync)保持中もsync.Writeがブロックされないことを動作検証で確認",
+        "ApiRuntimeContractTests.cs修正後コード: lock(synchronizedWriter) { synchronizedWriter.Flush(); return buffer.ToString(); } はwrite側と排他されない",
+        "collection直列化(ConsoleSensitive)・CIステップ分割(non-PG/PG)・並行collectionがConsoleを操作しないことにより現実的なrace源は排除されている"
+      ],
+      "affected_component": "tests/MinimalBankSystem.IntegrationTests/ApiRuntimeContractTests.cs (ConsoleCapture)",
+      "root_cause_candidate": null
+    }
+  ],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": true,
+    "summary": "detached worktree(HEAD 91e3fca)でrestore/build(0 warnings/0 errors)、non-PG(Unit 3/3+Integration 27/27)、real PostgreSQL category 7/7×2回、ApiRuntimeContractTests 25/25×4回、git diff --check、コンテナリーク0、pull済みpostgres:18.4イメージdigestがピン一致を確認。リポジトリのツリー・branch・PR・Issueは変更していない。"
+  },
+  "recorded_at": "2026-08-09T07:34:04+09:00",
+  "notes": "既存review/benchmark結果への偶発的接触なし(gh pr viewのbodyは二次証拠としてのみ参照)。SyncTextWriterのロックレス挙動は.NET 10.0.302のIL解析とruntime probeで独立確認。Windows PowerShell実行のためCIログの日本語文字化けがあり件数・結果は英語表記で確認。"
+}

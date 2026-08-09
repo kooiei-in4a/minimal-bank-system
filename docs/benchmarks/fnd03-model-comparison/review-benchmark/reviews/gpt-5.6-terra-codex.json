@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "gpt-5.6-terra-codex",
+    "model": "GPT-5.6 Terra",
+    "harness": "Codex",
+    "effort": "xHigh"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": true,
+    "summary": "指定 Head を一時展開して dotnet restore、build、non-PostgreSQL tests、real PostgreSQL tests、全 test suite を実行し、すべて成功した。CI run 31277771209 でも Restore、Build、non-PostgreSQL、real PostgreSQL の全 step が成功し、PostgreSQL category は skip なしで 7 件成功した。"
+  },
+  "recorded_at": "2026-08-08T22:40:20.9124228Z",
+  "notes": "Commit API の SHA 確認応答に base commit の差分が含まれ、禁止対象の FND-03 benchmark 評価文書の一部を意図せず表示した。内容は本レビューの判定根拠に使用していない。ローカル作業ツリーは base SHA だったため、指定 Head を一時展開して検証し、対象 branch・tracked file は変更していない。"
+}

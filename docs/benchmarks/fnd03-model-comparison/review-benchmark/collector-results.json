@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "status": "canonical_post_hoc_collector_results",
+  "post_hoc_adjudication": true,
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "primary_ci": 31277771209
+  },
+  "integrity_manifest": "manifest.json",
+  "gold_review": "gold-review.json",
+  "full_evaluation": "full-evaluation.md",
+  "alignment_scope": {
+    "type": "blocking_gold_only",
+    "root_causes": ["G-01"],
+    "note": "TP/FN below measure alignment to the merge-blocking Gold root cause G-01 only. G-02 is a non-blocking Minor preserved in Gold Review and severity/evidence evaluation, but is not part of this TP/FN denominator."
+  },
+  "score_semantics": "Existing post-hoc adjudicated final scores from implementation-evaluation-synthesis.md; no scores were recalculated for this archive.",
+  "reviewers": [
+    {"slug":"claude-opus-5-claude-code","rank":1,"score":66.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"claude-sonnet-5-claude-code","rank":2,"score":65.5,"tp":0,"fp":0,"fn":1},
+    {"slug":"gpt-5.6-sol-codex","rank":3,"score":60.5,"tp":0,"fp":0,"fn":1},
+    {"slug":"chatgpt-opus-5.6-sol-browser","rank":4,"score":57.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"grok-4.5-cursor","rank":5,"score":57.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"gpt-5.6-terra-codex","rank":6,"score":56.5,"tp":0,"fp":0,"fn":1},
+    {"slug":"deepseek-v4-pro-opencode","rank":7,"score":55.5,"tp":0,"fp":0,"fn":1},
+    {"slug":"chatgpt-gpt-5.5-browser","rank":8,"score":54.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"composer-2.5-cursor","rank":9,"score":51.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"mimo-v2.5-pro-opencode","rank":10,"score":50.5,"tp":0,"fp":0,"fn":1},
+    {"slug":"gpt-5.6-luna-codex","rank":11,"score":49.5,"tp":0,"fp":0,"fn":1},
+    {"slug":"mimo-v2.5-opencode","rank":12,"score":46.5,"tp":0,"fp":0,"fn":1},
+    {"slug":"qwen3.7-plus-opencode","rank":13,"score":46.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"gpt-5.6-luna-opencode","rank":14,"score":43.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"minimax-m3-opencode","rank":15,"score":39.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"deepseek-v4-flash-opencode","rank":16,"score":37.0,"tp":0,"fp":0,"fn":1},
+    {"slug":"chatgpt-o3-browser","rank":17,"score":17.0,"tp":0,"fp":0,"fn":1,"outcome":"no_result","verdict":"incomplete"}
+  ]
+}

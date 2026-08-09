@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26",
+    "ci_target_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "reviewer": {
+    "slug": "qwen3.7-plus-opencode",
+    "model": "Qwen3.7 Plus",
+    "harness": "Open Code",
+    "effort": "MAX"
+  },
+  "attempt": 1,
+  "outcome": "completed",
+  "target_verification": {
+    "repository": true,
+    "base_sha": true,
+    "head_sha": true,
+    "pr": true,
+    "ci_sha": true
+  },
+  "verdict": "approve",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "ci_verified": true,
+  "local_verification": {
+    "performed": false,
+    "summary": "dotnet SDK 10.0.302 not available in local WSL environment. CI Run 31277771209 independently verified via gh CLI: headSha matches, all steps passed (Restore, Build 0w/0e, non-PostgreSQL 30 passed, real PostgreSQL 7 passed in 12s)."
+  },
+  "recorded_at": null,
+  "notes": "No accidental exposure to benchmark results, existing reviews, or gold review. Local dotnet SDK unavailable; CI evidence used as primary runtime verification."
+}

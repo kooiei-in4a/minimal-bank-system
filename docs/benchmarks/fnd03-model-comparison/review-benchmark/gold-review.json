@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd03-final-synthesis-independent-review",
+  "run_id": "fnd03-final-91e3fca-20260809",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 41,
+    "pr": 104,
+    "base_sha": "7946cc55e49c0c6e21ad7b86c20a8435b4976269",
+    "head_sha": "91e3fca181558cd1523390347f4f2f80d6014d26"
+  },
+  "revision": 1,
+  "revision_reason": "post_hoc_adjudication: true; Major was clarified by additional primary-source comparison after the initial Reference lock and raw review capture.",
+  "reference_verdict": "request_changes",
+  "root_causes": [
+    {
+      "id": "G-01",
+      "severity": "Major",
+      "blocking": true,
+      "title": "Testcontainers dispose failure latches state before Docker removal completes",
+      "description": "Testcontainers .NET 4.13.0 latches Resource.Disposed before Docker resource removal completes. After a failed first DisposeAsync, retrying DisposeAsync on the same instance can return no-op success, so the Final Synthesis can release its handle while the actual container remains and its deterministic owner is lost.",
+      "evidence": [
+        "review-benchmark/implementation-evaluation.md",
+        "https://github.com/testcontainers/testcontainers-dotnet/blob/4.13.0/src/Testcontainers/Resource.cs",
+        "https://github.com/testcontainers/testcontainers-dotnet/blob/4.13.0/src/Testcontainers/Containers/DockerContainer.cs"
+      ]
+    },
+    {
+      "id": "G-02",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Digest assertion is not independent daemon-side evidence",
+      "description": "The digest assertion compares values parsed from the digest-qualified image reference passed to the Testcontainers builder. Pinning and the PostgreSQL runtime version check remain valid, but the assertion alone does not independently prove the running container's daemon-side digest.",
+      "evidence": [
+        "review-benchmark/implementation-evaluation.md",
+        "review-benchmark/implementation-evaluation-claude-opus-5.md"
+      ]
+    }
+  ]
+}

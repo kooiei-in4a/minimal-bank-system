@@ -22,7 +22,6 @@
 - `schemas/review-benchmark-manifest.schema.json`
 - `templates/review-result-template.md`
 - `templates/review-benchmark-prompt-preamble.md`
-  - 他reviewer / Gold Reviewからの情報漏れを防ぎ、target SHA確認を強制する共通preamble
 
 ## Issue-specific reports
 
@@ -31,11 +30,25 @@
   - archive manifest
   - 14モデル実装比較
   - 17モデル独立第三者レビュー性能比較
-  - 各モデルのレビュー結果
 - `fnd03-model-comparison/README.md`
-  - FND-03 benchmarkの事前scaffold
-  - 新しい独立レビューartifact protocolを初回適用
+  - FND-03全実験系列のcanonical archive
+  - 初期実装比較
+  - provisional Final Synthesis評価
+  - 17-model independent review
+  - post-hoc Gold
+  - 14-model Major-fix
+  - 3-Judge adjudication
+  - final production outcome
 
 新しいimplementation benchmarkを開始する場合は`model-implementation-benchmark-methodology.md`を確認する。
 独立レビューbenchmarkを行う場合は`independent-review-benchmark-protocol.md`と共通preambleを併用する。
 archive時は`archive-conventions.md`に従う。
+
+## Archive lifecycle
+
+- FND-03: **COMPLETE / ARCHIVED** — [`fnd03-model-comparison/README.md`](./fnd03-model-comparison/README.md)
+  - annotated benchmark tags: 28 / 28 verified
+  - canonical candidate PRs: 27 / 27 CLOSED / unmerged
+  - candidate working branches: 28 / 28 deleted
+  - Final Synthesis PR #104: MERGED
+  - Issue #41: CLOSED / COMPLETED
