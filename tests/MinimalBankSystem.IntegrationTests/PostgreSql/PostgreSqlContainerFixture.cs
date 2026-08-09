@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -16,15 +18,29 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     private const string AdministrativeDatabaseName = "fixture_admin";
     private readonly string? dockerEndpoint;
+    private readonly Func<PostgreSqlContainer, CancellationToken, Task>? startupValidation;
+    private readonly Func<PostgreSqlContainer, ValueTask>? disposeContainer;
+    private readonly Func<string, string?, IContainerCleanup> cleanupFactory;
     private PostgreSqlContainer? container;
+    private IContainerCleanup? containerCleanup;
+    private string? containerResourceId;
 
     public PostgreSqlContainerFixture()
     {
+        cleanupFactory = static (resourceId, endpoint) =>
+            new DockerContainerCleanup(resourceId, endpoint);
     }
 
-    internal PostgreSqlContainerFixture(string dockerEndpoint)
+    internal PostgreSqlContainerFixture(
+        string? dockerEndpoint,
+        Func<PostgreSqlContainer, CancellationToken, Task>? startupValidation = null,
+        Func<PostgreSqlContainer, ValueTask>? disposeContainer = null,
+        Func<string, string?, IContainerCleanup>? cleanupFactory = null)
     {
         this.dockerEndpoint = dockerEndpoint;
+        this.startupValidation = startupValidation;
+        this.disposeContainer = disposeContainer;
+        this.cleanupFactory = cleanupFactory ?? CreateDefaultCleanup;
     }
 
     public int ServerVersionNumber { get; private set; }
@@ -32,6 +48,10 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
     internal PostgreSqlContainer Container =>
         container ?? throw new InvalidOperationException(
             "The PostgreSQL test container is not running. Fixture initialization must succeed first.");
+
+    internal string? PendingContainerResourceId => containerResourceId;
+
+    internal bool HasPendingContainerCleanup => containerCleanup is not null;
 
     public Task InitializeAsync() => InitializeAsync(CancellationToken.None);
 
@@ -54,8 +74,17 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         try
         {
             await candidate.StartAsync(cancellationToken);
-            string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
-            ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
+            CaptureContainerResourceId(candidate);
+
+            if (startupValidation is not null)
+            {
+                await startupValidation(candidate, cancellationToken);
+            }
+            else
+            {
+                string connectionString = BuildConnectionString(candidate, AdministrativeDatabaseName);
+                ServerVersionNumber = await ReadServerVersionNumberAsync(connectionString, cancellationToken);
+            }
 
             if (ServerVersionNumber != ExpectedServerVersionNumber)
             {
@@ -66,18 +95,7 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
         }
         catch (Exception startupException)
         {
-            Exception? cleanupException = null;
-
-            try
-            {
-                await candidate.DisposeAsync();
-                container = null;
-            }
-            catch (Exception exception)
-            {
-                cleanupException = exception;
-            }
-
+            Exception? cleanupException = await DisposeCandidateAndFallbackAsync(candidate);
             Exception cause = cleanupException is null
                 ? startupException
                 : new AggregateException(startupException, cleanupException);
@@ -91,6 +109,12 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        if (container is null && (containerCleanup is not null || containerResourceId is not null))
+        {
+            await DisposeIndependentContainerCleanupAsync();
+            return;
+        }
+
         PostgreSqlContainer? candidate = container;
 
         if (candidate is null)
@@ -100,17 +124,123 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
         try
         {
-            await candidate.DisposeAsync();
-            container = null;
+            await DisposeTestcontainersContainerAsync(candidate);
+            ClearContainerOwnership();
         }
         catch (Exception exception)
         {
+            container = null;
+            Exception? fallbackException = await TryDisposeIndependentContainerCleanupAsync();
+            Exception cause = fallbackException is null
+                ? exception
+                : new AggregateException(exception, fallbackException);
+
             throw new InvalidOperationException(
                 $"Failed to dispose the PostgreSQL test container using '{ImageReference}'. " +
-                "The fixture retains ownership so cleanup can be retried.",
-                exception);
+                "The Testcontainers instance is not retried; cleanup ownership is retained by the independent Docker resource owner.",
+                cause);
         }
     }
+
+    private async Task<Exception?> DisposeCandidateAndFallbackAsync(PostgreSqlContainer candidate)
+    {
+        CaptureContainerResourceId(candidate);
+
+        Exception? candidateException = null;
+
+        try
+        {
+            await DisposeTestcontainersContainerAsync(candidate);
+        }
+        catch (Exception exception)
+        {
+            candidateException = exception;
+        }
+
+        if (candidateException is null)
+        {
+            ClearContainerOwnership();
+            return null;
+        }
+
+        container = null;
+        Exception? fallbackException = await TryDisposeIndependentContainerCleanupAsync();
+        return fallbackException is null
+            ? candidateException
+            : new AggregateException(candidateException, fallbackException);
+    }
+
+    private async Task<Exception?> TryDisposeIndependentContainerCleanupAsync()
+    {
+        if (containerResourceId is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            containerCleanup ??= cleanupFactory(containerResourceId, dockerEndpoint);
+            await containerCleanup.RemoveAsync(CancellationToken.None);
+            await containerCleanup.DisposeAsync();
+            ClearContainerOwnership();
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return exception;
+        }
+    }
+
+    private async Task DisposeIndependentContainerCleanupAsync()
+    {
+        Exception? cleanupException = await TryDisposeIndependentContainerCleanupAsync();
+
+        if (cleanupException is not null)
+        {
+            throw new InvalidOperationException(
+                $"Failed to remove the PostgreSQL test container resource '{containerResourceId}'. " +
+                "The independent cleanup owner is retained for a later retry.",
+                cleanupException);
+        }
+    }
+
+    private async ValueTask DisposeTestcontainersContainerAsync(PostgreSqlContainer candidate)
+    {
+        if (disposeContainer is not null)
+        {
+            await disposeContainer(candidate);
+            return;
+        }
+
+        await candidate.DisposeAsync();
+    }
+
+    private void CaptureContainerResourceId(PostgreSqlContainer candidate)
+    {
+        if (containerResourceId is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            containerResourceId = candidate.Id;
+        }
+        catch (InvalidOperationException)
+        {
+            // StartAsync may fail before Docker creates a container.
+        }
+    }
+
+    private void ClearContainerOwnership()
+    {
+        container = null;
+        containerCleanup = null;
+        containerResourceId = null;
+    }
+
+    private static DockerContainerCleanup CreateDefaultCleanup(string resourceId, string? endpoint) =>
+        new DockerContainerCleanup(resourceId, endpoint);
 
     public async Task<PostgreSqlTestDatabase> CreateDatabaseAsync(
         CancellationToken cancellationToken = default)
@@ -256,6 +386,86 @@ public sealed class PostgreSqlContainerFixture : IAsyncLifetime
 
     private static string QuoteIdentifier(string identifier) =>
         $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+}
+
+internal interface IContainerCleanup : IAsyncDisposable
+{
+    string ResourceId { get; }
+
+    Task RemoveAsync(CancellationToken cancellationToken);
+}
+
+internal sealed class DockerContainerCleanup : IContainerCleanup
+{
+    private readonly DockerClient client;
+    private bool removed;
+
+    internal DockerContainerCleanup(string resourceId, string? dockerEndpoint)
+    {
+        ResourceId = resourceId;
+
+        DockerClientBuilder builder = new();
+        if (dockerEndpoint is not null)
+        {
+            builder = builder.WithEndpoint(new Uri(dockerEndpoint));
+        }
+
+        client = builder.Build();
+    }
+
+    public string ResourceId { get; }
+
+    public async Task RemoveAsync(CancellationToken cancellationToken)
+    {
+        if (removed)
+        {
+            return;
+        }
+
+        try
+        {
+            await client.Containers.RemoveContainerAsync(
+                ResourceId,
+                new ContainerRemoveParameters { Force = true },
+                cancellationToken);
+        }
+        catch (DockerContainerNotFoundException)
+        {
+            // An earlier remove may have succeeded while its response was lost.
+        }
+
+        removed = true;
+    }
+
+    internal static async Task<bool> ExistsAsync(
+        string resourceId,
+        string? dockerEndpoint,
+        CancellationToken cancellationToken = default)
+    {
+        DockerClientBuilder builder = new();
+        if (dockerEndpoint is not null)
+        {
+            builder = builder.WithEndpoint(new Uri(dockerEndpoint));
+        }
+
+        using DockerClient inspectClient = builder.Build();
+
+        try
+        {
+            await inspectClient.Containers.InspectContainerAsync(resourceId, cancellationToken);
+            return true;
+        }
+        catch (DockerContainerNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        client.Dispose();
+        return ValueTask.CompletedTask;
+    }
 }
 
 public sealed class PostgreSqlTestDatabase : IAsyncDisposable
