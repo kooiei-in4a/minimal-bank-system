@@ -33,6 +33,7 @@ Mutable stateの正本は`run.json`。本checklistは確認手順であり、値
 - [x] Product authorityとGate evidenceの分離
 - [x] open decisionのanswer leakage除去
 - [x] `run.json`へstage artifact registry追加
+- [x] `reference/mutation-determinism-contract.md`でPSR-005 deterministic mutation contractを追加
 - [ ] implementation / evaluation / selection / final / Light / Heavy promptsへv2 contract反映
 - [ ] finding-owned targeted re-review
 - [ ] Blocker 0 / Major 0
@@ -87,10 +88,23 @@ Mutable stateの正本は`run.json`。本checklistは確認手順であり、値
 - [ ] Compose project/resource identity
 - [ ] local / CI共通machine-readable command
 
-### D-06 Failure injection
+### D-06 Failure injection / mutation determinism
+
+`reference/mutation-determinism-contract.md`のschemaを満たすまでD-06をLOCKEDにしない。
 
 - [ ] invalid credential等のfailure path
 - [ ] M-01〜M-10 injection plan
+- [ ] 各applicable mutationのdeterministic precondition property
+- [ ] 各applicable mutationのcontrolled barrier / fixture class
+- [ ] 各applicable mutationのinjection point class
+- [ ] expected failure signature
+- [ ] invalid failure signatures
+- [ ] cleanup requirement / residue check
+- [ ] M-01: Migrator completionを自然raceではなくcontrolled barrierで未完了に保持できる
+- [ ] M-03: auto-migrationが存在すれば必ずobservable migration-state deltaが出るDB preconditionを作れる
+- [ ] M-08: test / validatorを変更せずexit 0 + expected migration state欠落を作る
+- [ ] M-10: mutation対象のsame-project resourceがcleanup前に実在することを証明する
+- [ ] exact evaluator patch / source editをcandidate-facing contractへ漏らさない
 - [ ] test-only isolation
 - [ ] no production backdoor
 - [ ] no residue
@@ -146,6 +160,7 @@ Issue Ready PASSだけではimplementationを開始しない。
 
 - prompt-suite targeted re-review B0 / M0
 - D-01〜D-08 lock
+- D-06 mutation determinism contract lock
 - common base / branch / PR identity
 - exact model / harness / effort
 - Issue Ready PASS
