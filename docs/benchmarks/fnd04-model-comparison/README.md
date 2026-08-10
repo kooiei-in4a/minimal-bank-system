@@ -2,9 +2,9 @@
 
 Target Issue: #42 `[FND-04] EF Core・明示的migration実行基盤を確立する`
 
-Status: **FINAL REVIEW + JUDGE COMPLETE / CONFIRMED MAJOR / TARGETED FIX REQUIRED**
+Status: **G-01 MAJOR FIX COMPLETE / TARGETED RE-REVIEW READY**
 
-このdirectoryはFND-04 benchmarkの実行条件、candidate snapshots、Implementation Evaluation、Selection / Adjudication、Final Synthesis、role-diverse review、Judge adjudicationを管理するbenchmark control正本である。
+このdirectoryはFND-04 benchmarkのH0/SR/H1、Implementation Evaluation、Selection / Adjudication、Final Synthesis、独立review、Judge、Gold、Major fixを管理するbenchmark control正本である。
 
 ## Current state
 
@@ -15,152 +15,140 @@ H1 self-review fix snapshot      8/8 LOCKED
 H1 exact-head CI                 8/8 SUCCESS
 Implementation Evaluation        COMPLETE / LOCKED
 Selection / Adjudication         COMPLETE / LOCKED
-Final Synthesis                  COMPLETE / SNAPSHOT LOCKED
+Final Synthesis initial Head      COMPLETE / SNAPSHOT LOCKED
 Role-diverse independent review  COMPLETE / 5 OF 5
-Finding normalization            COMPLETE
 Judge A / B                      COMPLETE / QUORUM MATCH
-Judge C                          NOT REQUIRED
-Gold / Reference                 LOCKED / CHANGES_REQUIRED
-Targeted Major fix               READY / NOT STARTED
-Formal Agent B                   BLOCKED UNTIL FIX + RE-REVIEW
+Gold / Reference                 LOCKED / G-01 MAJOR
+G-01 targeted fix                COMPLETE / SNAPSHOT LOCKED
+Targeted Major-fix re-review     READY / 0 OF 2
+Formal Agent B                   BLOCKED UNTIL G-01 CLEARANCE
 ```
 
-## Final Synthesis target under adjudication
+## Gold result on old Head
+
+Old Head:
 
 ```text
-PR:            #140
-Branch:        agent/issue-42-fnd-04-final-code
-Base SHA:      38c07e210fe4e8689f1d8aeabbb07b92610d1826
-Head SHA:      99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
-Duration:      29 minutes
+99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
 ```
 
-CI identities:
+Judge A/B quorum:
 
 ```text
-PR merge-ref:
-  Run 31350916189
-  checkout d12de2ae07003a10d19d576808cf88ec7796da23
-  SUCCESS
-
-Direct Head:
-  Run 31350870902
-  checkout 99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
-  SUCCESS
+CHANGES_REQUIRED
+Blocking root cause: NR-01
+Merge-ready: NO
 ```
 
-Direct-head CI: build 0 warnings / 0 errors、pending-model PASS、non-PG 42 PASS、real PG 23 PASS。
-
-## Reviewer pool — completed
-
-Reviewer pool revision: `fnd04-reviewer-pool-v2`
-
-| Slot | Model + Harness | Role | Verdict | Merge-ready |
-|---|---|---|---|---|
-| R1 | GPT-5.6 Sol / Codex | runtime / failure-path | APPROVE_WITH_FINDINGS | YES |
-| R2 | Claude Opus 5 / Claude Code | deep technical / test assurance | CHANGES_REQUIRED | NO |
-| R3 | GPT-5.6 Luna / Codex | specification / scope | APPROVE_WITH_FINDINGS | YES |
-| R4 | GPT-5.6 Sol / Browser | framework official-source | APPROVE | YES |
-| R5 | Cursor Auto / Cursor | practical broad scan | APPROVE_WITH_FINDINGS | YES |
-
-Raw artifacts 5/5 captured.
-
-## Judge quorum — complete
-
-Judge AとJudge Bは互いの結果を見ず、まずraw reviewsを読まないPhase AからReferenceを構築した。
-
-```text
-Judge A — GPT-5.6 Sol / Codex
-  CHANGES_REQUIRED
-  Blocking root cause: NR-01
-  Merge-ready: NO
-
-Judge B — Claude Opus 5 / Claude Code
-  CHANGES_REQUIRED
-  Blocking root cause: NR-01
-  Merge-ready: NO
-```
-
-Reference verdict / blocking root cause / merge-readyが完全一致したためJudge Cは不要。
-
-## Adjudicated Gold / Reference
-
-Canonical:
+Canonical Gold:
 
 - `review-benchmark/gold-review.md`
 - `review-benchmark/gold-review.json`
 - Revision: `fnd04-final-gold-v1`
 
+Confirmed Major `G-01 / NR-01`: `DesignTimeConnectionSafetyTests` could stay green for an off-blocklist fabricated destination or a factory-unreachable unrelated failure.
+
+## Targeted Major fix
+
+New Head:
+
 ```text
-Gold verdict:       CHANGES_REQUIRED
-Merge-ready:        NO
-Blocker:            0
-Major:              1
-Confirmed blocker:  G-01 / NR-01
+3511688401533f60bb77c7dcc647c4c2c4aa84c6
 ```
 
-### G-01 / NR-01 — design-time regression false assurance
+Old -> New:
 
-Current production `BankDbContextFactory`のfail-closed behavior自体は正しい。
+```text
+1 commit
+1 file
++18 / -0
+```
 
-しかし`DesignTimeConnectionSafetyTests`は、主に`exit != 0`と固定destination文字列の不在だけを検証しており、Judge A/Bは独立mutationで次を確認した。
-
-- off-blocklist fabricated destinationを再導入してもtestがgreen
-- factoryへ到達できないtool/build failureでもtestがgreen
-
-したがってFinal SynthesisでmandatoryとしたC8-M01 regression guardがguard対象のdefect classを防げておらず、merge-required verificationが実質未達としてMajor / blocking。
-
-production code変更は不要。test-only fixで解消する。
-
-## Nonblocking Gold
-
-- G-02 / NR-02 — 60s timeout mechanisms / exit taxonomy coupling: Minor
-- G-03 / NR-04 — PR CI wording: Nit
-- G-04 / NR-05 — ordinary failure exit taxonomy coverage: Minor
-- G-05 / NR-06 — low-information assertions: Nit
-- NR-03 — product findingとして棄却。model-drift negativeは独立再現済み
-
-今回のtargeted fixへ非blocking source改善を混ぜない。
-
-## Next — targeted Major fix
-
-Canonical prompt:
-
-- `prompts/final-synthesis-major-fix.md`
-- Revision: `fnd04-final-major-fix-v1`
-
-原則変更対象:
+Only changed file:
 
 ```text
 tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs
 ```
 
-目標:
+Production code change: **NONE**.
 
-- connection-required production design-time / Npgsql pathへ到達したことをpositiveにassert
-- destination未構成がfailure原因であることをpositiveにassert
-- arbitrary non-zero tool/build failureをPASSにしない
-- off-blocklist fabricated destination mutationでtestがFAILする
-- factory未到達failureでtestがFAILする
-- mutationをdiscard後、production baselineでPASS
-- new direct-head CI / PR merge-ref CIの両方SUCCESS
+New positive assertions require the intended failure signature:
 
-その後、G-01だけを対象にMajor-fix independent re-reviewを行う。
+- uninitialized ConnectionString
+- empty database / server destination
+- Npgsql path
+- EF Migrations path
 
-## Experiment flow
+Author mutation verification:
 
 ```text
-8 candidates
-  -> H0 / SR / H1                         COMPLETE
-    -> Implementation Evaluation          COMPLETE
-      -> Selection / Adjudication         COMPLETE
-        -> Final Synthesis                COMPLETE
-          -> role-diverse review 5/5      COMPLETE
-            -> Judge A/B                  COMPLETE
-              -> Gold / Reference         CHANGES_REQUIRED
-                -> G-01 targeted fix      NEXT
-                  -> Major-fix re-review
-                    -> Formal Agent B
+baseline PASS
+M1 off-blocklist destination -> targeted test FAIL
+M2 factory unreachable       -> targeted test FAIL
+recovery PASS
+residue NONE
 ```
 
-PR #140はDraft / unmergedのまま。Ready化、merge、Issue #42 closeは禁止。
+Duration: **30 minutes** (`14:28` -> `14:58` JST; explicit author metadata).
+
+Canonical snapshot:
+
+- `review-benchmark/major-fix-snapshot.md`
+- `review-benchmark/major-fix-snapshot.json`
+- Revision: `fnd04-final-major-fix-snapshot-v1`
+
+## New Head CI
+
+Direct-head:
+
+```text
+Run 31360093004
+checkout 3511688401533f60bb77c7dcc647c4c2c4aa84c6
+SUCCESS
+```
+
+PR merge-ref:
+
+```text
+Run 31360094852
+checkout 2e69049bd8b38e57cd4fee2c42e17edaeaf23df1
+Merge 3511688401533f60bb77c7dcc647c4c2c4aa84c6
+  into 38c07e210fe4e8689f1d8aeabbb07b92610d1826
+SUCCESS
+```
+
+Both runs independently verified:
+
+- build 0 warnings / 0 errors
+- pending-model PASS
+- non-PostgreSQL 42 PASS
+- real PostgreSQL 23 PASS
+
+## Next gate — targeted G-01 re-review
+
+Common prompt:
+
+- `prompts/final-synthesis-major-fix-re-review.md`
+- Revision: `fnd04-final-major-fix-rereview-v1`
+
+Reviewers:
+
+| Slot | Model / Harness | Scope |
+|---|---|---|
+| T1 | GPT-5.6 Sol / Codex / xHigh | independent G-01 mutation sensitivity |
+| T2 | Cursor Auto / Cursor | independent practical targeted verification |
+
+The old 5-review pool is **not rerun**. Targeted re-review checks only whether G-01 is fixed and whether the 18-line test-only patch introduced a new Blocker/Major.
+
+Clearance condition:
+
+```text
+T1 G01_FIXED
+T2 G01_FIXED
+new Blocker 0
+new Major 0
+```
+
+After clearance, proceed to Formal Agent B product merge gate.
+
+PR #140 remains OPEN / DRAFT / UNMERGED. Ready, merge and Issue #42 close remain prohibited until Formal Agent B completes.
