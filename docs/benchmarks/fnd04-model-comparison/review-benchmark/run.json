@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.5",
+  "schema_version": "1.6",
   "benchmark_id": "fnd04-final-synthesis-independent-review",
   "run_id": "fnd04-final-review-20260810",
-  "status": "major_fix_cleared_formal_agent_b_ready",
+  "status": "formal_agent_b_technical_gate_pass_merge_preconditions",
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
   "target_pr": 140,
@@ -39,15 +39,11 @@
     "new_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
     "pr_merge_ref_sha": "2e69049bd8b38e57cd4fee2c42e17edaeaf23df1",
     "commit_count": 1,
-    "changed_files": [
-      "tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs"
-    ],
+    "changed_files": ["tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs"],
     "additions": 18,
     "deletions": 0,
     "production_code_changed": false,
     "duration_minutes": 30,
-    "snapshot_markdown": "major-fix-snapshot.md",
-    "snapshot_json": "major-fix-snapshot.json",
     "author_mutation_sensitivity": {
       "baseline": "pass",
       "M1": "failed_as_expected",
@@ -80,61 +76,48 @@
   },
   "targeted_re_review": {
     "status": "complete_cleared",
-    "prompt": "../prompts/final-synthesis-major-fix-re-review.md",
     "prompt_revision": "fnd04-final-major-fix-rereview-v1",
     "expected": "2_of_2",
     "completed": "2_of_2",
-    "reviewers": [
-      {
-        "slot": "T1",
-        "model": "GPT-5.6 Sol",
-        "harness": "Codex",
-        "effort": "xHigh",
-        "status": "completed",
-        "verdict": "G01_FIXED",
-        "new_blocker": 0,
-        "new_major": 0,
-        "markdown": "re-reviews/t1-gpt-5.6-sol-codex.md",
-        "json": "re-reviews/t1-gpt-5.6-sol-codex.json"
-      },
-      {
-        "slot": "T2",
-        "model": "NOT_EXPOSED",
-        "harness": "Cursor",
-        "effort": "Auto",
-        "status": "completed",
-        "verdict": "G01_FIXED",
-        "new_blocker": 0,
-        "new_major": 0,
-        "markdown": "re-reviews/t2-cursor-auto.md",
-        "json": "re-reviews/t2-cursor-auto.json"
-      }
-    ],
-    "clearance_condition": "both reviewers return G01_FIXED with no new Blocker/Major",
+    "t1": {"model":"GPT-5.6 Sol","harness":"Codex","effort":"xHigh","verdict":"G01_FIXED","new_blocker":0,"new_major":0},
+    "t2": {"model":"NOT_EXPOSED","harness":"Cursor","effort":"Auto","verdict":"G01_FIXED","new_blocker":0,"new_major":0},
     "clearance_result": "pass"
   },
   "major_fix_clearance": {
     "status": "locked",
     "revision": "fnd04-final-major-fix-clearance-v1",
-    "markdown": "major-fix-clearance.md",
-    "json": "major-fix-clearance.json",
     "g01": "cleared",
     "new_blocker_count": 0,
     "new_major_count": 0
   },
   "formal_agent_b": {
-    "status": "ready_not_started",
+    "status": "complete_technical_gate_pass",
     "role": "product_merge_gate",
-    "prompt": "../prompts/final-synthesis-formal-agent-b.md",
     "prompt_revision": "fnd04-formal-agent-b-v1",
-    "expected_model": "Claude Opus 5",
-    "expected_harness": "Claude Code",
-    "expected_effort": "xHigh",
-    "target_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6"
+    "model": "Claude Opus 5",
+    "harness": "Claude Code",
+    "effort": "xHigh",
+    "target_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+    "formal_verdict": "APPROVE",
+    "merge_ready": true,
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 3,
+    "review_id": 4894487758,
+    "review_url": "https://github.com/kooiei-in4a/minimal-bank-system/pull/140#pullrequestreview-4894487758",
+    "github_review_event": "COMMENTED",
+    "approve_event_attempt": "rejected_422_self_pull_request",
+    "technical_gate": "pass",
+    "result_markdown": "formal-agent-b-result.md",
+    "result_json": "formal-agent-b-result.json"
   },
   "merge_actions": {
-    "pr_ready": "prohibited_until_formal_agent_b_approves",
-    "merge": "prohibited_until_formal_agent_b_approves",
-    "issue_close": "prohibited_until_merge_and_close_evidence_complete"
+    "technical_gate": "passed",
+    "github_approved_state": "not_obtained_due_self_approval_prohibition",
+    "repository_rule_requirement": "not_yet_verified",
+    "pr_ready": "eligible_after_repository_rule_check",
+    "merge": "eligible_after_ready_and_repository_rule_check",
+    "issue_close": "after_merge_and_close_evidence_complete"
   }
 }
