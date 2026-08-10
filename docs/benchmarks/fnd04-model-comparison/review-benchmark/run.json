@@ -1,7 +1,8 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "benchmark_id": "fnd04-final-synthesis-independent-review",
   "run_id": "fnd04-final-review-20260810",
+  "reviewer_pool_revision": 2,
   "status": "ready_for_reviewer_execution",
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
@@ -17,7 +18,21 @@
   "revisions": {
     "final_synthesis_snapshot": "fnd04-final-synthesis-snapshot-v1",
     "review_prompt": "fnd04-final-review-v1",
-    "review_result_schema": "1.0"
+    "review_result_schema": "1.0",
+    "reviewer_pool": "fnd04-reviewer-pool-v2"
+  },
+  "pool_revision": {
+    "previous_revision": 1,
+    "changed_before_any_raw_review": true,
+    "previous_completed": "0_of_6",
+    "reason": [
+      "avoid Claude Sonnet 5 token cost for a role that does not require another top-tier expensive reviewer",
+      "avoid Open Code for this review phase",
+      "use GPT-5.6 Luna / Codex for specification and scope review",
+      "use Cursor Auto as the practical fast broad-scan route instead of pinning Grok 4.5",
+      "reduce reviewer count from six to five rather than adding a redundant replacement"
+    ],
+    "audit_record": "docs/benchmarks/fnd04-model-comparison/review-benchmark/reviewer-pool-revision-2.md"
   },
   "reviewers": [
     {
@@ -38,8 +53,8 @@
     },
     {
       "slot": "R3",
-      "expected_model": "Claude Sonnet 5",
-      "harness": "Claude Code",
+      "expected_model": "GPT-5.6 Luna",
+      "harness": "Codex",
       "primary_role": "specification_scope",
       "effort": "reverify_at_execution",
       "status": "not_started"
@@ -55,24 +70,18 @@
     },
     {
       "slot": "R5",
-      "expected_model": "GPT-5.6 Luna",
-      "harness": "Open Code",
-      "primary_role": "tool_driven_independent_review",
-      "effort": "reverify_at_execution",
-      "status": "not_started"
-    },
-    {
-      "slot": "R6",
-      "expected_model": "Grok 4.5",
+      "expected_model": "Cursor Auto",
       "harness": "Cursor",
       "primary_role": "fast_independent_review",
-      "effort": "reverify_at_execution",
+      "effort": "auto_mode",
+      "routing_mode": "Auto",
+      "routed_model": "record_if_product_exposes_it_else_NOT_EXPOSED",
       "status": "not_started"
     }
   ],
   "raw_capture": {
-    "expected": "6_of_6",
-    "completed": "0_of_6",
+    "expected": "5_of_5",
+    "completed": "0_of_5",
     "format": "markdown_plus_json_pair",
     "semantic_editing": "prohibited"
   },
