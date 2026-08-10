@@ -1,6 +1,6 @@
 # FND-05 Heavy Review H2 — Opus Adversarial / Failure Final Gate
 
-Revision: `fnd05-heavy-opus-v1`
+Revision: `fnd05-heavy-opus-v2`
 
 応答は日本語で出力してください。
 
@@ -14,7 +14,7 @@ ROLE: "adversarial_failure_and_false_assurance_final_gate"
 FULL_REVIEW_BUDGET: 1
 ```
 
-## 1. Target
+## 1. Target / locked inputs
 
 ```yaml
 TARGET_ISSUE: 43
@@ -22,221 +22,130 @@ TARGET_PR: "<FINAL_SYNTHESIS_PR>"
 BASE_SHA: "<FULL_BASE_SHA>"
 FINAL_HEAD_SHA: "<HEAD_AFTER_LIGHT_FIX_AND_CI>"
 DIRECT_HEAD_CI: "<RUN>"
-PROMPT_REVISION: "fnd05-heavy-opus-v1"
+LIGHT_FIX_ARTIFACT_PATH: "<PATH>"
+LIGHT_FIX_ARTIFACT_SHA256: "<SHA256>"
+MUTATION_REPORT_ARTIFACT_PATH: "<PATH>"
+MUTATION_REPORT_SHA256: "<SHA256>"
+RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+PROMPT_REVISION: "fnd05-heavy-opus-v2"
 ```
 
-Review-onlyです。コード、test、branch、PR、Issueを変更してはいけません。
+Review-onlyです。targetを変更しません。
 
 ## 2. Entry conditions
 
-次が完了していることを確認してください。
-
 - Static Gate PASS
-- Composer L1 COMPLETE
-- Luna L2 COMPLETE
+- L1 / L2 LOCKED
 - Light findings disposition COMPLETE
 - direct-head CI SUCCESS
 - Final Head locked
-- mandatory mutation baseline / result available
+- mandatory mutation baseline / report available
+- artifact ref / hash / target Head一致
 
-未完了ならBlockerとして停止します。
+不一致はBlockerです。
 
-## 3. Purpose
+## 3. Authority
 
-happy pathと通常のrule checkでは見えない、次のBlocker / Majorを探します。
+1. Koo-approved product policy / approved specification
+2. ADR-0001 / 0008 / 0009
+3. Issue #43
+4. `AGENTS.md`
+5. locked FND-05 contracts
+6. exact Final Head / runtime / mutation evidence
+
+## 4. Purpose
+
+happy pathと通常rule checkでは見えないBlocker / Majorを探す。
 
 - partial failure
 - lifecycle / restart
 - startup ordering race
 - process / container / volume ownership
-- fail-open
-- unexpected fallback
+- fail-open / fallback
 - hidden dependency
 - secret leak path
 - test reachability gap
 - false assurance
 
-「もっと好みの設計」を提案するのではなく、承認済み設計が壊れるケースを証拠で示します。
+承認済み設計を好みで全面変更しない。
 
-## 4. Authority
+## 5. Must review
 
-1. Approved specification
-2. ADR-0001 / 0008 / 0009
-3. Issue #43
-4. `AGENTS.md`
-5. `reference/implementation-and-test-design-contract.md`
-6. `reference/mandatory-mutations.md`
-7. `reference/review-perspective-matrix.md`
-8. Light review results / disposition
-9. exact Final Head / runtime / mutation evidence
+### Failure / ordering
 
-## 5. Required target verification
+- PostgreSQL usable判定の失敗形
+- Migrator connection / credential / timeout / history failure
+- exit masking / success-looking failure
+- Migrator success前のAPI start可能性
+- Migrator non-zero時API start可能性
+- started-then-exited vs never-started
 
-- repository / PR
-- Base / Final Head full SHA
-- changed files
-- direct-head CI actual checkout SHA
-- mutation target Head
-- Light fix range
+### Lifecycle / ownership
 
-不一致はBlockerです。
-
-## 6. Must review
-
-### 6.1 PostgreSQL readiness failure
-
-- runningだが接続不能
-- healthcheck false positive / false negative
-- credential未反映
-- initialization途中
-- restart / recovery transition
-
-### 6.2 Migrator failure semantics
-
-- connection failure
-- credential rejection
-- timeout
-- malformed migration history
-- partial migration
-- shell wrapperによるexit masking
-- successful-looking log after failure
-
-### 6.3 API start ordering
-
-- Migrator running中にAPIがstartし得るか
-- Migrator non-zeroでもAPIが作成 / startされるか
-- APIがstart後即exitしてもtestがsuccess扱いしないか
-- timestamp / state observationがrace-safeか
-
-### 6.4 Lifecycle
-
-- clean start
-- stop / start
-- restart
-- down / up with retained volume
-- repeated Migrator execution
-- clean reset
-- interrupted command
-- orphan resource
-
-### 6.5 Ownership
-
-- named volume identity
-- cleanup responsibility
-- failed cleanup後のactual resource state
-- Compose project name collision
+- D-04 locked lifecycle semantics
+- stop / start / restart / retained-volume rerun
+- clean reset / interrupted cleanup
+- project-scoped volume / network / container identity
 - parallel / repeated run interference
 
-### 6.6 Secret paths
+### Secret / hidden dependency
 
-- repository
-- Compose interpolation / rendered config
-- process args
-- entrypoint trace
-- stdout / stderr
-- exception message
-- `docker inspect`
-- test artifact / PR body
+- D-03 / D-05で定義した観測面
+- shell / environment / pre-existing resource / local-only path依存
+- sleep / timing assumption
+- Docker Desktop / Linux差でcontractが崩れないか
 
-### 6.7 Hidden dependencies
+### Test oracle / mutation
 
-- shell implementation difference
-- missing executable
-- environment inherited from developer machine
-- pre-existing image / volume / container
-- local-only path
-- timing / sleep
-- Docker Desktop vs Linux daemon difference
-
-### 6.8 Test oracle
-
-- actual production Compose / entrypointへ到達するか
+- production pathへ到達するか
 - `exit != 0`だけでPASSしないか
-- blocklist absenceだけでsecret / destination safetyを主張しないか
-- expected component / path markerがあるか
-- expected failure reason / state markerがあるか
-- source scanだけでruntime behaviorを証明しないか
-- test名と実証範囲が一致するか
+- expected path marker + failure reason/state marker
+- source scanだけでruntimeを証明しないか
+- M-01〜M-10 baseline GREEN → RED → restore GREEN → residue 0
+- **M-08はoracleを変更せず、exit 0のままmigration未適用runtime defectを検出しているか**
+- M-07はoracle-quality meta mutationとして正しく扱われているか
 
-### 6.9 Mandatory mutations
+既存mutation reportが十分なら全mutationを無意味に再実行しない。証拠gapのあるroot causeだけprobeする。
 
-M-01〜M-10について、次を確認します。
+### Mandatory Light handoff re-check
 
-- baseline GREEN
-- mutation後target RED
-- failure reason matched
-- restore後GREEN
-- residue 0
+`HEAVY_HANDOFF`のうちOpus scopeに入るREJECTED / UNRESOLVED / ESCALATED Blocker・Major candidateを独立再確認する。
 
-既存reportが十分なら無意味に全mutationを再実行しません。証拠gapがあるmutationだけを独立probeします。
+## 6. Explicitly do not review
 
-## 7. Explicitly do not review
+以下を探すために時間を使わない。
 
-以下を探すために時間を使わないでください。
-
-- code style
-- naming polish
-- formatter / whitespace
-- unused using / unused localの軽微な問題
-- ordinary DRY
-- minor duplication
+- code style / naming / formatter
+- unused codeの軽微な問題
+- ordinary DRY / minor duplication
 - simple directory placement
 - README typo / wording
-- simple package version comparison
-- simple digest presence check
-- exhaustive Acceptance Criteria checklist
-- Light Review済みのgeneral quality finding
+- simple package / digest presence check
+- exhaustive AC checklist
+- **ACCEPTED + FIXED + VERIFIEDされたgeneral quality finding**
 - optional documentation enhancement
 - approved architectureの好みによる全面変更
 - production-grade HA / orchestrator / zero-downtime要求
 - FND-06 health implementation要求
 
-上記がBlocker / Majorのroot causeへ直接つながる場合だけ指摘できます。その場合、Heavy scopeである理由を明記してください。
+これらがBlocker / Major root causeへ直結する場合だけHeavy findingとして扱う。
 
-## 8. Light Gate escape handling
+## 7. Light Gate escape
 
-単純rule / AC gapを見つけた場合:
+単純rule / AC gapを見つけた場合は`LIGHT_GATE_ESCAPE`として記録し、同種の全件監査へ広げない。
 
-- `LIGHT_GATE_ESCAPE`として記録
-- Heavy探索を同種の全件監査へ広げない
-- Blocker / Major root causeでなければHeavy findingへ昇格しない
-- process metricへ渡す
+## 8. Probe policy
 
-## 9. Probe policy
+- isolated temporary mutation / external overrideのみ
+- production branchへprobeをcommitしない
+- 一度に1 mutation
+- actual stateを確認
+- expected failure reasonを確認
+- residue 0
 
-- targetを変更しないreview-onlyを原則とする。
-- isolated temporary mutation / external overrideは許可する。
-- production branchへprobeをcommitしない。
-- 一度に1 mutationだけ行う。
-- actual Docker stateを確認する。
-- probe failureを握り潰さない。
-- residue checkを行う。
+## 9. Finding policy
 
-## 10. Finding policy
-
-Primary outputはBlocker / Majorです。
-
-### Blocker
-
-- wrong target / Head
-- required runtime / mutation evidenceが取得不能
-- secret committed
-- review環境がtarget contractを再現不能
-
-### Major
-
-- failure pathがfail-open
-- API start ordering race
-- lifecycleでmigration gate bypass
-- cleanup ownership loss
-- secret leak
-- hidden dependencyによりCI / clean hostで再現不能
-- mandatory mutationがtestをREDにしない
-- false assuranceでmerge blockerを見逃す
-
-Minor / Nitを網羅的に探しません。Heavy scopeに直結するnon-blocking concernは最大3件まで記載できます。
-
-Finding format:
+Primary outputはBlocker / Major。
 
 ```text
 ID:
@@ -250,64 +159,50 @@ IMPACT:
 REQUIRED_FIX:
 WHY_HEAVY_SCOPE:
 LIGHT_GATE_ESCAPE: YES / NO
+SOURCE_LIGHT_FINDING: <ID / NONE>
 RESIDUE:
 ```
 
-## 11. Output
+Minor / Nitを網羅的に探さない。Heavy scopeに直結するnon-blocking concernは最大3件。
+
+## 10. Output / artifact lock
 
 ```text
 # FND-05 Opus Heavy Final Review
 
 TARGET_VERIFICATION:
 ENTRY_CONDITIONS:
-
 VERDICT: APPROVE / CHANGES_REQUIRED
-
 BLOCKERS:
-
 MAJORS:
-
 FAILURE_PATH_MATRIX:
-
 LIFECYCLE_ASSESSMENT:
-
 OWNERSHIP_ASSESSMENT:
-
 SECRET_PATH_ASSESSMENT:
-
 HIDDEN_DEPENDENCIES:
-
 TEST_ORACLE_ASSESSMENT:
-
 MUTATION_ASSESSMENT:
-
 FALSE_ASSURANCE:
-
+REJECTED_UNRESOLVED_LIGHT_RECHECK:
 MERGE_READY: YES / NO
-
 LIGHT_GATE_ESCAPES:
-
 NON_BLOCKING_HEAVY_CONCERNS_MAX_3:
-
 UNVERIFIED:
-
 REVIEW_BUDGET:
 - full review used: 1 / 1
-
-OPERATION_CONFIRMATION:
-- code changed: NO
-- PR changed: NO
-- Issue changed: NO
+ARTIFACT_LOCK:
 ```
 
-## 12. Re-review
+`ARTIFACT_LOCK`を`run.json.stage_artifacts.heavy_opus`へ記録する。
 
-原則としてこのfull reviewは1回です。
+## 11. Re-review
+
+原則full reviewは1回。
 
 再投入条件:
 
-- あなたが出したBlocker / Majorのtargeted fix
-- failure semantics / lifecycle / ownership / test oracleのmaterial change
-- Kooの明示指示
+- このreviewのBlocker / Major targeted fix
+- failure semantics / lifecycle / ownership / test oracle material change
+- Koo明示指示
 
-Minor / Nit、docs-only、Light finding修正では再投入しません。
+Minor / Nit、docs-only、Light finding修正では再投入しない。
