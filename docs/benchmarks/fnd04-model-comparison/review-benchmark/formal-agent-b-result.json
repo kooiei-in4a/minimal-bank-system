@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "target": {
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+    "pr_merge_ref_sha": "2e69049bd8b38e57cd4fee2c42e17edaeaf23df1"
+  },
+  "review": {
+    "prompt_revision": "fnd04-formal-agent-b-v1",
+    "model": "Claude Opus 5",
+    "harness": "Claude Code",
+    "effort": "xHigh",
+    "review_id": 4894487758,
+    "review_url": "https://github.com/kooiei-in4a/minimal-bank-system/pull/140#pullrequestreview-4894487758",
+    "reviewed_commit_id": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+    "github_event": "COMMENTED",
+    "requested_github_event": "APPROVE",
+    "approve_event_result": "rejected_self_pull_request_422",
+    "formal_verdict": "APPROVE",
+    "merge_ready": true,
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 3
+    }
+  },
+  "ci": {
+    "direct_head_run": 31360093004,
+    "direct_head": "success",
+    "merge_ref_run": 31360094852,
+    "merge_ref": "success"
+  },
+  "g01": {
+    "status": "cleared_revalidated",
+    "production_code_changed_by_fix": false
+  },
+  "gate": {
+    "technical_product_merge_gate": "pass",
+    "github_approved_state": "not_obtained_self_approval_prohibited",
+    "next": "check_repository_rule_requirement_then_ready_merge"
+  }
+}
