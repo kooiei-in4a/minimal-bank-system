@@ -5,6 +5,9 @@ DOCUMENT_STATUS: "PLACEHOLDER — REPLACE WITH COMPLETED REVIEW"
 REVIEW_TARGET_PR: 145
 REVIEW_TARGET_HEAD: "57df6ae1a30ac23151fbcd707f191f5d26dba029"
 REVIEW_MANIFEST: "pre-run-prompt-suite-review-manifest.md"
+OUTPUT_BRANCH: "agent/fnd05-prompt-suite-independent-review"
+OUTPUT_PR: 146
+OUTPUT_FILE: "docs/benchmarks/fnd05-model-comparison/reviews/pre-run-prompt-suite-independent-review.md"
 REVIEWER_MODEL: "<MODEL>"
 REVIEWER_HARNESS: "<HARNESS>"
 REVIEWER_EFFORT: "<EFFORT>"
@@ -111,7 +114,7 @@ Heavyの除外項目がblind spotを作る場合は、具体的なfailure path�
 - implementation Completion Checksの十分性
 - separate SRを廃止してもquality gateが成立するか
 - implementation promptの負荷
--自己正当化 / checklist theater / evidence launderingのrisk
+- 自己正当化 / checklist theater / evidence launderingのrisk
 
 ### 10. Project Rule Catalog Assessment
 
@@ -178,7 +181,7 @@ P2 — Optional polish
 
 - D-01〜D-08 lockへ進める
 - prompt suite修正後に再review
--根本再設計
+- 根本再設計
 - evidence不足でblocked
 
 ### 18. Operation Confirmation
