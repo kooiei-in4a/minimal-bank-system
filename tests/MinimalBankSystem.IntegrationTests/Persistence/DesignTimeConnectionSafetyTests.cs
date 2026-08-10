@@ -57,6 +57,24 @@ public sealed class DesignTimeConnectionSafetyTests
             process.ExitCode != 0,
             $"A connection-required design-time operation without configuration must fail closed. Output:\n{output}");
 
+        // The exit code is necessary but not sufficient: a tool/build failure can also be non-zero.
+        // Pin the regression to the production design-time Npgsql connection-required path and to
+        // the intended reason for failure (an empty destination), without accepting a fabricated
+        // destination or an unrelated failure as evidence.
+        Assert.Contains(
+            "The ConnectionString property has not been initialized.",
+            output,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "database '' on server ''",
+            output,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Npgsql", output, StringComparison.Ordinal);
+        Assert.Contains(
+            "Microsoft.EntityFrameworkCore.Migrations",
+            output,
+            StringComparison.Ordinal);
+
         string[] forbiddenDestinations =
         [
             "127.0.0.1",
