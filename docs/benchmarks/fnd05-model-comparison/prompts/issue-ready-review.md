@@ -50,6 +50,7 @@ Gate evidenceがProduct authorityと矛盾する場合はPASSにせず停止す�
 ### Prompt-suite remediation
 
 - 3-review共通P0 findingが修正済み
+- `FND05-PSR-005` mutation determinism root causeが修正済み
 - finding-owned targeted re-review Blocker 0 / Major 0
 - `run.json.gates.prompt_suite_targeted_re_review_pass = true`
 
@@ -62,6 +63,29 @@ Gate evidenceがProduct authorityと矛盾する場合はPASSにせず停止す�
 - evidence_refs != empty
 
 D-05はMigrator exit / completion、API state / ordering、migration history、project identityを含む。
+
+### D-06 deterministic mutation lock
+
+`run.json.revisions.mutation_determinism_contract = fnd05-mutation-determinism-v1`を確認する。
+
+`run.json.open_decisions.D-06`とlock evidenceについて、各applicable mutationが最低限次を持つことを確認する。
+
+- deterministic precondition property
+- controlled barrier / fixture class
+- injection point class
+- expected failure signature
+- invalid failure signatures
+- cleanup requirement / residue check
+
+さらに最低限:
+
+- M-01: Migrator completionを自然raceではなくcontrolled barrierで未完了に保持できる
+- M-03: auto-migrationが存在すれば必ずobservable migration-state deltaが出るDB preconditionを作れる
+- M-08: test / validatorを変更せず、Migrator exit 0 + expected migration state欠落を作る
+- M-10: mutation対象のsame-project resourceがclean reset前に実在することを証明する
+- exact evaluator patch / exact source editをcandidate-facing contractへ漏らしていない
+
+`run.json.gates.mutation_determinism_locked != true`、または上記 evidence が欠ける場合はIssue ReadyをPASSにしない。
 
 ### Process lock
 
@@ -132,6 +156,7 @@ GATE_EVIDENCE:
 DEPENDENCY_GATE:
 PROMPT_SUITE_REMEDIATION:
 DECISION_LOCKS:
+D06_MUTATION_DETERMINISM:
 PROCESS_LOCK:
 EXPERIMENT_IDENTITY:
 SAFETY_SCOPE:
