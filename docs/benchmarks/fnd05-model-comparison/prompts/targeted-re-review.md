@@ -25,6 +25,7 @@ LOCKED_FINDING_IDS:
 CHANGE_SURFACE_LOCK: "<REVISION>"
 ROLE: "finding_owner | adjacent_heavy | lightweight_mutation_verifier"
 RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+MUTATION_DETERMINISM_REVISION: "fnd05-mutation-determinism-v1"
 PROMPT_REVISION: "fnd05-targeted-re-review-v2"
 ```
 
@@ -39,6 +40,10 @@ Artifact / Head identityが`run.json.stage_artifacts`と一致しない場合は
 - change surface
 - required fix
 - finding-specific test
+- required mutationのdeterministic precondition
+- required controlled barrier / fixture class
+- expected / observed failure signature
+- invalid failure signatureをkillへ数えていないこと
 - required mutation RED for expected reason
 - restore GREEN / residue 0
 - adjacent regression
@@ -53,12 +58,14 @@ Artifact / Head identityが`run.json.stage_artifacts`と一致しない場合は
 - new improvement proposal
 - candidate comparison
 
+Mutation preconditionを一次証拠で成立させられない場合は`BLOCKED — PRECONDITION NOT ESTABLISHED`とし、FIXED判定に使用しない。
+
 ## 3. Verdict
 
-- `FIXED`: root cause解消、new Blocker / Majorなし
+- `FIXED`: root cause解消、必要なdeterministic mutation evidence成立、new Blocker / Majorなし
 - `NOT_FIXED`: root cause残存
 - `REGRESSION`: fix後にnew Blocker / Major
-- `BLOCKED`: evidence / identity不足
+- `BLOCKED`: evidence / identity / deterministic precondition不足
 
 ## 4. Multi-review completion
 
@@ -77,6 +84,9 @@ SOURCE_FINDING_REFS:
 FIX_ARTIFACT_REF:
 CHANGE_SURFACE:
 FINDING_RESULTS:
+MUTATION_PRECONDITIONS:
+MUTATION_BARRIER_OR_FIXTURE:
+MUTATION_FAILURE_SIGNATURES:
 MUTATION_RESULTS:
 ADJACENT_REGRESSION:
 NEW_BLOCKER_MAJOR_IN_CHANGED_SURFACE:
