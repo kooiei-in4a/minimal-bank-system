@@ -269,18 +269,31 @@ required_evidence:
   - machine-readable local / CI command
 ```
 
-### D-06 — Failure injection override
+### D-06 — Failure injection / mutation determinism
 
 ```yaml
 status: TO_LOCK
-question: "production backdoorなしでrequired failure / mutationをどう注入するか"
+question: "production backdoorなしでrequired failure / mutationを決定的に発火・観測するにはどうするか"
+contract: "reference/mutation-determinism-contract.md / fnd05-mutation-determinism-v1"
 required_evidence:
   - test-only isolation
   - intended production path reachability
   - no real credential
   - no committed residue
   - M-01〜M-10 applicable injection plan
+  - per-applicable-mutation deterministic precondition property
+  - controlled barrier / fixture class
+  - injection point class
+  - expected failure signature
+  - invalid failure signatures
+  - cleanup requirement / residue check
+  - M-01 controlled incomplete-Migrator barrier without natural race timing
+  - M-03 DB precondition where auto-migration causes observable migration-state delta
+  - M-08 unchanged oracle with exit 0 and missing expected migration state
+  - M-10 pre-existing same-project target resource before cleanup weakening
 ```
+
+D-06ではexact evaluator patch / exact source editをcandidate-facing answerとして固定しない。Candidateへはcontract / precondition / fixture class / failure signature classまでを開示し、exact injection recipeはevaluator側へ隔離する。
 
 ### D-07 — Cross-platform contract
 
@@ -346,8 +359,13 @@ PR本文の自己申告をruntime evidenceとみなす。
 
 未lock decisionに書かれた例や候補をcandidateへの必須方式とみなす。
 
+### X-10
+
+MutationでREDになったため、deterministic preconditionやfailure signatureを確認せず有効なkillとみなす。
+
 ## 6. Lock rule
 
 - D-01〜D-08の`locked_value`と`evidence_refs`が`run.json`へ記録されるまで未lock。
+- D-06は`fnd05-mutation-determinism-v1`のlock schemaを満たし、`run.json.gates.mutation_determinism_locked = true`となるまで未lock。
 - 1件でもTO_LOCKならcandidate execution禁止。
 - Issue Ready PASSだけでは開始しない。`run.json.gates.koo_start_authorized = true`も必要。
