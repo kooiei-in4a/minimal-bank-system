@@ -1,10 +1,34 @@
-# FND-04 Model Comparison — Pre-Run Scaffold
+# FND-04 Model Comparison
 
 Target Issue: #42 `[FND-04] EF Core・明示的migration実行基盤を確立する`
 
-Status: **PREPARED / NOT STARTED**
+Status: **IMPLEMENTATION EVALUATION LOCKED / READY FOR FINAL SYNTHESIS**
 
-このdirectoryはFND-04 benchmarkの実行条件をcandidate開始前に固定する。ここに結果やGoldを先書きしない。
+このdirectoryはFND-04 benchmarkの実行条件、locked snapshots、evaluation結果を管理するbenchmark control正本である。
+
+現在までに、H0 implementation 8/8、Formal Self-Review 8/8、H1 Self-Review Fix 8/8、Implementation Evaluationを完了・LOCKした。candidate branchはH1 LOCK後に変更していない。
+
+## Current result
+
+```text
+H0 implementation snapshot       8/8 LOCKED
+Formal Self-Review               8/8 LOCKED
+H1 self-review fix snapshot      8/8 LOCKED
+H1 exact-head CI                 8/8 SUCCESS
+Implementation Evaluation        COMPLETE / LOCKED
+Final Synthesis                  READY / NOT STARTED
+```
+
+Implementation Evaluation canonical result:
+
+- H1 winner: `claude-opus-5-claude-code` — 99
+- H0 winner: `gpt-5.6-sol-codex` — 98
+- Maximum Self-Review Gain: `claude-sonnet-5-claude-code` — +3
+- Merge-ready: 7 / 8
+- Non-merge-ready: `deepseek-v4-flash-opencode`
+- Blocking finding: `C8-M01`
+
+DurationはH0 / SR / H1を全candidate一貫して収集できなかったためN/A。Speed Score / Quality-Time Index / Practical Score speed componentは計算しない。
 
 ## Experiment shape
 
@@ -13,8 +37,8 @@ Status: **PREPARED / NOT STARTED**
   H0 implementation snapshot
     -> Formal Self-Review (fresh context, review-only)
       -> H1 self-review fix snapshot
-        -> implementation evaluation
-          -> curated Final Synthesis
+        -> implementation evaluation        [COMPLETE / LOCKED]
+          -> curated Final Synthesis         [NEXT]
             -> role-diverse independent review
               -> 2 Judges (+ 1 conditional tie-breaker)
                 -> Formal Agent B review
@@ -84,40 +108,47 @@ Judge C is used only if the first two Judges disagree on reference verdict, bloc
 H0 implementation prompt:       fnd04-h0-v1
 Formal Self-Review prompt:      fnd04-sr-v1
 H1 fix prompt:                  fnd04-h1-v1
+H1 execution wrapper:           fnd04-h1-exec-time-v1
 Implementation scoring:         fnd04-implementation-v1
 Evaluator probes:               fnd04-evaluator-probes-v1
 Assumption ledger:              fnd04-assumptions-v1
+Implementation result:          fnd04-implementation-evaluation-v1
 ```
 
-## Pre-run gates
+## Benchmark gates
 
 - [x] Issue #42 Issue Ready = PASS
-- [ ] common base full SHA fixed
-- [ ] all 8 candidate branches created from common base
+- [x] common base full SHA fixed: `38c07e210fe4e8689f1d8aeabbb07b92610d1826`
+- [x] all 8 candidate branches created from common base
 - [x] package/version contract fixed
 - [x] `reference/assumption-ledger.md` locked
 - [x] H0 candidate prompt revision fixed
 - [x] Formal Self-Review / H1 prompt revisions fixed
 - [x] scoring rubric fixed
 - [x] evaluator-only probe plan fixed
-- [x] no candidate execution started
+- [x] H0 8/8 locked
+- [x] Formal Self-Review 8/8 locked
+- [x] H1 8/8 locked
+- [x] H1 exact-head CI 8/8 success
+- [x] Implementation Evaluation complete / locked
+- [ ] Final Synthesis started
 
 ## Files
 
-- `run.json`: machine-readable pre-run identity
+- `run.json`: machine-readable benchmark identity / phase state / candidate snapshots / evaluation summary
 - `scoring.md`: H0/H1共通implementation scoring rubric
 - `reference/assumption-ledger.md`: external-library and project assumptions locked before candidate outputs
 - `reference/evaluator-probes.md`: candidate共通のadversarial verification plan
 - `prompts/implementation-h0.md`: H0 implementation prompt
 - `prompts/formal-self-review.md`: fresh-context review-only prompt
 - `prompts/self-review-fix-h1.md`: SR Finding disposition / H1 fix prompt
+- `results/implementation-evaluation.md`: canonical human-readable Implementation Evaluation
+- `results/implementation-evaluation.json`: machine-readable Implementation Evaluation result
 
-## Start boundary
+## Implementation Evaluation lock boundary
 
-このpreparationがmainへmergeされた後、そのmerge commitをbenchmark common baseとして固定する。
+Implementation EvaluationはH1 lock commit `93d46a3822a8fddc342781cf5cd981cbac268cdd`を入力snapshotとして実施した。
 
-次に8 candidate branchをそのexact SHAから事前作成し、branch / Headが8 / 8一致することを確認する。
+Evaluation完了後もcandidate branch / PRは変更しない。Evaluation resultの固定はbenchmark control branchのみで行う。
 
-**そこまで完了してもcandidate model executionは開始しない。**
-
-Benchmark execution開始はKooが実行プロンプトを各Harnessへ投入した時点とする。
+次工程はcurated Final Synthesisであり、このREADME更新自体はFinal Synthesis implementation、candidate fix、merge、Issue closeを許可するものではない。
