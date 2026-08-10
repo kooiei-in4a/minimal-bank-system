@@ -4,7 +4,7 @@
   "target_issue": 42,
   "archive_branch": "agent/fnd04-benchmark-archive",
   "archive_pr": 149,
-  "archive_status": "archive_in_progress_tags_verified",
+  "archive_status": "complete_archived",
   "snapshot_status": "verified",
   "snapshot_tag_count_expected": 8,
   "snapshot_tag_count_verified": 8,
@@ -13,8 +13,8 @@
   "archive_operation": {
     "candidate_identity": {"expected": 8, "verified": 8},
     "candidate_tags": {"expected": 8, "verified": 8, "type": "annotated"},
-    "candidate_prs": {"expected": 8, "closed_unmerged": 0},
-    "candidate_branches": {"expected": 8, "deleted": 0},
+    "candidate_prs": {"expected": 8, "closed_unmerged": 8},
+    "candidate_branches": {"expected": 8, "deleted": 8},
     "tag_name_collisions": 0,
     "final_code_branch": "preserved",
     "benchmark_control_branch": "preserved",
@@ -50,7 +50,7 @@
       "selected": true,
       "selected_role": "primary architecture and verification reference for curated Final Synthesis",
       "merge_ready": true,
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-sol-codex",
@@ -69,7 +69,7 @@
       "selected": true,
       "selected_role": "partial adopt: failed-process secret non-disclosure regression",
       "merge_ready": true,
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "claude-sonnet-5-claude-code",
@@ -88,7 +88,7 @@
       "selected": false,
       "selected_role": "learning only: strongest Formal Self-Review gain",
       "merge_ready": true,
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "grok-4.5-cursor",
@@ -106,7 +106,7 @@
       "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-terra-codex",
@@ -124,7 +124,7 @@
       "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-luna-opencode",
@@ -142,7 +142,7 @@
       "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-luna-codex",
@@ -160,7 +160,7 @@
       "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "deepseek-v4-flash-opencode",
@@ -179,7 +179,7 @@
       "selected": false,
       "merge_ready": false,
       "blocking_finding": "C8-M01",
-      "final_disposition": "tagged_pending_pr_close_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     }
   ],
   "auxiliary_cleanup": {
