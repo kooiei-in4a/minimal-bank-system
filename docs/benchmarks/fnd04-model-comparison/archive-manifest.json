@@ -3,7 +3,7 @@
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
   "archive_branch": "agent/fnd04-benchmark-archive",
-  "archive_pr": null,
+  "archive_pr": 149,
   "archive_status": "pending_external_tag_and_ref_cleanup_operator",
   "snapshot_status": "identity_verified_tags_not_created",
   "snapshot_tag_count_expected": 8,
