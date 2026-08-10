@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.3",
+  "schema_version": "1.4",
   "benchmark_id": "fnd05-compose-model-comparison",
-  "status": "preparation_fix_required",
+  "status": "preparation_decision_locking",
   "implementation_permitted": false,
   "mutable_state_source_of_truth": "docs/benchmarks/fnd05-model-comparison/run.json",
   "preparation": {
@@ -9,12 +9,18 @@
     "pull_request": 145,
     "stacked_on_retrospective_pr": 144,
     "draft_artifacts_created": true,
-    "prompt_suite_review_verdict": "FIX_REQUIRED",
+    "prompt_suite_review_verdict": "PASS_B0_M0",
     "prompt_suite_review_sources": [
       "gpt-5.6-sol-browser-xhigh",
-      "gpt-5.6-sol-codex-xhigh-summary",
-      "grok-4.5-cursor-high"
-    ]
+      "gpt-5.6-sol-codex-xhigh",
+      "grok-4.5-cursor-high",
+      "gpt-5.6-sol-codex-xhigh-psr005-targeted-re-review"
+    ],
+    "prompt_suite_reviewed_head": "6c626451fc7d8059e468d19afbfc3c80b666acb9",
+    "prompt_suite_direct_head_ci": 31443292973,
+    "prompt_suite_blocker": 0,
+    "prompt_suite_major": 0,
+    "prompt_suite_minor_known": 1
   },
   "target": {
     "repository": "kooiei-in4a/minimal-bank-system",
@@ -148,14 +154,40 @@
     "conditional_judge_prompt": "fnd05-conditional-judge-v2",
     "issue_ready_review_prompt": "fnd05-issue-ready-review-v2",
     "targeted_fix_prompt": "fnd05-targeted-fix-v2",
-    "targeted_re_review_prompt": "fnd05-targeted-re-review-v2"
+    "targeted_re_review_prompt": "fnd05-targeted-re-review-v2",
+    "psr005_targeted_re_review": "fnd05-psr005-targeted-re-review-v1"
   },
   "open_decisions": {
-    "D-01": {"question": "minimum Docker Compose version and required feature support", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
-    "D-02": {"question": "exact PostgreSQL and .NET image identities/digests", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
-    "D-03": {"question": "secret source and reader design", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
-    "D-04": {"question": "canonical lifecycle commands and lifecycle semantics", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
-    "D-05": {"question": "external state capture method for Migrator exit/finish, API state/start, migration history and project identity", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-01": {
+      "question": "minimum Docker Compose version and required feature support",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-02": {
+      "question": "exact PostgreSQL and .NET image identities/digests",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-03": {
+      "question": "secret source and reader design",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-04": {
+      "question": "canonical lifecycle commands and lifecycle semantics",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-05": {
+      "question": "external state capture method for Migrator exit/finish, API state/start, migration history and project identity",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
     "D-06": {
       "question": "test-only failure and mutation injection mechanisms with deterministic preconditions/barriers/signatures and no production backdoor",
       "status": "TO_LOCK",
@@ -175,28 +207,149 @@
         "M-10 proves the targeted same-project resource exists before weakening cleanup"
       ]
     },
-    "D-07": {"question": "cross-platform execution contract", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
-    "D-08": {"question": "Final Synthesis exact model/harness/effort identity", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []}
+    "D-07": {
+      "question": "cross-platform execution contract",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-08": {
+      "question": "Final Synthesis exact model/harness/effort identity",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    }
   },
   "stage_artifacts": {
-    "static_gate": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
-    "implementation_evaluation": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
-    "selection_adjudication": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
-    "final_synthesis_initial": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
-    "light_l1": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "L1", "producer_commit_sha": null, "status": "not_started"},
-    "light_l2": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "L2", "producer_commit_sha": null, "status": "not_started"},
-    "light_fix": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
-    "heavy_sol": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "H1", "producer_commit_sha": null, "status": "not_started"},
-    "heavy_opus": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "H2", "producer_commit_sha": null, "status": "not_started"},
-    "conditional_judge": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
-    "targeted_fix": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
-    "targeted_re_review": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"}
+    "static_gate": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "implementation_evaluation": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "selection_adjudication": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "final_synthesis_initial": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_l1": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "L1",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_l2": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "L2",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_fix": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "heavy_sol": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "H1",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "heavy_opus": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "H2",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "conditional_judge": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "targeted_fix": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "targeted_re_review": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-psr-005-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
+      "content_sha256": "7ce906eea7db810960948562382ec150ae284b467e21194ee0d2ad8262a52f67",
+      "prompt_revision": "fnd05-psr005-targeted-re-review-v1",
+      "target_head_sha": "6c626451fc7d8059e468d19afbfc3c80b666acb9",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reviews/pre-run-prompt-suite-independent-review-gpt-5.6-sol-codex-xhigh.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md"
+      ],
+      "producer_slot": "finding_owner:gpt-5.6-sol-codex-xhigh",
+      "producer_commit_sha": null,
+      "status": "locked"
+    }
   },
   "gates": {
     "final_retrospective_reviewed": false,
     "dependency_42_complete_merged_reverified": false,
     "issue_43_contract_current": false,
-    "prompt_suite_targeted_re_review_pass": false,
+    "prompt_suite_targeted_re_review_pass": true,
     "assumption_ledger_locked": false,
     "implementation_test_design_locked": false,
     "project_rules_locked": false,
