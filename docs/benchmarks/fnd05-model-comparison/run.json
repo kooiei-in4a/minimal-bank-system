@@ -1,13 +1,20 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "benchmark_id": "fnd05-compose-model-comparison",
-  "status": "preparation_draft",
+  "status": "preparation_fix_required",
   "implementation_permitted": false,
+  "mutable_state_source_of_truth": "docs/benchmarks/fnd05-model-comparison/run.json",
   "preparation": {
     "branch": "agent/fnd05-pre-run-preparation",
     "pull_request": 145,
     "stacked_on_retrospective_pr": 144,
-    "draft_artifacts_created": true
+    "draft_artifacts_created": true,
+    "prompt_suite_review_verdict": "FIX_REQUIRED",
+    "prompt_suite_review_sources": [
+      "gpt-5.6-sol-browser-xhigh",
+      "gpt-5.6-sol-codex-xhigh-summary",
+      "grok-4.5-cursor-high"
+    ]
   },
   "target": {
     "repository": "kooiei-in4a/minimal-bank-system",
@@ -26,7 +33,10 @@
     "heavy_review_after_light_gate_only": true,
     "heavy_review_default_full_invocations": 2,
     "heavy_review_default_re_review_invocations": 0,
-    "judge_default": false
+    "judge_default": false,
+    "issue_ready_required_before_execution": true,
+    "koo_start_authorization_required_before_execution": true,
+    "observable_contract_over_exact_implementation_shape": true
   },
   "implementation_candidates": [
     {
@@ -107,6 +117,7 @@
     "enabled_by_default": false,
     "model": null,
     "harness": null,
+    "trigger_recorder": "coordinator",
     "trigger_on": [
       "blocker_or_major_disagreement",
       "root_cause_disagreement",
@@ -116,41 +127,204 @@
     ]
   },
   "revisions": {
-    "process": "fnd05-review-funnel-v1",
-    "assumption_ledger": "fnd05-assumptions-v1",
-    "implementation_and_test_design": "fnd05-design-contract-v1",
-    "project_rules": "fnd05-project-rules-v1",
-    "review_matrix": "fnd05-review-matrix-v1",
-    "mandatory_mutations": "fnd05-mutations-v1",
+    "process": "fnd05-review-funnel-v2",
+    "assumption_ledger": "fnd05-assumptions-v2",
+    "implementation_and_test_design": "fnd05-design-contract-v2",
+    "project_rules": "fnd05-project-rules-v2",
+    "review_matrix": "fnd05-review-matrix-v2",
+    "mandatory_mutations": "fnd05-mutations-v2",
     "scoring": "fnd05-scoring-v1",
-    "implementation_prompt": "fnd05-implementation-v1",
-    "implementation_evaluation_prompt": "fnd05-implementation-evaluation-v1",
-    "selection_adjudication_prompt": "fnd05-selection-adjudication-v1",
-    "final_synthesis_prompt": "fnd05-final-synthesis-v1",
-    "light_project_review_prompt": "fnd05-light-project-v1",
-    "light_contract_review_prompt": "fnd05-light-contract-v1",
-    "light_fix_prompt": "fnd05-light-fix-v1",
-    "heavy_sol_prompt": "fnd05-heavy-sol-v1",
-    "heavy_opus_prompt": "fnd05-heavy-opus-v1",
-    "conditional_judge_prompt": "fnd05-conditional-judge-v1",
-    "issue_ready_review_prompt": "fnd05-issue-ready-review-v1",
-    "targeted_fix_prompt": "fnd05-targeted-fix-v1",
-    "targeted_re_review_prompt": "fnd05-targeted-re-review-v1"
+    "implementation_prompt": "fnd05-implementation-v2",
+    "implementation_evaluation_prompt": "fnd05-implementation-evaluation-v2",
+    "selection_adjudication_prompt": "fnd05-selection-adjudication-v2",
+    "final_synthesis_prompt": "fnd05-final-synthesis-v2",
+    "light_project_review_prompt": "fnd05-light-project-v2",
+    "light_contract_review_prompt": "fnd05-light-contract-v2",
+    "light_fix_prompt": "fnd05-light-fix-v2",
+    "heavy_sol_prompt": "fnd05-heavy-sol-v2",
+    "heavy_opus_prompt": "fnd05-heavy-opus-v2",
+    "conditional_judge_prompt": "fnd05-conditional-judge-v2",
+    "issue_ready_review_prompt": "fnd05-issue-ready-review-v2",
+    "targeted_fix_prompt": "fnd05-targeted-fix-v2",
+    "targeted_re_review_prompt": "fnd05-targeted-re-review-v2"
   },
-  "open_decisions": [
-    "D-01_minimum_compose_version",
-    "D-02_exact_image_digests",
-    "D-03_secret_source_and_reader",
-    "D-04_canonical_lifecycle_commands",
-    "D-05_external_state_capture",
-    "D-06_failure_injection_override",
-    "D-07_cross_platform_contract",
-    "D-08_final_synthesis_identity"
-  ],
+  "open_decisions": {
+    "D-01": {
+      "question": "minimum Docker Compose version and required feature support",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-02": {
+      "question": "exact PostgreSQL and .NET image identities/digests",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-03": {
+      "question": "secret source and reader design",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-04": {
+      "question": "canonical lifecycle commands and lifecycle semantics",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-05": {
+      "question": "external state capture method for Migrator exit/finish, API state/start, migration history and project identity",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-06": {
+      "question": "test-only failure injection mechanisms without production backdoor",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-07": {
+      "question": "cross-platform execution contract",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    },
+    "D-08": {
+      "question": "Final Synthesis exact model/harness/effort identity",
+      "status": "TO_LOCK",
+      "locked_value": null,
+      "evidence_refs": []
+    }
+  },
+  "stage_artifacts": {
+    "static_gate": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "implementation_evaluation": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "selection_adjudication": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "final_synthesis_initial": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_l1": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "L1",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_l2": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "L2",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_fix": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "heavy_sol": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "H1",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "heavy_opus": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "H2",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "conditional_judge": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "targeted_fix": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "targeted_re_review": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    }
+  },
   "gates": {
     "final_retrospective_reviewed": false,
     "dependency_42_complete_merged_reverified": false,
     "issue_43_contract_current": false,
+    "prompt_suite_targeted_re_review_pass": false,
     "assumption_ledger_locked": false,
     "implementation_test_design_locked": false,
     "project_rules_locked": false,
