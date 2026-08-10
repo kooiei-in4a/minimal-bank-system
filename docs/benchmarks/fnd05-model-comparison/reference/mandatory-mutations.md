@@ -11,22 +11,31 @@ Candidateへ開示するもの:
 - mutation ID
 - protected contract / defect class
 - test oracleが観測すべきproperty
+- `mutation-determinism-contract.md`で定義するdeterministic precondition property
+- controlled barrier / fixture class
+- expected / invalid failure signature class
 
 Candidateへ実装課題として与えないもの:
 
 - evaluator専用のexact injection recipe
 - mutation patchそのもの
+- exact source edit
 
 Exact injection mechanismはpre-runでevaluator側へlockし、candidateは既知のpatchへ過学習するのではなく、contractを守るtest / validatorを実装する。
+
+Mutation executionの決定性は`reference/mutation-determinism-contract.md` revision `fnd05-mutation-determinism-v1`を必須overlayとする。D-06 lockは同contractのschemaを満たさなければ成立しない。
 
 共通実行ルール:
 
 - mutationはcandidate開始前にdefect classとして定義する。
+- mutationごとのdeterministic precondition / controlled barrier or fixture / expected failure signatureをD-06でlockする。
+- preconditionが成立しないrunを`KILLED`または`SURVIVED`として数えない。
+- 自然なrace、偶然のtiming、既に満たされたstate、存在しないcleanup targetに依存してkillを主張しない。
 - Final Synthesisではmandatory mutationをすべて実行する。
 - mutation前のbaseline GREENを確認する。
 - 一度に1 mutationだけ入れる。
 - mutation後にtarget testがREDになることを確認する。
-- REDの理由がexpected defect classと一致することを確認する。
+- REDの理由がexpected defect class / expected failure signatureと一致することを確認する。
 - build / syntax / missing executable等の無関係failureをkillとして数えない。
 - mutationを完全に戻し、GREENへ回復することを確認する。
 - `git status`、source scan、Compose/config render等でresidue 0を確認する。
@@ -41,13 +50,22 @@ Migrator success後だけAPI startを許可する。
 
 APIがMigrator successful completionを待たず、単なるservice/process start等で開始可能になるようorderingを弱める。
 
+### Deterministic execution requirement
+
+- PostgreSQL usableかつMigrator production pathへ到達可能であることを確認する。
+- Migrator successful completionをcontrolled barrier / fixtureで意図的に未完了へ保持する。
+- 固定sleepや自然raceだけで前後関係を作らない。
+- exact barrier recipeはD-06 evaluator evidenceへ隔離する。
+
 ### Expected detection
 
 - ordering test RED
-- APIがMigrator success前にstart可能なことを外部state / ordering evidenceで検出
+- Migratorがsuccessful completionしていない状態でAPI startを外部state / ordering evidenceで検出
 
 ### Invalid kill
 
+- mutation観測前にMigratorが既に完了している
+- elapsed timeだけでorderingを推測する
 - YAML syntax error
 - build failure
 - image missing
@@ -79,10 +97,23 @@ API startupはschema evolutionを行わない。
 
 API startup pathへ`MigrateAsync`等のschema mutationを一時追加する。
 
+### Deterministic execution requirement
+
+- 実PostgreSQLを、auto-migrationが存在すれば必ずobservable migration-state deltaを作る既知のpending migration stateへ置く。
+- baseline API startupではmigration history / schema stateが変わらないことを確認する。
+- DBが既にlatestで何も変化しない状態をmutation kill判定に使わない。
+- exact temporary fixture recipeはD-06 evaluator evidenceへ隔離する。
+
 ### Expected detection
 
 - no-auto-migration regression RED
-- API起動前後のmigration history / schema差を検出
+- baselineでは不変、mutated API startupではmigration history / schema差を検出
+
+### Invalid kill
+
+- source scanだけでruntime auto-migration検出とする
+- APIのunrelated startup failure
+- pending migration precondition未成立
 
 ## 5. M-04 — Secret enters process arguments
 
@@ -170,6 +201,12 @@ Migrator exit 0だけでは不十分で、expected migrationが実DB stateへ反
 
 Exact injection mechanismはD-06でlockする。
 
+### Deterministic execution requirement
+
+- mutated run前にexpected migration stateが存在しないことを確認する。
+- real DB / Migrator runtime pathへ到達する。
+- oracleはbaselineとmutated runで同一のまま維持する。
+
 ### Expected detection
 
 - clean-start / migration-history oracle RED
@@ -208,12 +245,23 @@ Clean reset後、D-04で対象としたproject resourceが残存しない。
 
 clean resetからvolume削除または必要なorphan cleanupを外す。
 
+### Deterministic execution requirement
+
+- mutation対象のcleanup責任に対応するsame-project resourceがclean reset前に実在することをmachine-readableに確認する。
+- volume deletionを検証する場合は対象named volumeを実際に存在させる。
+- orphan cleanupを検証する場合は対象orphan fixtureを実際に存在させる。
+- 存在しないresourceのcleanup codeを削除してGREENでもmutation resultとして数えない。
+
 ### Expected detection
 
 - cleanup state test RED
-- **同じCompose project identityに属する**actual container / network / named volume残存を検出
+- **同じCompose project identityに属する**actual target container / network / named volume残存を検出
 
-他projectのresourceを誤検出しない。
+### Invalid kill
+
+- mutation前からtarget resourceが存在しない
+- 他projectのresourceを誤検出
+- cleanup commandのunrelated failureだけでRED
 
 ## 12. Applicability
 
@@ -239,14 +287,21 @@ MUTATION_ID:
 CLASS: PRODUCT_DEFECT / ORACLE_META_DEFECT
 BASELINE_HEAD:
 TARGET_TEST:
+PRECONDITION_RESULT:
+CONTROLLED_BARRIER_OR_FIXTURE:
+INJECTION_POINT_CLASS:
 INJECTION_ARTIFACT_REF:
 BASELINE_RESULT:
+EXPECTED_FAILURE_SIGNATURE:
+OBSERVED_FAILURE_SIGNATURE:
+INVALID_FAILURE_MATCHED: YES / NO
 MUTATED_RESULT:
 EXPECTED_RED_OBSERVED: YES / NO
 FAILURE_REASON_MATCHED: YES / NO
 RESTORED_RESULT:
+CLEANUP_RESULT:
 RESIDUE_CHECK:
 EVIDENCE:
 ```
 
-`EXPECTED_RED_OBSERVED: NO`またはfailure reason不一致はmerge-blocking Majorとして扱う。
+`PRECONDITION_RESULT != PASS`、`INVALID_FAILURE_MATCHED: YES`、`EXPECTED_RED_OBSERVED: NO`、failure signature不一致のいずれかは有効なkillとして数えない。Final Synthesisのmandatory mutationで発生した場合はmerge-blocking Majorとして扱う。
