@@ -1,4 +1,4 @@
-# FND-04 最終振り返り — レビューのリスクファネル化とFND-05改善計画
+# FND-04 最終振り返り — ADR-first設計とFND-05レビュー・ファネル
 
 ```yaml
 DOCUMENT_STATUS: "FINAL SYNTHESIS / DRAFT PR"
@@ -13,7 +13,7 @@ NEXT_TARGET:
   TITLE: "[FND-05] Docker Compose実行基盤を確立する"
 SOURCE_RETROSPECTIVES:
   - PR: 141
-    EXECUTION: "GPT5.6 Sol / Browser / Pro"
+    EXECUTION: "GPT-5.6 Sol / Browser / Pro"
   - PR: 142
     EXECUTION: "Claude Opus 5 / Claude Code / xHigh"
   - PR: 143
@@ -22,514 +22,405 @@ ADDITIONAL_DIRECTION_OWNER: "Koo"
 SYNTHESIS_DATE: "2026-08-10"
 ```
 
-## 1. Executive Summary
+## 1. 結論
 
 FND-04は、FND-03より明確に改善した。
 
-初期candidateを14から8へ減らし、独立reviewを17本の同質投入から5本のrole-diverse reviewへ変更し、Judgeを3名常設から2名＋条件付き第3 Judgeへ変更した。さらに、Major発見後の14候補再実装を廃し、1件のtargeted fixと2件のtargeted re-reviewで閉じた。結果として、Final Synthesisに残ったtest oracleのMajorをmerge前に検出し、production architectureへ触れずに修正できた。
+初期candidateを14から8へ減らし、17本の同質reviewを5本のrole-diverse reviewへ置き換え、Judgeを3名常設から2名＋条件付き第3 Judgeへ変更した。Major発見後も14候補を再実装させず、1件のtargeted fixと2件のtargeted re-reviewで閉じた。その結果、Final Synthesisに残っていたtest oracleのMajorをmerge前に発見し、production architectureへ触れずに修正できた。
 
-ただし、FND-04の方式を通常開発へそのまま適用するなら過剰である。全8candidateのFormal Self-Review、no-changeを含むH1管理、5 review、2 Judge、Gold、2 re-review、Formal Agent Bという構造は、研究計装としては有効でも、日常的な開発プロセスとしては重い。
+一方、FND-04の方式を通常開発へそのまま適用するなら過剰である。
 
-FND-05では、単純に工程を削るのではなく、次のリスクファネルへ移行する。
+- 全8candidateへの独立Formal Self-Review
+- no-change candidateを含むH1管理
+- 5 review、2 Judge、Gold、2 re-review、Formal Agent B
+- benchmark control artifactごとの細かなcommitとCI
 
-> **ADRとテスト設計を先に固定し、軽量モデルで広く洗い、安定した最終HeadだけをSolとOpusで深く確認する。**
+これらは研究計装としては有効だったが、日常的な開発プロセスには重い。
 
-基本方針は次のとおりである。
+FND-05では次の方式へ移行する。
 
-1. **Design before Code** — ADR、Issue、実装設計、failure path、テストoracleを実装前に固定する。
-2. **Review before Review** — review観点、必要証拠、mutationをreview開始前ではなく実装開始前に固定する。
-3. **Cheap and Wide First** — 軽量モデルでscope、契約、典型バグ、test gapを広く洗い、明らかな問題を先に除去する。
-4. **Expensive and Deep Last** — SolはADR・仕様・scope、Opusはlifecycle・failure path・false assuranceを、安定した最終Headへ各1回投入する。
-5. **Re-review by Blast Radius** — 修正後に重いモデルを一律再投入しない。変更範囲とfindingの性質に応じて再確認範囲を決める。
-6. **Evidence over Confidence** — `CI green`、`exit != 0`、レビュー人数、モデルの評判を証拠の代替にしない。
+> **ADR・Issue・実装設計・テスト設計・確認観点を先に固定し、3モデルで実装する。軽量モデルで広く洗い、安定した最終HeadだけをSolとOpusで各1回深く確認する。**
 
-FND-05は、この方式へ移行するための実験と位置づける。製品実装だけでなく、軽量事前レビューがどこまで重い最終レビューの負荷を減らせたか、ADR起点の設計固定が後工程の手戻りを減らしたかを測定する。
+これは単純なreview削減ではない。浅い問題を前段で除去し、重いモデルをBlocker / Majorの探索へ集中させるリスク・ファネルである。
 
 ---
 
-## 2. Inputs and Evidence Policy
+## 2. FND-04で確認できたこと
 
-本Synthesisは、次を入力とする。
+### 2.1 有効だったこと
 
-- FND-04の一次証拠
-  - Issue #42
-  - PR #140
-  - exact Head / merge-ref CI
-  - Implementation Evaluation
-  - Selection / Adjudication
-  - role-diverse reviews
-  - Judge A / B
-  - Gold / Major-fix clearance
-  - Formal Agent B
-- 3本の独立振り返り
-  - PR #141: GPT5.6 Sol
-  - PR #142: Claude Opus 5
-  - PR #143: Cursor Auto execution
-- Kooの追加方針
-  - review観点を先に明示する
-  - 軽量モデルによる広い事前レビューを置く
-  - Sol / Opusは最後の確認へ集中させる
-  - ADR起点で実装設計・テスト設計を詰める
-- FND-05の正本候補
-  - Issue #43
-  - ADR-0001
-  - ADR-0008
-  - ADR-0009
-  - AGENTS.md
+1. **Issue Ready / fixed contract**
+   - candidateごとの仕様解釈差を抑えた。
+2. **common baseとexact Headの固定**
+   - branch差、CI targetの混同、後付け評価を抑えた。
+3. **Selection / Adjudication**
+   - winner branchをそのままmergeせず、採用要素とreject patternを分離した。
+4. **curated Final Synthesis**
+   - current mainから製品用実装を再構成し、candidate由来の不要差分を持ち込まなかった。
+5. **mutationを伴うreview / Judge**
+   - `CI green`や`exit != 0`だけではtest oracleの正しさを証明できないことを実証した。
+6. **targeted fix**
+   - root causeが限定できるMajorを1 fileの修正で閉じた。
+7. **Technical Approval / GitHub Review State / Repository Enforcementの分離**
+   - 技術判定とplatform上の状態を混同しなかった。
 
-モデルの一般的評判ではなく、FND-04で得られた実際の結果と、FND-05の正本契約を根拠とする。
+### 2.2 過剰だったこと
 
----
+1. 全candidateへの独立Formal Self-Review
+2. Finding 0 / code change 0 candidateのH1再実行
+3. 同じfindingをJudge、re-review、Formal Agent Bで何度も再現すること
+4. docs-only変更ごとにproduct CIを走らせること
+5. 同じ状態を複数Markdown / JSONへ手作業で複製すること
 
-## 3. 三つの振り返りの共通結論と相違点
+### 2.3 最も重要な技術的知見
 
-### 3.1 共通結論
+> **green testは、そのtestが守るべき欠陥を検出できることを意味しない。**
 
-3 executionは、次で一致した。
+FND-04のMajorでは、production behavior自体は正しかったが、negative testが無関係な失敗でもgreenになり得た。
 
-- FND-04はFND-03より効率化した。
-- candidate、reviewer、Judge、Major-fix attemptの大量投入は標準へ戻さない。
-- H0 / Self-Review / H1の分離には測定価値があるが、全candidateへの一律適用は過剰である。
-- role-diverse reviewは同質reviewerの大量投入より有効だった。
-- Judgeの価値は評点平均ではなく、blocking root causeを独立probeで固定することにある。
-- `green CI`やnegative outcomeだけではtest oracleの正しさを証明できない。
-- Major確定後はselected Final Synthesisへのtargeted fixを標準とする。
-- direct-head、merge-ref、reviewed Head、merge commitを分離して記録する。
-- artifact管理はSingle Source of Truthへ寄せる必要がある。
+今後のnegative testでは、次を要求する。
 
-### 3.2 相違点
-
-| 論点 | Sol | Opus | Cursor Auto | 本Synthesisの判断 |
-|---|---|---|---|---|
-| 現行方式の重さ | 通常運用には過剰 | 製品開発には過剰、研究目的なら適正 | やや過剰だが適正寄り | FND-04は研究runとして成功。標準運用には過剰 |
-| FND-05 candidate数 | 6 | 6 | 6〜8 | 基本6、追加2は条件付き |
-| review構成 | 4 role＋1 conditional | 5枠、Test Assuranceを2枠 | 5枠、Mutation役を明示 | 軽量2枠＋重量2枠、Judge conditionalへ再構成 |
-| 最重要変更 | role-diverse review＋Judge/Gold | Judge Phase A blind reference | targeted fix＋mutation review | review観点・mutation・独立probeの組合せ |
-| 最大の無駄 | 全candidate Self-Review | artifact/CI運用 | 全candidate Self-Review | 両方を削減する |
-
-相違は結論の対立ではなく、どのコストを最も重く見るかの違いである。
+- 対象component / pathへ到達したpositive marker
+- 期待したfailure reasonまたはstateのpositive marker
+- 守るべきdefect classを再導入したcontrolled mutationでREDになること
+- mutationを戻した後にGREENへ回復し、残渣がないこと
 
 ---
 
-## 4. FND-04の最終評価
+## 3. FND-05で確定したモデル構成
 
-### 4.1 成功した点
+OpenCodeは使用しない。
 
-- FND-03で高コストだったreviewer大量投入とMajor-fix全数競争を削減した。
-- candidateを単純rankingでmergeせず、要素単位でSelection / Adjudicationした。
-- Final Synthesisをcurrent mainから再構成し、candidate履歴や不要な設計を持ち込まなかった。
-- test oracleのfalse assuranceをproduction bugと分離してMajor判定した。
-- Majorをtest-onlyの小さな変更で修正した。
-- fix後のmutationで、修正前のdefect classが実際にredになることを確認した。
-- benchmark判定とproduct merge gateを分離した。
+### 3.1 実装candidate — 3本
 
-### 4.2 過剰だった点
+| Slot | Model + Harness | 目的 |
+| --- | --- | --- |
+| C1 | GPT-5.6 Luna / Codex | ADR・Issueへ忠実な基準実装 |
+| C2 | Claude Sonnet 5 / Claude Code | GPT系と異なる実装解釈を確保 |
+| C3 | Grok 4.5 / Cursor | 別Harness・運用経路・Compose実装の異質性を確保 |
 
-- 全8candidateへのFormal Self-Review。
-- code changeがないcandidateの独立H1処理。
-- reviewer、Judge、Gold、clearance、Formal Agent Bの一部重複。
-- heavy modelを複数工程で繰り返す構造。
-- artifactごとの細かいcommitとdocs-only CI。
-- parent / sub-run / READMEの状態同期を手作業へ依存したこと。
+3候補で見るのはModel単体ではなく、`Model + Harness + Effort + 1 execution attempt`である。
 
-### 4.3 最も重要な新知見
+### 3.2 Light Review — 2本
 
-> **testがgreenであることと、そのtestが守るべきdefect classを検出できることは別である。**
+| Slot | Model + Harness | 役割 |
+| --- | --- | --- |
+| L1 | Composer 2.5 / Cursor | Project Quality / Rule Conformance Sweep |
+| L2 | GPT-5.6 Luna / Codex | ADR / Issue / AC Contract Conformance Sweep |
 
-FND-04では、対象testが無関係なtool failureや列挙外destinationでもgreenになり得た。これを見つけたのは、説明を読んだreviewerではなく、実際にmutationを入れて壊したreviewerだった。
+### 3.3 Heavy Final Review — 2本
 
-したがって、review promptへ観点を書くことは必要だが、それだけでは不十分である。観点は次の三つへ変換する必要がある。
+| Slot | Model + Harness | 役割 |
+| --- | --- | --- |
+| H1 | GPT-5.6 Sol / Codex | Architecture / Contract Final Gate |
+| H2 | Claude Opus 5 / Claude Code | Adversarial / Failure / False-Assurance Final Gate |
+
+Heavy reviewerは安定した最終Headへ原則1回だけ投入する。
+
+---
+
+## 4. Self-Reviewの扱い
+
+FND-05では独立したFormal Self-Review phaseを廃止する。
+
+ただし、`AGENTS.md`が要求するAuthorの基本的な自己確認を削除するわけではない。実装promptへ、確認すべき観点をあらかじめ固定して組み込む。
 
 ```text
-review viewpoint
-  → required evidence
-  → controlled mutation / failure injection
+FND-04
+  H0 implementation
+  → fresh Formal Self-Review
+  → H1 fix
+
+FND-05
+  Implementation prompt内に確認観点・必要証拠・mutationを明記
+  → 1回の実装executionで実装・検証・diff確認まで完了
 ```
+
+「最後にセルフレビューせよ」という自由形式の指示は使わない。
+
+代わりに、実装promptへ次を明記する。
+
+- ADR / Issue / Scope / Out of scope
+- project rule catalog
+- placement / dependency rules
+- startup ordering contract
+- failure path
+- test oracle requirements
+- mandatory mutations
+- required commands and evidence
+- prohibited implementation patterns
+- final diff check
+
+これにより、モデル自身がreview観点を後付けで考えるのではなく、事前に固定されたDefinition of Doneへ沿って実装する。
+
+独立Self-Review execution数は0とする。
 
 ---
 
-## 5. FND-05で採用する基本原則
+## 5. Project Conformance ReviewをHeavy Reviewの前へ置く
 
-### Principle 1 — ADR-to-Design Traceability
+Heavy Review前に、コード品質とproject rule遵守を確認する軽量ゲートを置く。
 
-実装前に、各設計要素をADR / Issueへ追跡可能にする。
+### 5.1 Static / Automated Check
+
+機械判定できるものを最初に実行する。
+
+- restore / build / test
+- `docker compose config --quiet`
+- resolved service / image / volume確認
+- prohibited path / secret scan
+- package / digest / Dockerfile base image確認
+- `git diff --check`
+- changed-file allowlist
+- CI checkout identity
+
+### 5.2 Composer — Project Quality / Rule Conformance
+
+Composerは広く速く確認する。
+
+- project rule違反
+- 責務と配置の不一致
+- Compose syntax / structure
+- command / entrypoint / environment / volume / portの明白な問題
+- 重複、不要設定、magic value
+- exception / exit codeの握り潰し
+- secretやcredentialの露出
+- test名・コメント・assertionの不一致
+- scope外のhealth、backup、business schema先取り
+
+目的は、Heavy reviewerへ明白な問題を持ち込まないことである。
+
+### 5.3 Luna — ADR / Issue / AC Contract Conformance
+
+Lunaは新しい設計を提案せず、traceabilityを確認する。
 
 ```text
 ADR / Issue requirement
-  → implementation responsibility
-  → expected runtime state
-  → test case
-  → review viewpoint
-  → required evidence
+  → implementation location
+  → runtime behavior
+  → test / verification
+  → evidence
 ```
 
-追跡できない重要設計判断が出た場合、candidateが独自決定してはいけない。Issue Readyを停止し、Koo判断またはADR更新へ戻す。
+各Acceptance Criteriaについて、実装・test・証拠がつながっているかを確認する。
 
-### Principle 2 — Review Perspective Lock
-
-review観点はFinal Synthesis完成後に考えない。実装開始前に固定する。
-
-reviewerは自由探索を行ってよいが、最低限確認すべき観点と証拠は全員共通にする。roleは重点であって、他領域を見ない理由にしない。
-
-### Principle 3 — Lightweight Sweep Before Heavy Gate
-
-軽量事前レビューはmerge gateではない。目的は次のとおりである。
-
-- scope外変更を除去する
-- ADR / Issueとの明白な不一致を除去する
-- 典型的なsecret leak、digest未固定、test不足を除去する
-- test名とassertionの乖離を洗う
-- 重いreviewerへ渡すnoiseを減らす
-- 重いreviewerが深いfailure pathへ集中できる状態を作る
-
-### Principle 4 — Heavy Models Review a Stable Head Once
-
-Sol / Opusへ未整理のHeadを何度も渡さない。
-
-- 軽量reviewと明白な修正を完了する
-- exact direct-head CIを成功させる
-- review input snapshotを固定する
-- その後、Sol / Opusを各1回投入する
-
-Blocker / Major修正後も、両者を一律に再投入しない。
-
-### Principle 5 — Re-review Is Finding-Owned
-
-- Minor / Nit: lightweight verifierとCIで完了可能
-- test-only Major: finding ownerのheavy reviewer 1名＋lightweight mutation verifier
-- localized production Major: finding owner＋隣接観点1名
-- architecture / security / cross-cutting Major: Sol＋Opusを再投入
+Light Review後にfindingを修正し、CIを再実行し、Headを固定する。その固定HeadだけをHeavy Reviewへ渡す。
 
 ---
 
-## 6. Model / Harness Role Allocation
+## 6. Heavy Reviewの責任範囲
 
-モデル名を絶対視せず、FND-04で観測した性質を役割へ変換する。
+Heavy Review promptには、見る項目と見ない項目を同じ強さで明記する。
 
-| Role | Primary | Responsibility | Default invocation |
-|---|---|---|---:|
-| ADR / Design Lead | GPT-5.6 Sol | ADR解釈、責務境界、state machine、test design contract | 1回 |
-| Routine Implementer | GPT-5.6 Luna | 方針確定後の実装、明白な修正、targeted fix | 必要回数 |
-| Optional Implementation Planner | GPT-5.6 Terra | 方針は確定しているが実装判断が複数残る場合のみ | 条件付き1回 |
-| Lightweight Sweep A | Luna等の軽量モデル | ADR / Issue / scope / static diffを広く洗う | 1回 |
-| Lightweight Sweep B | 軽量または中量の別Harness | test assurance、mutation、runtime evidenceを洗う | 1回 |
-| Final Contract Reviewer | GPT-5.6 Sol | ADR / Issue / AC / scope / CI identityの最終確認 | 1回 |
-| Final Adversarial Reviewer | Claude Opus | lifecycle、failure path、secret、test oracle、暗黙依存 | 1回 |
-| Conditional Judge | Sol / Opusと異なるexecution | Blocker / Majorのroot causeまたはrequired fixが割れた場合のみ | 0〜1回 |
+### 6.1 Sol — Architecture / Contract Final Gate
 
-重要なのは、Solを設計と最終contract reviewへ使い、Opusを最終adversarial reviewへ集中させることである。両者を粗い事前レビューやMinor修正確認へ繰り返し使わない。
+#### 確認する
+
+- Accepted ADRの意図と最終設計の整合性
+- Issue #43の本質的充足
+- PostgreSQL / Migrator / APIの責務境界
+- FND-04 / FND-05 / FND-06の境界
+- migration成功後だけAPIを開始する設計
+- migration失敗時にAPIを開始しない設計
+- API startup no-auto-migration
+- security / secret設計の重大な逸脱
+- mergeを止めるべきarchitecture / scope defect
+
+#### 原則確認しない
+
+- formatter / whitespace
+- unused using
+- 細かな命名
+- 軽微なコメント表現
+- READMEの軽微な文言
+- 通常のDRY指摘
+- magic string等の局所的なcode quality
+- 単純なファイル配置の全件再監査
+- package / digestの単純な存在確認
+- AC checklistの機械的な再実行
+- Light Reviewで解消済みのMinor / Nit
+
+ただし、除外項目がBlocker / Majorのroot causeへ直結する場合は指摘できる。
+
+### 6.2 Opus — Adversarial / Failure Final Gate
+
+#### 確認する
+
+- partial failure
+- startup / shutdown / restart lifecycle
+- ordering / race
+- container / volume / process ownership
+- failure exit semantics
+- retry / rerun behavior
+- unexpected fallback
+- secret / credentialの重大な漏洩経路
+- fail-open
+- hidden dependency
+- false assurance
+- testが本当に対象pathへ到達しているか
+- mutationで守るべき欠陥を検出できるか
+
+#### 原則確認しない
+
+- code style
+- naming
+- formatter
+- unused codeの軽微な問題
+- 通常のDRY
+- 単純なdirectory placement
+- README typo
+- package versionの単純照合
+- AC一覧の全件再監査
+- Light Review済みの一般的quality finding
+- 承認済み設計を好みで全面変更する提案
+
+Opusの目的は「より好みの設計」を提案することではない。承認済み設計を壊す重大欠陥を探すことである。
+
+### 6.3 Heavy Reviewの成功条件
+
+- Blocker / Majorを見逃さない
+- Light Reviewの仕事を繰り返さない
+- 指摘数を増やすことを目的にしない
+- 推奨改善とmerge blockerを混同しない
+
+Heavy Reviewで単純rule違反が多数見つかった場合、Heavy reviewerの成果ではなく、Light Gateのfailureとして記録する。
 
 ---
 
-## 7. FND-05 ADR-Based Implementation Design Gate
+## 7. FND-05のADR-first設計Gate
 
-Issue #43は現在、Issue Readyが未評価でImplementationは禁止状態である。実装開始前に、次を固定してIssue Readyを再評価する。
+Issue Readyの前に、`Implementation and Test Design Contract`を固定する。
 
-### 7.1 Authorityから導く固定事項
+最低限、次を決める。
 
-#### ADR-0001
-
-- Docker Compose v2を使用する。
-- .NET 10 / ASP.NET Core 10 / PostgreSQL 18を維持する。
-- local / closed environmentの実行基盤とする。
-- Redis、message broker、外部identity、cloud-only serviceを追加しない。
-- container imageはapproved major内のexact digestへ固定する。
-
-#### ADR-0009
-
-- schema evolutionはEF Core migrationのみ。
-- normal API startupでmigrationしない。
-- one-shot explicit MigratorをAPI前に実行する。
-- migration失敗時はdeploymentをfail closedする。
-- bounded timeoutと非0 exitを維持する。
-
-#### ADR-0008
-
-- PostgreSQL dataはnamed volumeを使用する。
-- technical logはconsoleへ出すがsecretを出さない。
-- credentialをcommand-line引数へ直接展開しない。
-- FND-05ではbackup / restoreやhealth endpointロジックを先取りしない。
-
-### 7.2 実装前に固定すべきstate machine
+### 7.1 Runtime design
 
 ```text
-Compose project start
+PostgreSQL container starts
   ↓
-PostgreSQL service starts
+PostgreSQLが接続可能になる
   ↓
-PostgreSQLがMigrator接続可能な状態になる
-  ↓
-Migrator one-shot process starts
-  ├─ success / exit 0
+one-shot Migrator starts
+  ├─ exit 0
   │    ↓
-  │  API starts
-  │
-  └─ missing config / connection / migration / timeout failure
-       ↓
-     non-zero exit
+  │  API start is permitted
+  └─ non-zero
        ↓
      API must not start
 ```
 
-次を曖昧なままにしない。
+Composeのdependency conditionは実装手段として使用できるが、`depends_on`の記載だけをverification evidenceにはしない。
 
-- PostgreSQLを「Migrator接続可能」とみなす具体的条件
-- Migrator成功を示すexit codeとpositive marker
-- API start許可条件
-- APIが「開始した」ことをFND-06 health endpointなしでどう観測するか
-- existing named volumeでのrerun semantics
-- `start`、`stop`、`restart`、`clean reset`の正本command
-- Compose標準path以外でAPIだけを起動した場合の扱い
-- test-only failure injectionの方法
+### 7.2 FND-06を先取りしない観測
 
-単なる`depends_on`記述だけで順序保証を主張してはいけない。実際のservice state、exit code、schema state、API process stateで証明する。
+FND-05ではhealth endpointを追加しない。
 
-### 7.3 Secret contract
+API開始順序は次で観測する。
 
-- repositoryへpassword / connection stringをcommitしない。
-- command / process argvへpasswordを展開しない。
-- `docker compose config`、container logs、CI logsへsecretを出さない。
-- sample configurationにはplaceholderのみを置く。
-- testではsentinel secretを注入し、stdout / stderr / generated config / argvに現れないことを確認する。
+- Migrator containerのexit code
+- Migrator containerのfinished timestamp
+- API containerのcreated / started / running state
+- API containerのstarted timestamp
+- migration history
+- Compose logs
 
-### 7.4 Scope boundary
+API containerの開始時刻がMigrator成功終了より後であることを確認する。migration failure時はAPI containerが開始されていないことを確認する。
 
-FND-05では実装しない。
+### 7.3 Secret design
 
-- `/health/live`、`/health/ready`のロジック
-- business endpoint / business smoke
-- business schema / business migration
-- backup / restore
-- production orchestrator
-- automatic API migration
-- monitoring / metrics / alerting
+- repositoryへcredentialを保存しない
+- password / connection stringをcommand-line argumentへ展開しない
+- serviceごとに必要なsecretだけを付与する
+- rendered Compose config、logs、process args、PR diffへsentinelが出ないことを確認する
 
----
+### 7.4 Lifecycle design
 
-## 8. FND-05 Test Design Contract
+- clean start
+- stop
+- restart
+- rerun with existing named volume
+- clean reset
+- migration failure
+- cleanup後のresource absence
 
-### 8.1 Positive scenarios
-
-| ID | Scenario | Required evidence |
-|---|---|---|
-| P-01 | clean volume start | PostgreSQL start、Migrator exit 0、migration history、API startの順序 |
-| P-02 | existing volume rerun | Migrator再実行が成功し、history重複なし、API start |
-| P-03 | API restart | normal API startupがschemaを変更しない before / after fingerprint |
-| P-04 | Compose stop / start | named volume上のmigration historyが保持される |
-| P-05 | clean reset | volumeが明示的に削除され、次回P-01へ戻る |
-| P-06 | digest verification | PostgreSQL / API imageが想定digestで解決される |
-
-### 8.2 Negative scenarios
-
-| ID | Scenario | Expected result |
-|---|---|---|
-| N-01 | connection config missing | Migrator non-zero、API未起動、secret非露出 |
-| N-02 | PostgreSQL unreachable | Migrator non-zero、API未起動、失敗理由を識別可能 |
-| N-03 | invalid credential | Migrator non-zero、API未起動、sentinel非露出 |
-| N-04 | migration execution failure | Migrator non-zero、API未起動、success表示なし |
-| N-05 | migration timeout | bounded failure、API未起動 |
-| N-06 | Migrator未完了状態 | APIをserving状態へしない |
-| N-07 | API standalone startup probe | API startupでmigration history / schemaが変化しない |
-| N-08 | repository / argv secret probe | prohibited secret placementをfailさせる |
-
-### 8.3 Mandatory mutation set
-
-| Mutation | Defect class | Test that must become red |
-|---|---|---|
-| M-01 | API dependencyをMigrator成功ではなく単なる開始へ弱める | P-01 / N-04 / N-06 |
-| M-02 | Migratorが例外をcatchしてexit 0を返す | N-02〜N-05 |
-| M-03 | API startupへ`Migrate` / `EnsureCreated`相当を追加する | P-03 / N-07 |
-| M-04 | passwordをCompose commandへ直接展開する | N-08 |
-| M-05 | image digestをtag-onlyへ変更する | P-06 |
-| M-06 | named volumeをanonymous volumeへ変える | P-04 / P-05 |
-| M-07 | failure testをMigrator到達前の無関係なcommand failureへ変える | N-01〜N-05のpositive path marker |
-
-少なくともM-01、M-02、M-03、M-07はpre-runでlockし、Final Synthesis review時に実際のmutationまたは同等のcontrolled probeを行う。
-
-### 8.4 Test oracle rules
-
-negative testは、単に`non-zero`だけをassertしてはいけない。次を可能な範囲で固定する。
-
-- expected componentへ到達した証拠
-- expected failure class
-- Migrator exit status
-- API container / process state
-- migration history / schema fingerprint
-- secret非露出
-- mutation sensitivity
+を事前にtest scenarioとして固定する。
 
 ---
 
-## 9. FND-05 Review Perspective Matrix
+## 8. FND-05 mandatory mutation
 
-実装開始前に次を固定する。
+実装開始前に、最低限次のmutationを固定する。
 
-| ID | Viewpoint | Minimum question | Required evidence | Lightweight owner | Heavy owner |
-|---|---|---|---|---|---|
-| R-01 | ADR / Issue traceability | 全変更がADR-0001/0008/0009とIssue #43へ追跡できるか | traceability matrix | Sweep A | Sol |
-| R-02 | Scope boundary | health、backup、business schemaを先取りしていないか | changed-file classification | Sweep A | Sol |
-| R-03 | Compose state machine | DB→Migrator→APIが実状態で成立するか | container state / exit / ordering | Sweep B | Opus |
-| R-04 | Fail-closed | migration失敗時にAPIが開始しないか | N-01〜N-06 | Sweep B | Opus |
-| R-05 | API no-auto-migration | API startupがschemaを変えないか | before / after fingerprint | Sweep B | Sol + Opus |
-| R-06 | Secret safety | repo、argv、logs、configへsecretが出ないか | sentinel probe | Sweep A | Opus |
-| R-07 | Test assurance | test名・主張・assertion・mutationが一致するか | mutation results | Sweep B | Opus |
-| R-08 | Reproducibility | start/stop/restart/resetが再現できるか | exact commands / logs | Sweep A | Sol |
-| R-09 | Image / volume contract | digest pin、named volumeが固定されるか | rendered config / inspect | Sweep A | Sol |
-| R-10 | CI identity | reviewed Headとcheckout SHAが一致するか | direct-head / merge-ref | Sweep A | Sol |
+| ID | Mutation | 守るcontract |
+| --- | --- | --- |
+| M-01 | API dependencyをMigrator成功から単なるservice startへ弱める | 成功後だけAPI開始 |
+| M-02 | Migrator failureをexit 0へ変換する | fail-closed |
+| M-03 | API startupへmigration実行を追加する | API no-auto-migration |
+| M-04 | passwordをCompose commandへ展開する | secret非露出 |
+| M-05 | digest参照をtag-onlyへ変える | image pinning |
+| M-06 | named volumeをanonymous / bind誤設定へ変える | persistence contract |
+| M-07 | intended path到達前に無関係な失敗を発生させる | test reachability |
+| M-08 | migration history未作成でもsuccess扱いする | migration完了証拠 |
 
-軽量reviewerの出力は、最低限次のschemaを持つ。
+Final Synthesisのtest / validatorは、該当mutationでREDになり、復旧後GREENになることを示す。
 
-```yaml
-finding_id:
-severity:
-viewpoint_id:
-claim:
-primary_evidence:
-probe_executed:
-mutation_executed:
-expected_result:
-observed_result:
-scope_of_fix:
-heavy_review_attention_required: true|false
+すべてのcandidateへ全mutation実行を強制する必要はない。candidate実装promptでは対応するtest oracleを要求し、Final Synthesisでmandatory mutation setを完全実行する。
+
+---
+
+## 9. FND-05実行フロー
+
+```text
+1. Parent #3 / WP-1 #33 / Issue #43確認
+2. ADR / Issue / Scope lock
+3. Implementation and Test Design Contract lock
+4. Project Rule Catalog lock
+5. Review Perspective Matrix lock
+6. Mandatory Mutation Set lock
+7. common base / 3 candidate branches lock
+8. 3 independent implementations
+   - Luna / Codex
+   - Sonnet / Claude Code
+   - Grok / Cursor
+9. common evaluation / Selection / Adjudication
+10. curated Final Synthesis
+11. Static Project Rule Check
+12. Composer Project Quality Sweep
+13. Luna Contract Conformance Sweep
+14. Light findings fix / CI / Final Head lock
+15. Sol Heavy Final Review — 原則1回
+16. Opus Heavy Final Review — 原則1回
+17. B0 / M0ならmerge gate
+18. B/Mありならtargeted fix
+19. blast radiusに応じたfinding-owned re-review
+20. repository rule再取得 / merge / main identity / close evidence
 ```
 
----
+Judgeは通常工程へ置かない。
 
-## 10. FND-05 Recommended Execution Process
+次の場合だけConditional Judgeを発動する。
 
-### Phase 0 — Design and Gate Lock
-
-1. Issue #43、ADR-0001 / 0008 / 0009、FND-04 final implementationを確認する。
-2. `Implementation and Test Design Contract`を作成する。
-3. Solを1回だけDesign Leadとして投入する。
-4. unresolved decisionをKooへ提示する。
-5. review perspective matrixとmandatory mutationsをlockする。
-6. Issue Readyを正式評価する。
-7. PASSするまでcandidate実装を開始しない。
-
-### Phase 1 — Candidate H0
-
-```yaml
-candidate_pool:
-  default: 6
-  core: 4
-  challengers: 2
-  conditional_expansion_to_8:
-    - top candidates are materially tied but evidence differs
-    - required harness coverage is missing
-    - a new model is intentionally re-entered
-```
-
-- 全candidateを同一Base / 同一Contractで実行する。
-- H0 exact HeadとCIを固定する。
-- durationは分単位で必須収集する。精度より収集率を優先する。
-- candidateによるIssue / ADR変更を禁止する。
-
-### Phase 2 — Risk-Based Self-Review
-
-Formal Self-Review対象は次に限定する。
-
-- 上位2〜3candidate
-- 少なくとも1 challenger
-- evidence gapを持つcandidate
-- test oracleやfailure pathが弱いcandidate
-
-finding 0 / no-changeの場合、独立H1 executionを作らない。H0 aliasとして記録する。H1 CIは変更candidateのみ実行する。
-
-### Phase 3 — Selection and Curated Final Synthesis
-
-- candidateをそのままmerge / cherry-pickしない。
-- architecture、runtime behavior、test、secret handlingを要素単位で選択する。
-- rejected patternもmandatory regressionへ変換する。
-- Final Synthesisは方針確定後の実装なので、原則としてLuna等の規律あるImplementerで実施できる。
-- Final Synthesis Headでdirect-head CIを成功させる。
-
-### Phase 4 — Lightweight Sweep Review
-
-重いreview前に2本実施する。
-
-#### Sweep A — Contract / Scope / Static Review
-
-- ADR / Issue traceability
-- scope drift
-- image digest / named volume
-- secret placement
-- command / documentation reproducibility
-- CI identity
-
-#### Sweep B — Runtime / Failure / Test Assurance Review
-
-- Compose state machine
-- migration failure injection
-- API non-start
-- API no-auto-migration
-- mandatory mutations
-- test oracleのpositive marker
-
-明白なfindingをLuna等で修正し、CIを再実行する。ここでHeadを安定させる。
-
-### Phase 5 — Heavy Final Gate
-
-安定した同一Headへ、fresh contextで各1回だけ投入する。
-
-#### Sol Final Review
-
-- ADR / Issue / AC整合
-- responsibility boundary
-- scope
-- exact identity
-- missing decision
-- implementation / test design contractへの適合
-
-#### Opus Final Review
-
-- lifecycle
-- failure path
-- container / process ownership
-- secret / implicit dependency
-- false assurance
-- test reachability
-- mutation sensitivity
-
-両者のfindingを多数決で処理しない。Blocker / Majorのroot cause、required fix、merge readinessが一致するかを確認する。
-
-### Phase 6 — Conditional Adjudication
-
-次の場合だけJudgeを追加する。
-
-- Blocker / Major severityが割れる
+- SolとOpusでBlocker / Major有無が割れる
 - root causeが割れる
-- required fix方向が割れる
+- required fix方向が実質的に異なる
 - merge readinessが割れる
-- SolとOpusに共通盲点の疑いがある
+- 両者が同じ未検証assumptionへ依存している
 
-一致している場合、独立Gold artifactのためだけに追加実行しない。quorum synthesisをmachine-readable stateへ記録する。
+---
 
-### Phase 7 — Fix and Re-review
+## 10. 修正後の再確認方針
 
-- fixはselected Final Synthesis branchへ行う。
-- required fix方向が一意なら1実装者・1回を標準とする。
-- lightweight verifierがmutationと回帰を確認する。
-- heavy re-reviewはfinding ownerだけを原則とする。
-- architecture / security / cross-cutting変更の場合のみSol＋Opusを再投入する。
+Heavy modelを修正のたびに一律再投入しない。
 
-### Phase 8 — Merge and Close
+| Change / Finding | Re-review |
+| --- | --- |
+| Minor / Nit / docs-only | Light reviewer + CI |
+| test-only Major | finding owner 1名 + lightweight mutation verifier |
+| localized production Major | finding owner + adjacent heavy perspective 1名 |
+| architecture / security / cross-cutting Major | Sol + Opus |
+| Head unchanged | 再reviewなし |
 
-次を分離して記録する。
-
-```yaml
-technical_verdict:
-github_review_state:
-repository_enforcement_snapshot:
-reviewed_head_sha:
-direct_head_ci:
-merge_ref_ci:
-merge_commit_sha:
-main_tree_identity:
-issue_close_evidence:
-```
-
-benchmark control stateは単一JSONを正本とし、Markdown statusを生成する。Issue close時にmainから見える状態を実態と一致させる。
+判断基準はseverityだけでなくblast radiusと責務変更の有無とする。
 
 ---
 
@@ -538,204 +429,204 @@ benchmark control stateは単一JSONを正本とし、Markdown statusを生成�
 ### KEEP
 
 - Issue Ready / fixed contract
-- common Base / candidate identity lock
-- H0 immutable snapshot
-- challenger枠
-- evaluator reference / probesの事前lock
+- common baseとcandidate branch identity
+- 3 candidateの独立性
+- H0 snapshot
+- common evaluator probes
 - Selection / Adjudication
-- current mainからのcurated Final Synthesis
-- exact direct-head / merge-ref CI
+- candidate merge / cherry-pick禁止
+- curated Final Synthesis
+- exact Head / merge-ref identity
 - targeted fix
-- mutation付きtargeted re-review
-- Technical Approval / GitHub State / Repository Enforcementの分離
-- merge / close evidence bundle
+- merge / close evidence
 
 ### MODIFY
 
-- candidate 8 → 基本6
-- Formal Self-Review全件 → risk-based
-- H1全件 → changed candidateのみ
-- role-diverse review 5本 → lightweight 2本＋heavy 2本
-- 2 Judge常設的運用 → Sol / Opus不一致時のみJudge
-- Formal Agent Bの重複full review → Sol / Opus final gateへ統合
-- re-review範囲 → severityではなくblast radius基準
-- duration計測 → 分単位の単純・高収集率方式
-- artifact管理 → single JSON + generated Markdown
-- docs-only変更のCI → product/testへ影響するときだけ
+- candidate 8 → 3
+- review 5＋Judge 2 → Light 2＋Heavy 2
+- Formal Agent B full review → Sol / Opusの明確なfinal gateへ再構成
+- self-review別phase → implementation prompt内の固定確認観点
+- re-review → finding owner / blast radius基準
+- artifact複製 → single machine-readable stateから生成
+- docs-only CI →必要最小限
 
 ### NEW
 
 - ADR-based Implementation and Test Design Gate
-- Review Perspective Matrixのpre-run lock
-- Lightweight Sweep Review
-- Heavy Model Invocation Budget
+- Project Rule Catalog
+- Review Perspective Matrix
+- Heavy Reviewの`DO NOT CHECK`定義
+- Composer Project Quality Sweep
+- Luna Contract Conformance Sweep
 - mandatory mutation set
-- finding-owned re-review
-- light→heavy escape-rate測定
-- ADR→implementation→test→review evidenceのtraceability matrix
-- artifact stale-state lint
+- Heavy Model Invocation Budget
+- Light-to-Heavy escape rate
+- rule conformance escape rate
 
 ### DROP
 
-- 同質reviewerの大量投入
-- 全candidateのno-change H1 execution
-- Major発見後の全candidate再実装
-- Minor / Nit修正後のheavy full review
-- finding normalization、Gold、clearanceを理由にした独立実行の乱立
-- GitHub timestampからagent処理時間を推測すること
-- docs-only commitごとのfull product CI
-- model数や評判を品質証拠として扱うこと
+- OpenCode
+- 独立Formal Self-Review phase
+- finding 0 candidateのH1実行
+- 同質reviewer大量投入
+- Major後の全candidate再実装
+- Minor / Nit後のHeavy full re-review
+- Judge常設
+- docs-only変更ごとのproduct full CI
+- GitHub timestampからのagent duration推定
 
 ---
 
-## 12. FND-05 Experiments and Metrics
+## 12. FND-05で測る指標
 
-FND-05では、新プロセスが本当に有効か測る。
+### 12.1 Implementation
 
-### Experiment A — Lightweight Sweep Effectiveness
+```yaml
+candidate_count: 3
+separate_formal_self_review_count: 0
+h1_phase_count: 0
+open_code_execution_count: 0
+```
+
+### 12.2 Light Review
 
 ```yaml
 measure:
-  - light_findings_total
-  - light_blocker_major
+  - static_rule_failures
+  - composer_findings_total
+  - luna_findings_total
   - findings_fixed_before_heavy
-  - heavy_unique_findings
-  - heavy_findings_that_light_should_have_caught
+  - rule_conformance_escape_to_heavy
+  - obvious_quality_escape_to_heavy
 ```
 
-目的は軽量モデルがheavy modelを置き換えることではない。重いreviewerが明白なfindingへ時間を使わず、深いriskへ集中できたかを見る。
-
-### Experiment B — Heavy Model Efficiency
+### 12.3 Heavy Review
 
 ```yaml
 target:
-  heavy_full_review_invocations: 2
-  heavy_re_review_default: 0
-  conditional_heavy_re_review: "Blocker/Major or material blast radius only"
-```
-
-### Experiment C — ADR-First Design Stability
-
-```yaml
+  sol_full_review_invocations: 1
+  opus_full_review_invocations: 1
+  default_heavy_re_review_invocations: 0
 measure:
-  - unresolved_decisions_before_h0
-  - design_changes_after_h0
-  - adr_or_issue_change_after_candidate_start
-  - scope_drift_findings
+  - heavy_unique_blocker_major
+  - heavy_obvious_findings
+  - heavy_role_overlap_findings
+  - conditional_judge_triggered
 ```
 
-目標は、candidate開始後の未承認設計変更を0にすること。
+`heavy_obvious_findings`の目標値は0である。
 
-### Experiment D — Mutation Kill Rate
+### 12.4 Test design
 
 ```yaml
 target:
-  mandatory_mutations_defined_before_h0: 100%
-  mandatory_mutations_killed_by_final_tests: 100%
-  mutation_residue_after_review: 0
+  mandatory_mutations_defined_before_candidate_start: 100%
+  final_mutation_kill_rate: 100%
+  mutation_residue: 0
+measure:
+  - design_changes_after_candidate_start
+  - test_design_changes_after_candidate_start
+  - false_assurance_findings
 ```
 
-### Experiment E — Process Cost
+### 12.5 Cost
 
 ```yaml
 measure:
-  - candidate_count
-  - self_review_count
-  - h1_changed_count
-  - light_review_count
-  - heavy_review_count
-  - judge_count
+  - model_execution_count
+  - review_execution_count
   - fix_round_count
-  - review_iteration_count
   - duration_coverage
   - docs_only_ci_runs
+  - human_decision_count
 ```
 
-FND-04の34 logical slotsを基準とした場合、FND-05の標準形は概ね18〜21 slotsを目標とする。ただし、これは品質を削る目標ではなく、重複工程をlightweight sweepと事前設計へ置き換える目標である。
+処理時間はexecution wrapperまたはagentの開始・終了記録から取得する。取得できない場合はN/Aとし、GitHub timestampから補完しない。
 
 ---
 
-## 13. Stop Conditions for FND-05
+## 13. FND-05開始前の停止条件
 
-次の場合、implementationを開始または継続しない。
+次を満たすまでimplementationを開始しない。
 
-- Issue #43 Issue ReadyがPASSしていない。
-- PostgreSQL→Migrator→APIの成功条件を説明できない。
-- 単なる`depends_on`だけで成功保証しようとしている。
-- API startの観測方法がFND-06 health endpoint先取りを必要とする。
-- secret injection方式が未固定である。
-- migration failure injectionがproduction codeへのtest hook追加を必須とする。
-- API startup auto-migrationが必要になる。
-- business schema、health、backup、production orchestratorを同時実装しないと成立しない。
-- mandatory mutationを検出できるtest oracleを設計できない。
-- candidateがADRにない重要設計判断を独自補完する必要がある。
+- Issue #43 Issue Ready = PASS
+- FND-04 final retrospective方針がreview済み
+- Implementation and Test Design Contractが固定済み
+- Project Rule Catalogが固定済み
+- Review Perspective Matrixが固定済み
+- mandatory mutation setが固定済み
+- candidate 3本のexact identity / branch / common baseが固定済み
+- model / harness / effortの実表示を実行直前に確認済み
+- secret injection方式が固定済み
+- API start orderingの観測方法が固定済み
+- FND-06を先取りしないことを確認済み
+
+次の場合も停止する。
+
+- 単なるshort syntax `depends_on`でDB readinessまたはmigration successを代替しようとする
+- API startup auto-migrationが必要になる
+- failure injectionのためにproductionへ専用backdoorを追加する必要がある
+- business schema、health endpoint、backup、production orchestratorを同時実装する必要がある
+- mandatory mutationを検出できるtest oracleを設計できない
+- ADRにない重要設計判断をcandidateが独自補完する必要がある
 
 ---
 
-## 14. Practical Default Profile After FND-05
+## 14. 通常開発へ展開する場合の標準形
 
-FND-05はbenchmarkを兼ねるため6 candidateを残すが、通常開発の標準形はさらに軽くできる。
+FND-05は3候補benchmarkを兼ねるが、通常Issueではさらに簡潔にできる。
 
 ```text
 ADR / Issue / Test Design Lock
   ↓
 Luna implementation
   ↓
-Lightweight Sweep A / B
+Static checks
   ↓
-obvious fixes + CI
+Composer project-rule sweep
+  + Luna contract sweep
+  ↓
+light fix / CI
   ↓
 Sol final contract review
-  +
-Opus final adversarial review
+  + Opus final adversarial review
   ↓
 conditional targeted fix / re-review
   ↓
 merge
 ```
 
-この形では、SolとOpusを「何度も考え直させるモデル」ではなく、「最後に独立して止めるモデル」として使う。
+SolとOpusは「何度も考え直させるモデル」ではなく、「最後に独立して止めるモデル」として使用する。
 
 ---
 
-## 15. Final Decisions
+## 15. 最終判断
 
-### FND-04最終判定
+### FND-04
 
 **研究runとして成功。通常開発標準としては過剰。**
 
-品質を維持したまま工程を減らせる一次証拠がある。減らす対象は独立性やfailure-path verificationではなく、重複review、全candidate Self-Review、no-change H1、artifact運用である。
+### FND-05
 
-### FND-05で最も重要な変更
+**上流設計＋軽量事前review＋重量最終gateを検証するrunとする。**
 
-**review観点とtest mutationを実装前に固定すること。**
+最も重要な変更は、review観点とtest mutationを実装前に固定することである。
 
-FND-04のMajorは、実装者が決められたguardを入れなかったことより、そのguardが何を検出すべきかをSelection時点で十分に固定していなかったことから生じた。FND-05では、実装設計とテスト設計を同じGateでlockする。
-
-### FND-05で最も重要な新実験
-
-**軽量事前レビュー → 重量最終レビューの二段階方式。**
-
-軽量モデルの目的は最終承認ではなく、広く洗ってノイズを減らすことである。Sol / Opusの目的は、安定Headに対する最後の独立停止判断である。この役割分離が有効かを、escape rateとheavy invocation countで測る。
-
-### FND-05開始前の推奨アクション
-
-1. 本レポートをreviewし、FND-05採用方針をKooが決定する。
-2. Issue #43向け`Implementation and Test Design Contract`を作成する。
-3. Review Perspective Matrixとmandatory mutation setを正式lockする。
-4. Issue #43のGate statusを一次証拠から再評価する。
-5. PASS後にcandidate pool、branch、promptを準備する。
-6. それまではDocker Compose実装を開始しない。
+最も重要な新実験は、Composer / Lunaで明白な問題を除去した後、Sol / Opusを各1回だけ使用して品質を維持できるかを測ることである。
 
 ---
 
 ## 16. Source Links
 
-- [FND-04 Final Synthesis PR #140](https://github.com/kooiei-in4a/minimal-bank-system/pull/140)
-- [FND-04 Sol retrospective PR #141](https://github.com/kooiei-in4a/minimal-bank-system/pull/141)
-- [FND-04 Opus retrospective PR #142](https://github.com/kooiei-in4a/minimal-bank-system/pull/142)
-- [FND-04 Cursor Auto retrospective PR #143](https://github.com/kooiei-in4a/minimal-bank-system/pull/143)
-- [FND-05 Issue #43](https://github.com/kooiei-in4a/minimal-bank-system/issues/43)
-- [ADR-0001](../adr/0001-application-platform-baseline.md)
-- [ADR-0008](../adr/0008-audit-logging-technical-logging-and-backup.md)
-- [ADR-0009](../adr/0009-database-schema-migration-and-rollback.md)
+- FND-04 Final Synthesis: https://github.com/kooiei-in4a/minimal-bank-system/pull/140
+- Sol retrospective: https://github.com/kooiei-in4a/minimal-bank-system/pull/141
+- Opus retrospective: https://github.com/kooiei-in4a/minimal-bank-system/pull/142
+- Cursor Auto retrospective: https://github.com/kooiei-in4a/minimal-bank-system/pull/143
+- FND-05 Issue: https://github.com/kooiei-in4a/minimal-bank-system/issues/43
+- ADR-0001: ../adr/0001-application-platform-baseline.md
+- ADR-0008: ../adr/0008-audit-logging-technical-logging-and-backup.md
+- ADR-0009: ../adr/0009-database-schema-migration-and-rollback.md
+- Docker startup order: https://docs.docker.com/compose/how-tos/startup-order/
+- Compose services / depends_on: https://docs.docker.com/reference/compose-file/services/
+- Compose secrets: https://docs.docker.com/compose/how-tos/use-secrets/
+- Compose config: https://docs.docker.com/reference/cli/docker/compose/config/
