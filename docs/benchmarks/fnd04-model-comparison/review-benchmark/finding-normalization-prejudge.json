@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "status": "raw_complete_judge_required",
+  "target": {
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"
+  },
+  "reviewer_results": [
+    {"slot":"R1","verdict":"APPROVE_WITH_FINDINGS","merge_ready":true,"counts":{"blocker":0,"major":0,"minor":1,"nit":1}},
+    {"slot":"R2","verdict":"CHANGES_REQUIRED","merge_ready":false,"counts":{"blocker":0,"major":1,"minor":1,"nit":2}},
+    {"slot":"R3","verdict":"APPROVE_WITH_FINDINGS","merge_ready":true,"counts":{"blocker":0,"major":0,"minor":1,"nit":0}},
+    {"slot":"R4","verdict":"APPROVE","merge_ready":true,"counts":{"blocker":0,"major":0,"minor":0,"nit":0}},
+    {"slot":"R5","verdict":"APPROVE_WITH_FINDINGS","merge_ready":true,"counts":{"blocker":0,"major":0,"minor":2,"nit":0}}
+  ],
+  "normalized_candidates": [
+    {
+      "id": "NR-01",
+      "title": "C8-M01 regression test can provide false assurance",
+      "mapped_findings": ["R2-F01","R5-F01"],
+      "supporting_observations": ["R4 acknowledged the blocklist-only assertion is weak when considered alone"],
+      "severity_claims": ["Major","Minor"],
+      "production_defect_confirmed": false,
+      "assurance_defect_candidate": true,
+      "status": "valid_root_cause_candidate_severity_disputed_judge_required"
+    },
+    {
+      "id": "NR-02",
+      "title": "Command timeout and whole-operation CTS may race on exit classification",
+      "mapped_findings": ["R1-F01","R5-F02"],
+      "severity_claims": ["Minor"],
+      "status": "disputed_minor_candidate_judge_required"
+    },
+    {
+      "id": "NR-03",
+      "title": "Temporary model-drift negative evidence was initially local-only",
+      "mapped_findings": ["R3-F01"],
+      "independent_reproduction": ["R1","R2"],
+      "status": "evidence_limit_resolved_likely_not_finding"
+    },
+    {
+      "id": "NR-04",
+      "title": "PR body labels merge-ref CI as Exact Head CI",
+      "mapped_findings": ["R1-F02","R2-F04"],
+      "coordinator_direct_head_run": 31350870902,
+      "direct_head_checkout_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+      "direct_head_conclusion": "success",
+      "status": "valid_nit_metadata_only_evidence_gap_resolved"
+    },
+    {
+      "id": "NR-05",
+      "title": "Migrator failure exit-code taxonomy is not pinned by negative tests",
+      "mapped_findings": ["R2-F02"],
+      "severity_claims": ["Minor"],
+      "status": "unique_minor_candidate_judge_may_confirm_or_reject"
+    },
+    {
+      "id": "NR-06",
+      "title": "Low-information constant assertions and naming",
+      "mapped_findings": ["R2-F03"],
+      "severity_claims": ["Nit"],
+      "status": "nit_candidate_nonblocking"
+    }
+  ],
+  "prejudge_gate": {
+    "raw_reviewers_completed": "5_of_5",
+    "reviewers_with_blocker_or_major": "1_of_5",
+    "blocking_root_cause_candidates": ["NR-01"],
+    "production_defect_confirmed": false,
+    "merge_ready_adjudication": "not_determined",
+    "next": "judge_a_and_judge_b"
+  }
+}
