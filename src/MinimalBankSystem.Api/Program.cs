@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Persistence;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,24 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+
+// Normal API startup never evolves the schema. The options factory runs only when persistence is
+// resolved and fails closed if the canonical PostgreSQL connection is absent.
+builder.Services.AddDbContext<BankDbContext>((serviceProvider, options) =>
+{
+    IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    string? connectionString = configuration.GetConnectionString(BankPersistence.ConnectionStringName);
+
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException(
+            $"No PostgreSQL connection string was configured. Set '{BankPersistence.ConnectionStringEnvironmentVariable}' " +
+            $"(configuration key 'ConnectionStrings:{BankPersistence.ConnectionStringName}'). " +
+            "The API never falls back to another provider.");
+    }
+
+    options.UseBankPostgreSql(connectionString);
+});
 
 WebApplication app = builder.Build();
 

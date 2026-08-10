@@ -55,6 +55,22 @@ fallback.
 This fixture does not provide an application `DbContext`, migrations, business schema, or
 business tables. Those remain outside FND-03.
 
+## Migration tests
+
+`PostgreSql/MigrationBaselineTests` reuses the FND-03 fixture and runs the production Migrator
+process against independently owned real databases. It verifies clean apply, rerun, missing,
+unreachable, rejected credential, malformed history and actual 60-second timeout paths. The
+credential failure also proves a sentinel password is absent from stdout and stderr.
+
+API tests compare real PostgreSQL schema state before and after startup and after resolving the
+production `BankDbContext`. Model tests use EF's pending-model mechanism and generated SQL rather
+than migration-name constants alone.
+
+`Persistence/DesignTimeConnectionSafetyTests` is the C8-M01 regression. It launches repository-
+local `dotnet-ef database update` as a child process, removes `ConnectionStrings__Database` only
+from that child, and verifies fail-closed behavior without a fabricated localhost, fake provider
+or ambient destination.
+
 ## Parallel policy
 
 - Parallel-safe scope: work against independently owned databases. The concurrency test verifies
