@@ -25,7 +25,7 @@ Parent #3 / WP-1 #33はGate evidenceとして確認するがProduct authorityで
 TARGET_ISSUE: 43
 COMMON_BASE_SHA: "<FULL_SHA>"
 RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
-SCORING_REVISION: "fnd05-scoring-v1"
+SCORING_REVISION: "fnd05-scoring-v2"
 DESIGN_REVISION: "fnd05-design-contract-v2"
 MUTATION_REVISION: "fnd05-mutations-v2"
 CANDIDATES:
@@ -122,7 +122,7 @@ Candidateにはprotected contractは開示済みだが、exact injection recipe�
 
 ## 7. Scoring
 
-`scoring.md`をrubricとして100点採点する。`MERGE_READY`という語はcandidate直接mergeを意味しないため使用しない。
+`scoring.md` v2をrubricとして100点採点する。`MERGE_READY`という語はcandidate直接mergeを意味しないため使用しない。
 
 各candidateへ:
 
