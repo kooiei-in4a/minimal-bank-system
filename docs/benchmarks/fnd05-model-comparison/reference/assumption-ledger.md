@@ -1,16 +1,18 @@
 # FND-05 Assumption Ledger
 
-Revision: `fnd05-assumptions-v1`
+Revision: `fnd05-assumptions-v2`
 
-Status: **PRE-RUN DRAFT**
+Status: **PRE-RUN DRAFT / OPEN DECISIONS NOT LOCKED**
 
 外部toolとcurrent project stateに関する前提をcandidate outputを見る前に固定する。
+
+Mutable decision stateの正本は`../run.json`の`open_decisions`である。本ledgerはquestionとrequired evidenceを説明し、lock前の具体answerをcandidateへ与えない。
 
 ## 1. Evidence classes
 
 - `CONFIRMED_EXTERNAL`: official primary documentationで確認
 - `CONFIRMED_PROJECT`: repository一次証拠で確認
-- `TO_LOCK`: candidate開始前に確定が必要
+- `TO_LOCK`: candidate開始前に一次証拠で確定が必要
 - `PROHIBITED_ASSUMPTION`: 証拠なしで前提にしてはいけない
 
 ## 2. Docker Compose assumptions
@@ -21,78 +23,72 @@ Status: **PRE-RUN DRAFT**
 status: CONFIRMED_EXTERNAL
 ```
 
-Composeはdependency containerがrunningになっただけではreadyを待たない。
+Compose dependencyがrunningになっただけではreadyを意味しない。
 
 Implication:
 
-- PostgreSQL readinessにはhealthcheckと`service_healthy`相当を使用する。
-- short syntax `depends_on`だけをready証拠にしない。
+- PostgreSQL usable状態を別途判定する必要がある。
+- short syntax `depends_on`だけをreadiness証拠にしない。
 
 Source:
 
 - https://docs.docker.com/compose/how-tos/startup-order/
 
-### A-02 — Successful one-shot dependency
+### A-02 — Successful one-shot dependency condition exists
 
 ```yaml
 status: CONFIRMED_EXTERNAL
 ```
 
-Compose service dependencyには`service_completed_successfully` conditionがある。
+`service_completed_successfully`は利用可能なCompose実装手段である。
 
 Implication:
 
-- APIをone-shot Migrator成功後に開始する実装候補として使用できる。
-- exact installed Composeがこのconditionをsupportすることをpre-runで確認する。
+- APIをMigrator成功後に開始する候補手段として使える。
+- exact installed Compose version / feature supportはD-01でlockする。
+- Issue #43のobservable contractを満たす別の同等経路をpre-run lock前から排除しない。
 
 Source:
 
 - https://docs.docker.com/reference/compose-file/services/#depends_on
 
-### A-03 — `docker compose ps` machine-readable state
+### A-03 — Machine-readable container state is available
 
 ```yaml
 status: CONFIRMED_EXTERNAL
 ```
 
-`docker compose ps --all --format json`はservice、state、health、exit code等をmachine-readableに返す。
+`docker compose ps --all --format json`等でservice state / health / exit codeをmachine-readableに取得できる。
 
-Implication:
-
-- API non-start、Migrator exit、PostgreSQL healthの外部観測に使用できる。
+Exact observation methodはD-05でlockする。
 
 Source:
 
 - https://docs.docker.com/reference/cli/docker/compose/ps/
 
-### A-04 — Compose config validation
+### A-04 — Compose config validation is available
 
 ```yaml
 status: CONFIRMED_EXTERNAL
 ```
 
-`docker compose config`は変数解決後のcanonical modelをrenderし、`--quiet`でvalidationできる。
+`docker compose config`でcanonical modelをrender / validateできる。
 
-Implication:
-
-- syntax、service、image、volume、interpolationをstatic gateで確認する。
-- rendered outputにsecret valueを出す方式はsecret non-disclosure上のriskとして扱う。
+Exact command / fieldsはD-01 / D-05のlockに従う。
 
 Source:
 
 - https://docs.docker.com/reference/cli/docker/compose/config/
 
-### A-05 — Compose secrets
+### A-05 — External secret mechanisms exist
 
 ```yaml
 status: CONFIRMED_EXTERNAL
 ```
 
-Compose secretはserviceへ明示grantし、container内の`/run/secrets/<name>`へfileとしてmountできる。sourceはfileまたはhost environmentを使用できる。
+Compose secret、environment、protected file等の外部注入手段が存在する。
 
-Implication:
-
-- database passwordをargvへ展開せずにserviceへ渡すpreferred designとして使用できる。
+本項はD-03のanswerを固定しない。
 
 Sources:
 
@@ -105,7 +101,7 @@ Sources:
 status: CONFIRMED_EXTERNAL
 ```
 
-current ComposeはCompose Specificationを使用し、legacy top-level `version`は不要である。
+current ComposeはCompose Specificationを使用する。
 
 Source:
 
@@ -119,10 +115,6 @@ status: CONFIRMED_EXTERNAL
 
 image tagは可変で、digestはcontent identityを固定する。
 
-Implication:
-
-- PostgreSQL imageとDockerfile base imageをdigest-qualifiedにする。
-
 Source:
 
 - https://docs.docker.com/dhi/explore/security-concepts/digests/
@@ -135,7 +127,7 @@ Source:
 status: CONFIRMED_PROJECT
 ```
 
-ADR-0001は.NET 10、ASP.NET Core 10、PostgreSQL 18、EF Core 10、Docker Compose v2、一つのapplication serviceを採用している。
+ADR-0001は.NET 10、ASP.NET Core 10、PostgreSQL 18、EF Core 10、Docker Compose v2を採用している。
 
 Evidence:
 
@@ -147,7 +139,7 @@ Evidence:
 status: CONFIRMED_PROJECT
 ```
 
-ADR-0009はmigrationをexplicit command / one-shot Compose serviceでAPI開始前に適用し、API startup auto-migrationを禁止する。
+ADR-0009はmigrationをexplicit Migrator pathでAPI開始前に適用し、API startup auto-migrationを禁止する。
 
 Evidence:
 
@@ -159,7 +151,7 @@ Evidence:
 status: CONFIRMED_PROJECT
 ```
 
-ADR-0008はsecretをrepositoryやargvへ置かず、environment、Docker secret、protected password file等で外部注入することを要求する。
+ADR-0008はsecretをrepositoryやcommand-line argumentへ置かず、外部注入することを要求する。
 
 Evidence:
 
@@ -173,10 +165,10 @@ status: CONFIRMED_PROJECT
 
 current mainは次を持つ。
 
-- `MinimalBankSystem.Infrastructure` owned DbContext / migration
+- Infrastructure-owned DbContext / migration
 - `MinimalBankSystem.Migrator` one-shot entry point
 - API no-auto-migration
-- `ConnectionStrings:Database` / `ConnectionStrings__Database`
+- canonical connection configuration
 - empty `InitialFoundation`
 
 Evidence:
@@ -184,131 +176,137 @@ Evidence:
 - PR #140
 - merge commit `9a352a3a61945647273ccc7dfbc8e1816c3ca07c`
 
-### P-05 — No Compose runtime yet
+### P-05 — No FND-05 Compose runtime yet
 
 ```yaml
 status: CONFIRMED_PROJECT
 ```
 
-Issue #43開始前のmainにcanonical `compose.yaml`とAPI / Migrator Dockerfileは存在しない。
+Issue #43開始前のmainにはFND-05 canonical Compose execution pathが存在しない。
 
-### P-06 — FND-06 API health is not available
+### P-06 — FND-06 API health is unavailable
 
 ```yaml
 status: CONFIRMED_PROJECT
 ```
 
-FND-05では`/health/live` / `/health/ready`を使用できない。API orderingはcontainer state / timestampで検証する。
+FND-05では`/health/live` / `/health/ready`をordering証拠に使用しない。
 
 Evidence:
 
 - Issue #44
 - current API source
 
-### P-07 — PostgreSQL digest
-
-```yaml
-status: TO_LOCK
-```
-
-FND-03 / FND-04で使用したPostgreSQL 18.4 digestをFND-05 common contractとして再確認する。
-
-Candidate開始前にfull referenceを`run.json`へ固定する。
-
 ## 4. Decisions to lock before candidate execution
 
-### D-01 — Minimum Compose version
+各decisionは`question + required_evidence`だけを持つ。`locked_value`は`run.json`へ一次証拠付きで記録するまでnullとする。
+
+### D-01 — Minimum Compose version / feature support
 
 ```yaml
 status: TO_LOCK
+question: "local / CIで共通利用するminimum Docker Compose versionとrequired featuresは何か"
+required_evidence:
+  - local docker compose version
+  - GitHub Actions environment version
+  - required feature support confirmation
+  - exact commands used for validation
 ```
 
-- installed local version
-- GitHub Actions version
-- `service_completed_successfully`
-- secrets.environmentまたは採用secret source
-- `ps --format json`
-
-のsupportを確認し、minimum versionを固定する。
-
-### D-02 — .NET image digests
+### D-02 — Exact PostgreSQL / .NET image identities
 
 ```yaml
 status: TO_LOCK
+question: "approved major内で使用するPostgreSQL 18および.NET 10 imagesのexact digestは何か"
+required_evidence:
+  - PostgreSQL image source + full digest
+  - .NET SDK image source + full digest
+  - ASP.NET runtime image source + full digest
+  - platform / architecture compatibility
 ```
 
-- SDK image
-- ASP.NET runtime image
-- runtime-depsが必要な場合のimage
+PostgreSQL digestを別decisionへ分離しない。
 
-をofficial sourceから選び、full digestを固定する。
-
-### D-03 — Secret source
+### D-03 — Secret source / reader design
 
 ```yaml
 status: TO_LOCK
+question: "ADR-0008とIssue #43を満たすsecret source / service grant / reader designを何に固定するか"
+required_evidence:
+  - repository non-disclosure
+  - argv non-disclosure
+  - log / rendered-config observation
+  - missing-secret fail-closed behavior
+  - local / CI / supported-host reproducibility
 ```
 
-preferred:
+候補方式を本ledgerでpreferred answerとして固定しない。
 
-- host environment → Compose secret
-- container file mount
-- repo-owned entrypointでread
-- argvへ展開せず`exec dotnet`
-
-Windows / Linux / CIで再現可能か確認する。
-
-### D-04 — Canonical lifecycle commands
+### D-04 — Lifecycle commands and semantics
 
 ```yaml
 status: TO_LOCK
+question: "validate / start / stop / restart / down-retain-data / clean-resetのcopyable commandとmigration-gate semanticsを何にするか"
+required_evidence:
+  - exact commands
+  - expected resource state before / after
+  - migration gate re-evaluation rule
+  - cleanup absence observation
 ```
 
-- validate
-- clean start
-- stop
-- start after stop
-- restart
-- down retain data
-- clean reset
-
-のcopyable commandを固定する。
-
-### D-05 — API start timestamp
+### D-05 — External state capture method
 
 ```yaml
 status: TO_LOCK
+question: "local / CIでorderingとfailureを同じ方法で観測するには何を使うか"
+required_evidence:
+  - Migrator exit code field / command
+  - Migrator completion ordering evidence
+  - API never-started vs started-then-exited state
+  - API start ordering evidence
+  - migration-history query / result
+  - Compose project/resource identity
+  - machine-readable local / CI command
 ```
-
-Docker inspect / Compose ps / Engine metadataのうち、localとCIで同じ方法を選ぶ。
 
 ### D-06 — Failure injection override
 
 ```yaml
 status: TO_LOCK
+question: "production backdoorなしでrequired failure / mutationをどう注入するか"
+required_evidence:
+  - test-only isolation
+  - intended production path reachability
+  - no real credential
+  - no committed residue
+  - M-01〜M-10 applicable injection plan
 ```
 
-production codeを変更せず、invalid credential / malformed history / failure commandを注入できるtest-only方式を固定する。
-
-### D-07 — Cross-platform scope
+### D-07 — Cross-platform contract
 
 ```yaml
 status: TO_LOCK
+question: "必須実行環境とshell/helper portabilityをどこまで保証するか"
+required_evidence:
+  - GitHub Actions Linux
+  - primary local environment
+  - script/runtime requirements
+  - path / line ending / shell behavior
 ```
 
-minimum contract:
-
-- GitHub Actions Linux: required
-- primary local environment: required
-- shell-specific scriptを置く場合は代替commandまたはcross-platform helperを用意
-
-### D-08 — Final Synthesis author
+### D-08 — Final Synthesis identity
 
 ```yaml
 status: TO_LOCK
+question: "Selection完了後のFinal Synthesisを担当するexact Model / Harness / Effortは何か"
+required_evidence:
+  - exact product-visible model label
+  - harness
+  - effort label
+  - fresh-context availability
 ```
 
-default候補はfresh-context GPT-5.6 Luna / Codexとするが、Selection後にKooが固定する。Final Synthesisはcandidateとして採点しない。
+本ledgerではdefault authorを指定しない。
 
 ## 5. Prohibited assumptions
 
@@ -318,15 +316,15 @@ default候補はfresh-context GPT-5.6 Luna / Codexとするが、Selection後に
 
 ### X-02
 
-Migrator containerがexitedしたためsuccessとみなす。exit code 0が必要。
+Migratorがexitedしただけでsuccessとみなす。success contractにはexit 0とmigration state evidenceが必要。
 
 ### X-03
 
-API containerが一度作成されたためorderingを満たすとみなす。
+API containerがcreatedされたためorderingを満たすとみなす。
 
 ### X-04
 
-`exit != 0`のためintended failureを検出したとみなす。
+`exit != 0`だけでintended failureを検出したとみなす。
 
 ### X-05
 
@@ -334,16 +332,22 @@ secretがgitに無いためlogs / argvにも出ないとみなす。
 
 ### X-06
 
-image tagにversionがあるためimmutableとみなす。
+version tagがあるためimage contentがimmutableとみなす。
 
 ### X-07
 
-command exit 0のためresource cleanupが完了したとみなす。
+cleanup command exit 0だけでresource absenceを証明したとみなす。
 
 ### X-08
 
-PR本文に書かれているためruntime evidenceが存在するとみなす。
+PR本文の自己申告をruntime evidenceとみなす。
+
+### X-09
+
+未lock decisionに書かれた例や候補をcandidateへの必須方式とみなす。
 
 ## 6. Lock rule
 
-`TO_LOCK`が1件でも未解決なら、candidate branchを作成してもexecutionは開始しない。
+- D-01〜D-08の`locked_value`と`evidence_refs`が`run.json`へ記録されるまで未lock。
+- 1件でもTO_LOCKならcandidate execution禁止。
+- Issue Ready PASSだけでは開始しない。`run.json.gates.koo_start_authorized = true`も必要。
