@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "prompt_revision": "fnd04-final-review-v1",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"
+  },
+  "reviewer": {
+    "slot": "R1",
+    "model": "GPT-5.6 Sol",
+    "harness": "Codex",
+    "effort": "xHigh",
+    "slug": "gpt-5.6-sol-codex",
+    "primary_role": "runtime_failure_path",
+    "attempt": 1
+  },
+  "outcome": "completed",
+  "target_verification": {
+    "result": "pass",
+    "observed_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "observed_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "pr_state": "open_draft_unmerged"
+  },
+  "verdict": "APPROVE_WITH_FINDINGS",
+  "merge_ready": true,
+  "severity_counts": {"blocker":0,"major":0,"minor":1,"nit":1},
+  "findings": [
+    {
+      "id": "R1-F01",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Command timeout and whole-operation cancellation can race on exit-code classification",
+      "description": "Root cause: the same 60-second value drives the Npgsql command timeout and the whole-operation CancellationTokenSource, while Program maps only OperationCanceledException to exit 2. Npgsql 10.0.3 emits NpgsqlException when its timeout is observed before user cancellation and OperationCanceledException when user cancellation is already recorded. Impact: a genuine timeout may occasionally be reported as generic failure exit 1 instead of documented timeout exit 2, although it remains non-zero and bounded. CI and local probes both observed exit 2; the race is inferred from the two independent deadlines and provider source.",
+      "affected_path": "src/MinimalBankSystem.Infrastructure/Persistence/BankPersistence.cs; src/MinimalBankSystem.Migrator/Program.cs; tests/MinimalBankSystem.IntegrationTests/PostgreSql/MigrationBaselineTests.cs",
+      "evidence": ["BankPersistence.MigrationTimeoutSeconds=60 is used for npgsql.CommandTimeout and CancellationTokenSource.","Program.cs maps only OperationCanceledException with the CTS requested to MigratorExitCode.Timeout; other exceptions map to Failure.","Npgsql v10.0.3 NpgsqlReadBuffer chooses NpgsqlException or OperationCanceledException based on UserCancellationRequested.","The committed lock test passed in direct-head CI, merge-ref CI, and locally, but exercises only one timer ordering per run."],
+      "root_cause_key": null,
+      "required_fix": "Non-blocking recommendation: explicitly classify provider command-timeout exceptions as timeout, or define ordered deadlines and add deterministic tests for command timeout and whole-operation cancellation separately."
+    },
+    {
+      "id": "R1-F02",
+      "severity": "Nit",
+      "blocking": false,
+      "title": "PR body labels a merge-ref run as exact Head CI",
+      "description": "Root cause: the workflow run head_sha association was treated as the runner checkout identity. Impact: the audit trail can conflate PR merge-state CI with direct branch-Head CI, although both forms of CI actually exist and passed.",
+      "affected_path": "PR #140 body / CI evidence metadata",
+      "evidence": ["PR body section Exact Head CI references run 31350916189.","Run 31350916189 is a pull_request run and checked out d12de2ae07003a10d19d576808cf88ec7796da23 from refs/remotes/pull/140/merge.","Push run 31350870902 checked out the direct Head 99cee4386ea049ad84e9c087c6fdf1e25cc20f3e and succeeded."],
+      "root_cause_key": null,
+      "required_fix": "Non-blocking recommendation: list the merge-ref and direct-head runs separately in the PR evidence, including their observed checkout SHAs."
+    }
+  ],
+  "probe_results": {"P01":"pass","P02":"pass","P03":"pass","P04":"pass","P05":"partial","P06":"pass","P07":"pass","P08":"pass","P09":"pass","P10":"pass","P11":"pass","P12":"pass","P13":"pass","P14":"pass","P15":"partial"},
+  "ci_verification": {"verified":true,"run_id":31350916189,"conclusion":"success","checkout_identity":"pr_merge_ref","observed_checkout_sha":"d12de2ae07003a10d19d576808cf88ec7796da23","direct_head_verified":true,"direct_head_run_id":31350870902,"direct_head_checkout_sha":"99cee4386ea049ad84e9c087c6fdf1e25cc20f3e","direct_head_conclusion":"success"},
+  "local_verification": {"performed":true,"summary":"Exact Head was archived to a temporary directory without switching branches. Restore/build succeeded with 0 warnings and 0 errors; pending-model clean passed; 41 safe non-PostgreSQL tests passed; missing and unreachable production Migrator probes exited 1 without dummy password disclosure; MigrationBaselineTests passed 9/9 on real PostgreSQL including rejected authentication, malformed history and an actual lock timeout that exited 2; idempotent SQL generation passed; a temporary model-only drift produced exit 1 and returned to exit 0 after removal. The temporary directory was deleted."},
+  "evidence_limits": ["The local connection-required dotnet-ef database update probe was not executed because execution approval was rejected due to the risk of mutating an unexpectedly resolved database; exact direct-head CI evidence for the committed regression test was used instead.","The local full PostgreSQL category hit an external 304-second runner limit and is not counted as production-timeout evidence. The focused nine-test migration class passed locally, and all 23 PostgreSQL tests passed in both direct-head and merge-ref CI.","The temporary drift probe was evaluator-local and is not a committed artifact; its exit 1 and post-removal exit 0 were observed during this review."],
+  "completed_at": "2026-08-10T13:00:23.3283311+09:00"
+}

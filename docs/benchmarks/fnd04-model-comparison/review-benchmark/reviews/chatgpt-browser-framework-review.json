@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "prompt_revision": "fnd04-final-review-v1",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"
+  },
+  "reviewer": {
+    "slot": "R4",
+    "model": "GPT-5.6 Sol",
+    "harness": "Browser",
+    "effort": "NOT EXPOSED",
+    "slug": "chatgpt-browser-framework-review",
+    "primary_role": "framework_official_source_cross_check",
+    "attempt": 1
+  },
+  "outcome": "completed",
+  "target_verification": {
+    "result": "pass",
+    "observed_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "observed_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "pr_state": "open_draft_unmerged_mergeable"
+  },
+  "verdict": "APPROVE",
+  "merge_ready": true,
+  "severity_counts": {"blocker":0,"major":0,"minor":0,"nit":0},
+  "findings": [],
+  "probe_results": {"P01":"pass","P02":"pass","P03":"pass","P04":"pass","P05":"pass","P06":"pass","P07":"pass","P08":"partial","P09":"pass","P10":"pass","P11":"pass","P12":"pass","P13":"pass","P14":"pass","P15":"partial"},
+  "ci_verification": {"verified":true,"run_id":31350916189,"conclusion":"success","checkout_identity":"pr_merge_ref","observed_checkout_sha":"d12de2ae07003a10d19d576808cf88ec7796da23"},
+  "local_verification": {"performed":false,"summary":"Browser/GitHub/official-source review only. No reviewer-side code mutation or local test execution was performed."},
+  "evidence_limits": ["P08: The temporary model-drift negative probe is only reported as local PR evidence; it was not independently reproduced because this review was review-only and did not modify the model.","P15: Run 31350916189 was independently verified as PR merge-ref CI at d12de2ae07003a10d19d576808cf88ec7796da23. A direct branch-head push CI checkout of 99cee4386ea049ad84e9c087c6fdf1e25cc20f3e was not independently verified."],
+  "completed_at": "NOT_CAPTURED"
+}

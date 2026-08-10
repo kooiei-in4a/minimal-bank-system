@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.6",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "status": "final_complete",
+  "repository": "kooiei-in4a/minimal-bank-system",
+  "target_issue": 42,
+  "target_pr": 140,
+  "revisions": {
+    "reviewer_pool": "fnd04-reviewer-pool-v2",
+    "review_prompt": "fnd04-final-review-v1",
+    "judge_prompt": "fnd04-final-judge-v1",
+    "gold_review": "fnd04-final-gold-v1",
+    "major_fix_prompt": "fnd04-final-major-fix-v1",
+    "major_fix_snapshot": "fnd04-final-major-fix-snapshot-v1",
+    "major_fix_re_review_prompt": "fnd04-final-major-fix-rereview-v1",
+    "major_fix_clearance": "fnd04-final-major-fix-clearance-v1",
+    "formal_agent_b_prompt": "fnd04-formal-agent-b-v1"
+  },
+  "pre_fix_target": {
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "gold_verdict": "CHANGES_REQUIRED",
+    "merge_ready": false,
+    "blocking_finding": "G-01",
+    "blocking_root_cause": "NR-01"
+  },
+  "review_phase": {
+    "raw_reviewers": "5_of_5_complete",
+    "judge_a": "CHANGES_REQUIRED_NR-01_NO",
+    "judge_b": "CHANGES_REQUIRED_NR-01_NO",
+    "judge_c_used": false,
+    "gold_status": "locked"
+  },
+  "major_fix": {
+    "status": "implemented_snapshot_locked",
+    "branch": "agent/issue-42-fnd-04-final-code",
+    "old_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "new_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+    "pr_merge_ref_sha": "2e69049bd8b38e57cd4fee2c42e17edaeaf23df1",
+    "commit_count": 1,
+    "changed_files": [
+      "tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs"
+    ],
+    "additions": 18,
+    "deletions": 0,
+    "production_code_changed": false,
+    "duration_minutes": 30,
+    "author_mutation_sensitivity": {
+      "baseline": "pass",
+      "M1": "failed_as_expected",
+      "M2": "failed_as_expected",
+      "recovery": "pass",
+      "residue": "none"
+    },
+    "ci": {
+      "direct_head": {
+        "run_id": 31360093004,
+        "checkout_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+        "conclusion": "success",
+        "build": "0_warnings_0_errors",
+        "pending_model": "pass",
+        "non_postgresql": "42_pass",
+        "real_postgresql": "23_pass"
+      },
+      "pr_merge_ref": {
+        "run_id": 31360094852,
+        "checkout_sha": "2e69049bd8b38e57cd4fee2c42e17edaeaf23df1",
+        "merged_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+        "merged_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+        "conclusion": "success",
+        "build": "0_warnings_0_errors",
+        "pending_model": "pass",
+        "non_postgresql": "42_pass",
+        "real_postgresql": "23_pass"
+      }
+    }
+  },
+  "targeted_re_review": {
+    "status": "complete_cleared",
+    "prompt_revision": "fnd04-final-major-fix-rereview-v1",
+    "expected": "2_of_2",
+    "completed": "2_of_2",
+    "t1": {
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "effort": "xHigh",
+      "verdict": "G01_FIXED",
+      "new_blocker": 0,
+      "new_major": 0
+    },
+    "t2": {
+      "model": "NOT_EXPOSED",
+      "harness": "Cursor",
+      "effort": "Auto",
+      "verdict": "G01_FIXED",
+      "new_blocker": 0,
+      "new_major": 0
+    },
+    "clearance_result": "pass"
+  },
+  "major_fix_clearance": {
+    "status": "locked",
+    "revision": "fnd04-final-major-fix-clearance-v1",
+    "g01": "cleared",
+    "new_blocker_count": 0,
+    "new_major_count": 0
+  },
+  "formal_agent_b": {
+    "status": "complete_technical_gate_pass",
+    "role": "product_merge_gate",
+    "prompt_revision": "fnd04-formal-agent-b-v1",
+    "model": "Claude Opus 5",
+    "harness": "Claude Code",
+    "effort": "xHigh",
+    "target_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+    "formal_verdict": "APPROVE",
+    "merge_ready": true,
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 3,
+    "review_id": 4894487758,
+    "review_url": "https://github.com/kooiei-in4a/minimal-bank-system/pull/140#pullrequestreview-4894487758",
+    "github_review_event": "COMMENTED",
+    "approve_event_attempt": "rejected_422_self_pull_request",
+    "technical_gate": "pass",
+    "result_markdown": "formal-agent-b-result.md",
+    "result_json": "formal-agent-b-result.json"
+  },
+  "merge_actions": {
+    "technical_gate": "passed",
+    "github_approved_state": "not_obtained_due_self_approval_prohibition",
+    "repository_rule_requirement": "separate_actor_approval_not_required",
+    "repository_rule_evidence": "recent_fnd03_repository_rule_check_plus_normal_pr_merge_enforcement",
+    "pr_ready": "completed",
+    "merge": "completed",
+    "merge_method": "merge",
+    "merge_commit_sha": "9a352a3a61945647273ccc7dfbc8e1816c3ca07c",
+    "main_head_sha": "9a352a3a61945647273ccc7dfbc8e1816c3ca07c",
+    "merged_at": "2026-08-10T07:40:42Z",
+    "issue_close": "completed",
+    "issue_close_reason": "completed",
+    "issue_closed_at": "2026-08-10T07:42:09Z",
+    "close_evidence_comment_id": 5237276272
+  }
+}

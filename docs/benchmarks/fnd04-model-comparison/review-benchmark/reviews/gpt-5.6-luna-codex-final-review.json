@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "prompt_revision": "fnd04-final-review-v1",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"
+  },
+  "reviewer": {
+    "slot": "R3",
+    "model": "GPT-5.6 Luna",
+    "harness": "Codex",
+    "effort": "xHigh",
+    "slug": "gpt-5.6-luna-codex-final-review",
+    "primary_role": "specification_scope",
+    "attempt": 1
+  },
+  "outcome": "completed",
+  "target_verification": {
+    "result": "pass",
+    "observed_base_sha": "38c07e210fe4e8689f1d8aeabbb07b9261e...",
+    "observed_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "pr_state": "open,draft,unmerged"
+  },
+  "verdict": "APPROVE_WITH_FINDINGS",
+  "merge_ready": true,
+  "severity_counts": {"blocker":0,"major":0,"minor":1,"nit":0},
+  "findings": [
+    {
+      "id": "R3-F01",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Temporary model-drift negative probe is not independently reproducible from Head",
+      "description": "Committed code uses the actual EF pending-model mechanism, but the temporary model-only negative probe is supported only by the PR's local-only claim and was not independently reproduced from GitHub primary evidence.",
+      "affected_path": "src/MinimalBankSystem.Infrastructure/Persistence/BankDbContext.cs; tests/MinimalBankSystem.IntegrationTests/Persistence/MigrationModelTests.cs",
+      "evidence": ["MigrationModelTests uses context.Database.HasPendingModelChanges().","Direct-head CI verifies only the clean pending-model path.","The temporary negative probe is described in the PR body but is not committed or independently logged."],
+      "root_cause_key": null,
+      "required_fix": "Before Issue close, rerun the temporary model-only change probe against the exact Head, verify detection and clean recovery, and record the evidence without retaining synthetic model artifacts."
+    }
+  ],
+  "probe_results": {"P01":"pass","P02":"pass","P03":"pass","P04":"pass","P05":"pass","P06":"pass","P07":"pass","P08":"partial","P09":"pass","P10":"pass","P11":"pass","P12":"pass","P13":"pass","P14":"pass","P15":"pass"},
+  "ci_verification": {"verified":true,"run_id":31350916189,"conclusion":"success","checkout_identity":"pr_merge_ref_and_direct_head_verified","observed_checkout_sha":"31350916189 checked out d12de2ae07003a10d19d576808cf88ec7796da23; direct-head run 31350870902 checked out 99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"},
+  "local_verification": {"performed":false,"summary":"Local checkout remained at base main; verification relied on GitHub source, diff, and CI evidence."},
+  "evidence_limits": ["P08 temporary model-drift negative probe was not independently reproduced from GitHub primary evidence.","No Compose, health, or release-deployment verification was performed because those are out of scope for Issue #42."],
+  "completed_at": "NOT_CAPTURED"
+}

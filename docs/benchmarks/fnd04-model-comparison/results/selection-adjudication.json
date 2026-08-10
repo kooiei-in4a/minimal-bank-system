@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "result_revision": "fnd04-selection-adjudication-v1",
+  "benchmark_id": "fnd04-implementation-self-review",
+  "repository": "kooiei-in4a/minimal-bank-system",
+  "target_issue": 42,
+  "status": "locked",
+  "locked_at": "2026-08-10T11:07:00+09:00",
+  "common_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+  "implementation_evaluation_control_head": "e2a5937de695cf06e3dedb2f79b5cc4f85812b4f",
+  "implementation_evaluation_revision": "fnd04-implementation-evaluation-v1",
+  "final_synthesis": {
+    "branch": "agent/issue-42-fnd-04-final-code",
+    "base_branch": "main",
+    "expected_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "status": "ready_not_started",
+    "candidate_merge": "prohibited",
+    "candidate_cherry_pick": "prohibited",
+    "ranking_eligibility": "excluded"
+  },
+  "primary_selection": {
+    "candidate": "claude-opus-5-claude-code",
+    "candidate_id": "C5",
+    "pr": 134,
+    "h1_head_sha": "3a788cc31b3f65177d60dd3995842231dd505187",
+    "h1_score": 99,
+    "findings": {"blocker":0,"major":0,"minor":0,"nit":0},
+    "role": "primary_architecture_and_verification_base"
+  },
+  "adopted_additions": [
+    {
+      "from_candidate": "gpt-5.6-sol-codex",
+      "candidate_id": "C1",
+      "h1_head_sha": "7025c256b8b1ec1f0f4b9904f71a1047faac4cca",
+      "item": "failed_migrator_output_secret_non_disclosure_regression",
+      "scope": "test_only_unless_existing_production_behavior_fails"
+    },
+    {
+      "from_finding": "C8-M01",
+      "source_candidate": "deepseek-v4-flash-opencode",
+      "candidate_id": "C8",
+      "item": "design_time_missing_connection_connection_required_fail_closed_regression",
+      "mandatory": true,
+      "prohibited_pattern": "fabricated_localhost_or_other_ambient_default_connection"
+    }
+  ],
+  "explicit_non_selections": [
+    {
+      "candidate": "claude-sonnet-5-claude-code",
+      "candidate_id": "C6",
+      "item": "TimeProvider_timeout_testability_seam",
+      "decision": "not_adopted_initially",
+      "reason": "C5 already verifies the production 60-second budget using a real PostgreSQL lock; avoid production testability abstraction unless CI evidence later requires it"
+    },
+    {
+      "candidate": "deepseek-v4-flash-opencode",
+      "candidate_id": "C8",
+      "item": "fabricated_design_time_connection_string",
+      "decision": "rejected_major",
+      "finding": "C8-M01"
+    }
+  ],
+  "candidate_dispositions": [
+    {"candidate_id":"C1","slug":"gpt-5.6-sol-codex","disposition":"partial_adopt"},
+    {"candidate_id":"C2","slug":"gpt-5.6-terra-codex","disposition":"not_selected"},
+    {"candidate_id":"C3","slug":"gpt-5.6-luna-codex","disposition":"not_selected"},
+    {"candidate_id":"C4","slug":"gpt-5.6-luna-opencode","disposition":"not_selected"},
+    {"candidate_id":"C5","slug":"claude-opus-5-claude-code","disposition":"primary"},
+    {"candidate_id":"C6","slug":"claude-sonnet-5-claude-code","disposition":"learning_only"},
+    {"candidate_id":"C7","slug":"grok-4.5-cursor","disposition":"not_selected"},
+    {"candidate_id":"C8","slug":"deepseek-v4-flash-opencode","disposition":"rejected_major"}
+  ],
+  "mandatory_regressions": [
+    "explicit_migrator_clean_apply",
+    "explicit_migrator_rerun",
+    "missing_connection_nonzero",
+    "unreachable_connection_nonzero",
+    "rejected_credentials_nonzero",
+    "actual_60_second_blocked_postgresql_timeout",
+    "failed_migrator_output_secret_non_disclosure",
+    "api_startup_no_auto_migration",
+    "api_dbcontext_resolve_no_schema_mutation",
+    "actual_ef_pending_model_check",
+    "temporary_model_drift_negative_probe_and_clean_recovery",
+    "idempotent_migration_sql_generation",
+    "c8_m01_design_time_missing_connection_fail_closed"
+  ],
+  "duration_collection": {
+    "candidate_benchmark": "N/A_unchanged",
+    "final_synthesis": "collect_explicit_start_finish_and_integer_minutes",
+    "infer_from_github_timestamps": false,
+    "affects_candidate_speed_ranking": false
+  }
+}
