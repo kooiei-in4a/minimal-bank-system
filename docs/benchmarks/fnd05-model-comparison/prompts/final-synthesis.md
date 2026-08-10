@@ -25,6 +25,7 @@ EVALUATION_ARTIFACT_SHA256: "<SHA256>"
 SELECTION_ARTIFACT_PATH: "<PATH>"
 SELECTION_ARTIFACT_SHA256: "<SHA256>"
 RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+MUTATION_DETERMINISM_REVISION: "fnd05-mutation-determinism-v1"
 PROMPT_REVISION: "fnd05-final-synthesis-v2"
 ```
 
@@ -68,7 +69,7 @@ Final Synthesisは少なくとも次を証明する。
 - D-03 secret contract
 - D-04 lifecycle contract
 - D-05 external state evidence
-- D-06 failure injection
+- D-06 failure injection + deterministic mutation preconditions / barriers / signatures
 - D-07 portability
 - Issue #43 Scope boundary
 
@@ -85,33 +86,47 @@ Additional:
 - candidate-specific workaroundを無批判に持ち込んでいない
 - Static gate PASS
 - mandatory mutation baseline GREEN
-- M-01〜M-10 target RED for expected reason
+- applicable mutationごとにdeterministic precondition PASS
+- M-01〜M-10 target RED for expected failure signature
+- invalid failure signatureをkillに数えていない
 - restore GREEN / residue 0
 - direct-head CI SUCCESS
 - merge-ref CIはdirect-headと区別してidentity記録
 
 ## 5. Mandatory mutation execution
 
-`mandatory-mutations.md` v2に従いM-01〜M-10を原則すべて実行する。
+`mandatory-mutations.md` v2と`mutation-determinism-contract.md` v1に従いM-01〜M-10を原則すべて実行する。
 
 特に:
 
+- M-01はcontrolled barrierでMigrator successful completionを未完了へ保持してからorderingを弱め、自然raceに依存しない
+- M-03はauto-migrationが存在すれば必ずobservable migration-state deltaが出るDB preconditionを成立させる
 - M-07はoracle-quality meta mutation
 - M-08は**testを壊さず、Migrator exit 0 + expected migration未適用**を作るruntime defect
+- M-10はcleanup対象のsame-project resourceがmutation前に実在することを確認する
 
 各mutation:
 
 ```text
 MUTATION_ID:
 CLASS:
+PRECONDITION_RESULT:
+CONTROLLED_BARRIER_OR_FIXTURE:
+INJECTION_POINT_CLASS:
 BASELINE_RESULT:
 INJECTION_ARTIFACT_REF:
+EXPECTED_FAILURE_SIGNATURE:
+OBSERVED_FAILURE_SIGNATURE:
+INVALID_FAILURE_MATCHED: YES / NO
 MUTATED_RESULT:
 EXPECTED_RED_OBSERVED:
 FAILURE_REASON_MATCHED:
 RESTORED_RESULT:
+CLEANUP_RESULT:
 RESIDUE:
 ```
+
+`PRECONDITION_RESULT != PASS`の場合は`BLOCKED — PRECONDITION NOT ESTABLISHED`としてKILLED / SURVIVEDへ数えない。`INVALID_FAILURE_MATCHED = YES`またはfailure signature不一致もkillではない。
 
 ## 6. Required verification
 
@@ -187,6 +202,7 @@ LIFECYCLE_DESIGN:
 TEST_DESIGN:
 COMPLETION_CHECKS:
 MUTATION_RESULTS:
+MUTATION_DETERMINISM:
 VERIFICATION:
 DIRECT_HEAD_CI:
 MERGE_REF_CI:
