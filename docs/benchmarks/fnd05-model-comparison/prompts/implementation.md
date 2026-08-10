@@ -61,6 +61,8 @@ Parent / WPはProduct authorityを上書きしません。矛盾があれば停�
 - current branch = `TARGET_BRANCH`
 - merge-base = `COMMON_BASE_SHA`
 - D-01〜D-08 = LOCKED with evidence
+- D-06は`fnd05-mutation-determinism-v1`を満たす
+- `gates.mutation_determinism_locked = true`
 - Issue #43 Issue Ready = PASS
 - `gates.issue_ready_pass = true`
 - **`gates.koo_start_authorized = true`**
@@ -97,7 +99,7 @@ Issue #43のScopeだけを実装する。
 - D-03でlockedされたsecret / connection injection
 - D-04でlockedされたlifecycle behavior / commands
 - D-05でlockedされたexternal observation
-- D-06でlockedされたfailure injection
+- D-06でlockedされたfailure injection / mutation determinism contract
 - D-07 cross-platform contract
 - actual runtime verification
 
@@ -183,8 +185,9 @@ Dedicated `postgres` / `migrator` / `api` servicesやroot `compose.yaml`等はre
 - `exit != 0`だけでPASSしない
 - source scanだけでruntime orderingを証明しない
 - M-01〜M-10のprotected contractを検出可能なoracleを用意
+- `mutation-determinism-contract.md`のdeterministic precondition property / barrier・fixture class / expected failure signature classを満たせる設計にする
 
-Candidateはevaluatorのexact mutation patchへ過学習しない。`mandatory-mutations.md`のdefect classとobservable propertyだけを実装要件として扱う。
+Candidateへ開示されるのはmutation ID、protected contract、observable property、deterministic precondition property、barrier / fixture class、expected / invalid failure signature classまでである。Evaluatorのexact mutation patch / exact source edit / exact injection recipeへ過学習しない。
 
 ### C-07 Project rules / code quality
 
@@ -211,6 +214,7 @@ Candidateはevaluatorのexact mutation patchへ過学習しない。`mandatory-m
 Docker Engine version:
 Docker Compose version:
 Locked D-01..D-08 refs:
+Mutation determinism contract ref:
 Resolved runtime roles:
 Resolved images:
 Resolved volumes:
