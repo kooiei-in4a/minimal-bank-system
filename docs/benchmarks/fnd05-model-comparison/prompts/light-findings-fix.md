@@ -1,6 +1,6 @@
 # FND-05 Light Findings Fix Prompt
 
-Revision: `fnd05-light-fix-v1`
+Revision: `fnd05-light-fix-v2`
 
 応答は日本語で出力してください。
 
@@ -8,73 +8,92 @@ Revision: `fnd05-light-fix-v1`
 
 Composer L1とLuna L2のlocked findingsを処理し、Heavy Reviewへ渡すFinal Headを作成してください。
 
-## 1. Fixed target
+## 1. Fixed target / artifact identity
 
 ```yaml
 TARGET_ISSUE: 43
 TARGET_PR: "<FINAL_SYNTHESIS_PR>"
 INITIAL_HEAD_SHA: "<FULL_SHA>"
 TARGET_BRANCH: "<FINAL_SYNTHESIS_BRANCH>"
-L1_RESULT: "<LOCKED_ARTIFACT>"
-L2_RESULT: "<LOCKED_ARTIFACT>"
-PROMPT_REVISION: "fnd05-light-fix-v1"
+L1_ARTIFACT_PATH: "<PATH>"
+L1_ARTIFACT_SHA256: "<SHA256>"
+L2_ARTIFACT_PATH: "<PATH>"
+L2_ARTIFACT_SHA256: "<SHA256>"
+RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+PROMPT_REVISION: "fnd05-light-fix-v2"
 ```
+
+`run.json.stage_artifacts.light_l1/light_l2`とtarget Headが一致しない場合は停止してください。
 
 ## 2. Scope
 
 このphaseで扱える入力はL1 / L2 findingsだけです。
 
 - accepted findingを必要最小限で修正
-- rejected findingは理由を記録
+- rejected findingは上位正本と一次証拠で理由を記録
 - findingにない新設計を追加しない
 - Heavy review相当の自由探索をしない
 - unrelated refactorをしない
 
 ## 3. Disposition
 
-各findingについて:
+各finding:
 
 ```text
 FINDING_ID:
-DISPOSITION: ACCEPTED / REJECTED / DUPLICATE / NOT_APPLICABLE
+SOURCE: L1 / L2
+SEVERITY_CANDIDATE:
+DISPOSITION: ACCEPTED_FIXED / REJECTED / DUPLICATE / NOT_APPLICABLE / UNRESOLVED / ESCALATED
 REASON:
+EVIDENCE:
 FILES_CHANGED:
 TESTS:
 ```
 
-Blocker / Major candidateをrejectする場合、上位正本と一次証拠を必要とします。
+Blocker / Major candidateをREJECTEDにしても解消済み扱いにしません。
 
-## 4. Required verification
+## 4. Required Heavy handoff
+
+```text
+HEAVY_HANDOFF:
+  resolved_and_verified_findings:
+  rejected_or_unresolved_blocker_major_candidates:
+  escalated_blocker_major_candidates:
+  evidence_incomplete_findings:
+```
+
+REJECTED / UNRESOLVED / ESCALATED Blocker・Major candidateは、該当Heavy reviewerのprimary scopeに入る場合、Heavyが独立再確認します。
+
+## 5. Required verification
 
 - static project rule gate
-- `docker compose config --quiet`
+- D-01でlockしたCompose/config validation
 - restore / build / existing tests
-- affected Compose runtime tests
-- clean start
-- migration failure / API non-start
+- affected runtime tests
+- clean start / migration failure / API non-start
 - secret sentinel if affected
-- applicable mandatory mutation baseline
+- mutation baseline if affected
 - `git diff --check`
 - direct-head CI
 
-## 5. Final Head lock
+## 6. Final Head lock
 
-修正後のfull Head SHAを固定します。
+修正後のfull Head SHAを固定し、次のartifact identityを`run.json.stage_artifacts.light_fix`へ記録する。
 
-Heavy Reviewへ渡す情報:
+```text
+ARTIFACT_LOCK:
+  stage: light_fix
+  artifact_path:
+  content_sha256:
+  prompt_revision: fnd05-light-fix-v2
+  target_head_sha:
+  source_artifact_refs:
+  producer_slot:
+  producer_commit_sha:
+STATUS: LOCKED
+```
 
-- Base SHA
-- Initial Head
-- Final Head
-- Light fix commit range
-- L1 / L2 disposition
-- verification
-- direct-head CI
-- mutation baseline
-- known concerns
-- unverified
-
-## 6. Output
+## 7. Output
 
 ```text
 # FND-05 Light Findings Fix Result
@@ -83,31 +102,26 @@ INITIAL_HEAD:
 FINAL_HEAD:
 
 L1_DISPOSITION:
-
 L2_DISPOSITION:
+HEAVY_HANDOFF:
 
 CHANGED_FILES:
-
 VERIFICATION:
-
 DIRECT_HEAD_CI:
-
 MUTATION_BASELINE:
-
 NEW_REGRESSIONS:
-
 KNOWN_CONCERNS:
 UNVERIFIED:
 
-FINAL_HEAD_LOCK: LOCKED / NOT LOCKED
+ARTIFACT_LOCK:
+FINAL_HEAD_LOCK: LOCKED / NOT_LOCKED
 NEXT_STAGE: SOL_AND_OPUS_HEAVY_REVIEW
 ```
 
-## 7. Prohibited operations
+## 8. Prohibited operations
 
 - new PR作成
-- Ready化
-- merge
+- Ready化 / merge
 - Issue変更
 - candidate変更
 - Heavy Review開始
