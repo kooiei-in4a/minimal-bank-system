@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "snapshot_revision": "fnd04-final-synthesis-snapshot-v1",
+  "benchmark_id": "fnd04-implementation-self-review",
+  "repository": "kooiei-in4a/minimal-bank-system",
+  "target_issue": 42,
+  "target_pr": 140,
+  "status": "locked_ready_for_role_diverse_independent_review",
+  "locked_at": "2026-08-10T12:02:00+09:00",
+  "selection_revision": "fnd04-selection-adjudication-v1",
+  "implementation_prompt_revision": "fnd04-final-synthesis-v1",
+  "target": {
+    "base_branch": "main",
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_branch": "agent/issue-42-fnd-04-final-code",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "pr_merge_ref_sha": "d12de2ae07003a10d19d576808cf88ec7796da23",
+    "pr_state": "open",
+    "draft": true,
+    "merged": false,
+    "mergeable": true,
+    "commits": 1,
+    "changed_files": 25,
+    "additions": 1149,
+    "deletions": 1
+  },
+  "duration": {
+    "started_at_local": "2026-08-10 11:25",
+    "finished_at_local": "2026-08-10 11:54",
+    "duration_minutes": 29,
+    "source": "author_recorded_explicit",
+    "inferred_from_github_timestamps": false
+  },
+  "selection_application": {
+    "c5_primary": "verified_present",
+    "c1_secret_non_disclosure": "verified_present",
+    "c8_m01_regression": "verified_present",
+    "c6_timeprovider_non_selection": "preserved"
+  },
+  "scope": {
+    "benchmark_candidate_artifacts_changed": false,
+    "business_schema_added": false,
+    "compose_changed": false,
+    "health_changed": false,
+    "fnd05_or_fnd06_scope_creep": false
+  },
+  "ci": {
+    "run_id": 31350916189,
+    "run_number": 427,
+    "workflow": "Build and Test",
+    "event_scope": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "associated_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "checkout_sha": "d12de2ae07003a10d19d576808cf88ec7796da23",
+    "checkout_identity": "pr_merge_ref",
+    "merge_ref_parents": {
+      "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+      "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826"
+    },
+    "direct_head_push_run": "not_independently_resolved_with_available_connector",
+    "steps": {
+      "restore": "success",
+      "restore_local_tools": "success",
+      "build": "success",
+      "pending_model": "success",
+      "non_postgresql_tests": "success",
+      "real_postgresql_tests": "success"
+    },
+    "observed_results": {
+      "build_warnings": 0,
+      "build_errors": 0,
+      "unit_non_postgresql_passed": 4,
+      "integration_non_postgresql_passed": 38,
+      "real_postgresql_passed": 23,
+      "pending_model_message": "No changes have been made to the model since the last migration."
+    }
+  },
+  "coordinator_pre_review_gate": {
+    "target_identity": "pass",
+    "base_head_fixed": "pass",
+    "draft_unmerged_boundary": "pass",
+    "selection_application": "pass",
+    "c8_m01_regression_present": "pass",
+    "scope_boundary": "pass",
+    "pr_merge_ref_ci": "success",
+    "direct_head_checkout_ci": "not_independently_resolved",
+    "blocking_defect_found": "none",
+    "decision": "ready_for_role_diverse_independent_review"
+  }
+}
