@@ -1,593 +1,299 @@
 # FND-05 Project Rule Catalog
 
-Revision: `fnd05-project-rules-v1`
+Revision: `fnd05-project-rules-v2`
 
-目的は、曖昧な「きれいに実装する」ではなく、何をどこへ書き、何を書かないかを事前に固定することである。
+目的は、AI実装が守るべきProject Ruleを具体化しつつ、Issue #43やADRが許す実装自由度を未承認のMUSTで狭めないことである。
 
-各ruleは次の形式で判定する。
+## 1. Rule levels
+
+- `MUST / MUST NOT`: 上位正本またはpre-run lockで確定した必須contract
+- `SHOULD / SHOULD NOT`: project convention / quality preference。違反だけでMajorにしない
+- `TO_LOCK`: D-01〜D-08の未確定事項。candidate開始前に共通化する
+
+Primary ownerが完全判定する。他stageはその結果をconsumeし、Blocker / Major root cause候補だけをescalateする。
 
 ```text
-RULE-ID: PASS / FAIL / NOT APPLICABLE
-Evidence: path / command / runtime observation
+RULE-ID:
+LEVEL:
+OWNER:
+EVIDENCE:
+RESULT: PASS / FAIL / N/A / ADVISORY
 ```
 
-## 1. Governance / traceability
+## 2. Governance / scope
 
-### RULE-GOV-001 — Authority order
+### RULE-GOV-001 — Product authority
 
-**MUST**
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-- Approved specification → Accepted ADR → Issue #43 → code/test → PRの順で従う。
+```text
+Koo-approved policy / specification
+→ Accepted ADR
+→ Issue #43
+→ AGENTS.md
+→ locked FND-05 contracts
+```
 
-**MUST NOT**
+Parent #3 / WP-1 #33はGate evidenceでありProduct authorityを上書きしない。
 
-- benchmark文書やPR説明だけでADR / Issueを変更する。
+### RULE-GOV-002 — Issue #43 scope only
 
-**Evidence**
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-- PRのAuthority section
-- changed-file traceability
+FND-06 health、business schema/data、backup/restore、monitoring、production deployment、scheduler等を先取りしない。
 
-**Primary owner**: Luna Light Review
+## 3. Architecture / ordering
 
-### RULE-GOV-002 — One target Issue
+### RULE-ARCH-001 — API startup does not evolve schema
 
-**MUST**
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-- 変更をIssue #43へ追跡可能にする。
+API startupで`Migrate` / `MigrateAsync` / `EnsureCreated` / startup DDLを実行しない。
 
-**MUST NOT**
+### RULE-ARCH-002 — Explicit Migrator owns migration apply
 
-- FND-06、business feature、backupを同じPRへ混ぜる。
+LEVEL: MUST  
+OWNER: Composer Light Review
 
-**Primary owner**: Luna Light Review
+FND-04 Migrator production pathを使用し、failureはnon-zero、successだけexit 0。
 
-## 2. File and responsibility placement
+### RULE-ORDER-001 — PostgreSQL usable before migration
 
-### RULE-PLACE-001 — Canonical Compose file
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-**MUST**
+Containerが単にrunningであることだけをready証拠にしない。Exact mechanismはD-01等のlockに従う。
 
-- canonical Compose definitionをrepository rootの`compose.yaml`へ置く。
+### RULE-ORDER-002 — API starts only after Migrator success
 
-**MUST NOT**
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-- 複数の同等Compose fileを正本として並立させる。
-- `docker-compose.yml`と`compose.yaml`を重複管理する。
+Migrator success前またはnon-zero failure後にAPIがstartし得る設計を許可しない。
 
-**Primary owner**: Composer Light Review
+`service_completed_successfully`等は実装手段であり、pre-run lockなしに唯一のMUST mechanismとしない。
 
-### RULE-PLACE-002 — Dockerfiles
+### RULE-ORDER-003 — No fixed sleep as readiness proof
 
-**MUST**
+LEVEL: MUST NOT  
+OWNER: Composer Light Review
 
-- API Dockerfileを`src/MinimalBankSystem.Api/Dockerfile`へ置く。
-- Migrator Dockerfileを`src/MinimalBankSystem.Migrator/Dockerfile`へ置く。
-- repository rootの`.dockerignore`を共通build contextへ使用する。
+固定時間待ちだけでreadiness / orderingを証明しない。
 
-**MUST NOT**
+## 4. Placement conventions
 
-- unrelated projectへDockerfileを置く。
-- test projectのDockerfileをproduction imageとして使用する。
+次はpre-runで別途lockしない限りSHOULDである。
 
-**Primary owner**: Composer Light Review
+### RULE-PLACE-001
 
-### RULE-PLACE-003 — Operational documentation
+LEVEL: SHOULD  
+OWNER: Composer Light Review
 
-**MUST**
+Repository root `compose.yaml`をreference conventionとする。Equivalent canonical placementはownershipが明確なら自動FAILにしない。
 
-- start / stop / restart / down / clean reset手順を`docs/operations/docker-compose.md`へ置く。
+### RULE-PLACE-002
 
-**MUST NOT**
+LEVEL: SHOULD  
+OWNER: Composer Light Review
 
-- PR本文だけを運用手順の正本にする。
+API / Migrator Dockerfileを各project近傍へ置くことを推奨する。Exact pathは独立ACではない。
 
-**Primary owner**: Composer Light Review
+### RULE-PLACE-003
 
-### RULE-PLACE-004 — Compose test assets
+LEVEL: SHOULD  
+OWNER: Composer Light Review
 
-**MUST**
+運用手順はrepository内docsへ残し、PR本文だけを唯一の正本にしない。
 
-- test-only override、fixture、validatorを`tests/MinimalBankSystem.IntegrationTests/Compose/`または`tests/compose/`へ置く。
-- production Composeとtest-only mutation assetを区別する。
+### RULE-PLACE-004
 
-**MUST NOT**
+LEVEL: MUST  
+OWNER: Composer Light Review
 
-- failure injectionをproduction `compose.yaml`のdefault pathへ混ぜる。
+Test-only override / mutation assetをproduction default pathから分離する。
 
-**Primary owner**: Composer Light Review
+## 5. Image / volume / secret
 
-### RULE-PLACE-005 — Application persistence ownership
+### RULE-IMG-001 — Exact digest identity
 
-**MUST**
+LEVEL: MUST  
+OWNER: Static Gate
 
-- DbContext、provider、migrationはInfrastructureに残す。
-- explicit applyはMigrator hostが所有する。
-
-**MUST NOT**
-
-- API projectへmigration実行logicを置く。
-- Compose ordering logicをDomain / Applicationへ置く。
-
-**Primary owner**: Luna Light Review
-
-## 3. Architecture and dependency
-
-### RULE-ARCH-001 — API startup is schema-read-only
-
-**MUST**
-
-- API startupはservice registrationとhost startだけを行う。
-
-**MUST NOT**
-
-- `Migrate` / `MigrateAsync` / `EnsureCreated` / schema DDLを呼ぶ。
-
-**Automated check**
-
-- source scan
-- FND-04 regression tests
-
-**Primary owner**: Luna Light Review
-
-### RULE-ARCH-002 — Explicit one-shot Migrator
-
-**MUST**
-
-- FND-04 Migrator production entry pointを使用する。
-- successだけexit 0とする。
-
-**MUST NOT**
-
-- shell wrapperでnon-zeroを0へ変える。
-- `|| true`、unconditional `exit 0`、error swallowingを使う。
-
-**Primary owner**: Composer Light Review
-
-### RULE-ARCH-003 — No hidden orchestrator
-
-**MUST NOT**
-
-- API entrypointに独自wait loopとmigrationを隠す。
-- sidecar、scheduler、daemonを追加する。
-- Docker socket制御でservice順序を実装する。
-
-**Correct location**
-
-- service ordering: `compose.yaml`
-- verification orchestration: integration test / validator
-
-**Primary owner**: Sol Heavy Review
-
-## 4. Compose authoring
-
-### RULE-COMPOSE-001 — Compose Specification
-
-**MUST**
-
-- current Compose Specificationを使用する。
-- `docker compose config --quiet`を通す。
-
-**MUST NOT**
-
-- obsolete top-level `version:`を追加する。
-
-**Primary owner**: Static Check
-
-### RULE-COMPOSE-002 — Explicit conditions
-
-**MUST**
-
-- MigratorはPostgreSQL `service_healthy`相当を待つ。
-- APIはMigrator `service_completed_successfully`相当を待つ。
-
-**MUST NOT**
-
-- short syntax `depends_on`だけでready / successを主張する。
-- `sleep N`をreadiness contractにする。
-
-**Primary owner**: Luna Light Review
-
-### RULE-COMPOSE-003 — No masking restart policy
-
-**MUST NOT**
-
-- Migratorへ`restart: always` / `unless-stopped`を設定する。
-- API restart policyでmigration failureを見えなくする。
-
-**Primary owner**: Composer Light Review
-
-### RULE-COMPOSE-004 — No fixed container names
-
-**MUST NOT**
-
-- `container_name`を固定する。
-
-**Reason**
-
-- Compose project isolation、parallel test、cleanupを壊しやすい。
-
-**Primary owner**: Composer Light Review
-
-### RULE-COMPOSE-005 — Required interpolation fails closed
-
-**MUST**
-
-- 必須non-secret値は`${VAR:?message}`等で未設定をfail-fastする。
-
-**MUST NOT**
-
-- 空文字や危険なdefaultで継続する。
-
-**Primary owner**: Composer Light Review
-
-### RULE-COMPOSE-006 — Minimal host exposure
-
-**MUST**
-
-- API portを公開する場合はlocalhost bindを標準にする。
-
-**MUST NOT**
-
-- PostgreSQL portをhostへ公開する。
-- host networkを使用する。
-
-**Primary owner**: Composer Light Review
-
-## 5. Image rules
-
-### RULE-IMG-001 — Digest pin
-
-**MUST**
-
-- PostgreSQL imageをdigest-qualified referenceで固定する。
-- DockerfileのSDK / runtime `FROM`をdigest-qualified referenceで固定する。
-
-**MUST NOT**
-
-- `latest`
-- tag-only image reference
-
-**Primary owner**: Static Check
-
-### RULE-IMG-002 — Approved source
-
-**MUST**
-
-- approved PostgreSQL official imageとMicrosoft .NET official imageを使用する。
-
-**MUST NOT**
-
-- unreviewed third-party base imageを追加する。
-
-**Primary owner**: Luna Light Review
-
-### RULE-IMG-003 — Runtime image minimization
-
-**MUST**
-
-- multi-stage buildでSDKをruntime imageへ残さない。
-- APIとMigratorが必要なartifactだけをcopyする。
-
-**MUST NOT**
-
-- repository source全体をruntime imageへcopyする。
-
-**Primary owner**: Composer Light Review
-
-## 6. Secret rules
-
-### RULE-SEC-001 — No committed secret
-
-**MUST NOT**
-
-- password / connection string / token / private keyをcommitする。
-- `.env` real valueをcommitする。
-
-**Allowed**
-
-- `.env.example`等にvariable nameと非secret placeholderだけを置く。
-
-**Primary owner**: Static Check
-
-### RULE-SEC-002 — No secret in argv
-
-**MUST NOT**
-
-- Compose `command:`またはentrypoint argumentへsecret valueを展開する。
-- `dotnet ... --password <value>`等を使用する。
-
-**Primary owner**: Composer Light Review
-
-### RULE-SEC-003 — Least secret grant
-
-**MUST**
-
-- secretを必要なserviceだけへ付与する。
-
-**MUST NOT**
-
-- APIに不要なdatabase superuser secretを渡す。
-- unrelated serviceへsecretを共有する。
-
-**Primary owner**: Sol Heavy Review
-
-### RULE-SEC-004 — Secret-safe logs
-
-**MUST**
-
-- sentinelでstdout / stderr / Compose logsの非露出を確認する。
-
-**MUST NOT**
-
-- connection string全体をerror messageへ出す。
-
-**Primary owner**: Opus Heavy Review
-
-## 7. Volume and lifecycle rules
+D-02でlockしたPostgreSQL / .NET image identityをdigest-qualified referenceで使用する。
 
 ### RULE-VOL-001 — Named PostgreSQL volume
 
-**MUST**
+LEVEL: MUST  
+OWNER: Static Gate
 
-- PostgreSQL dataにtop-level named volumeを使用する。
+PostgreSQL dataはnamed volumeを使用する。
 
-**MUST NOT**
+### RULE-SEC-001 — No committed secret
 
-- anonymous volume
-- host bind mountをdata正本にする
+LEVEL: MUST NOT  
+OWNER: Static Gate
 
-**Primary owner**: Static Check
+Real credentialをrepositoryへ保存しない。
 
-### RULE-VOL-002 — Reset is explicit
+### RULE-SEC-002 — No secret value in process arguments
 
-**MUST**
+LEVEL: MUST NOT  
+OWNER: Composer Light Review
 
-- normal stop / downでdataを保持する。
-- clean resetだけがvolumeを削除する。
+Secret valueをcommand-line argumentへ直接展開しない。
 
-**MUST NOT**
+### RULE-SEC-003 — Required grant only
 
-- standard stop commandへ`--volumes`を混ぜる。
+LEVEL: MUST  
+OWNER: Sol Heavy Review
 
-**Primary owner**: Composer Light Review
+D-03でlockした方式に従い、必要なprocessだけへ必要なcredentialを渡す。
 
-### RULE-LIFE-001 — Canonical restart re-evaluates migration
+### RULE-SEC-004 — Secret-safe runtime evidence
 
-**MUST**
+LEVEL: MUST  
+OWNER: Opus Heavy Review
 
-- documented restart pathでMigratorを再作成・再実行する。
+Test sentinelでD-03 / D-05が定めた観測面の非露出を確認する。
 
-**MUST NOT**
+## 6. Lifecycle
 
-- raw API-only restartを安全なstack restartとして記載する。
+### RULE-LIFE-001 — Lifecycle follows D-04
 
-**Primary owner**: Opus Heavy Review
+LEVEL: TO_LOCK  
+OWNER: Opus Heavy Review
 
-### RULE-LIFE-002 — Cleanup verifies absence
+Start / stop / restart / clean resetのexact commandとmigration-gate semanticsはD-04 lock前にMUST化しない。
 
-**MUST**
+### RULE-LIFE-002 — Cleanup uses external state
 
-- clean reset後にcontainer、network、volumeのabsenceを外部確認する。
+LEVEL: MUST  
+OWNER: Composer Light Review
 
-**MUST NOT**
+Cleanup commandのexit 0だけで完了とせず、D-05で定義したproject resourceのabsenceを確認する。
 
-- command exit 0だけでcleanup完了を主張する。
+## 7. Test oracle
 
-**Primary owner**: Composer Light Review
+### RULE-TEST-001 — Production-path evidence
 
-## 8. Test rules
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-### RULE-TEST-001 — Production path evidence
+Actual production Compose / entrypoint相当のpathを通す。
 
-**MUST**
+### RULE-TEST-002 — External-state assertion
 
-- actual Compose projectとproduction entrypointを通す。
+LEVEL: MUST  
+OWNER: Opus Heavy Review
 
-**MUST NOT**
+D-05でlockしたstate / exit / ordering / migration historyをassertする。Source scanだけでruntime orderingを証明しない。
 
-- test側で似たhostを再構築しただけでproduction wiringを証明する。
+### RULE-TEST-003 — Negative-test positive markers
 
-**Primary owner**: Luna Light Review
+LEVEL: MUST  
+OWNER: Opus Heavy Review
 
-### RULE-TEST-002 — External state assertion
-
-**MUST**
-
-- container state、exit code、timestamps、migration historyをassertする。
-
-**MUST NOT**
-
-- source scanまたはlog文字列だけでstartup orderingを証明する。
-
-**Primary owner**: Opus Heavy Review
-
-### RULE-TEST-003 — Negative test positive markers
-
-**MUST**
-
-- intended component / pathへ到達したmarkerをassertする。
-- expected failure reason / stateをassertする。
-
-**MUST NOT**
-
-- `exit != 0`だけでPASSする。
-- blocklist absenceだけでsafetyを主張する。
-
-**Primary owner**: Opus Heavy Review
+Intended path markerとexpected failure reason / state markerを持つ。`exit != 0`だけでPASSしない。
 
 ### RULE-TEST-004 — Mutation sensitivity
 
-**MUST**
+LEVEL: MUST  
+OWNER: Evaluator / Heavy Review
 
-- applicable mandatory mutationでtarget testがREDになる。
-- revert後にGREENへ戻る。
-- mutation residueがない。
+Applicable mutationでRED、restore後GREEN、residue 0。
 
-**Primary owner**: Heavy Review / evaluator
+### RULE-TEST-005 — No production test backdoor
 
-### RULE-TEST-005 — No production test hook
+LEVEL: MUST NOT  
+OWNER: Sol Heavy Review
 
-**MUST NOT**
+Failure injection専用のproduction backdoorを追加しない。
 
-- failure injection専用backdoorをproduction codeへ追加する。
+### RULE-TEST-006 — Honest test description
 
-**Allowed**
+LEVEL: MUST  
+OWNER: Composer Light Review
 
-- external config
-- test-only Compose override
-- isolated temporary patch / mutation
+Test名・コメント・assertion・観測範囲を一致させる。
 
-**Primary owner**: Sol Heavy Review
+## 8. Code quality
 
-### RULE-TEST-006 — Honest naming
+### RULE-CODE-001 — Minimal Issue scope
 
-**MUST**
+LEVEL: MUST  
+OWNER: Composer Light Review
 
-- test名、コメント、assertion、実際の観測範囲を一致させる。
+Unrelated refactor / feature追加を混ぜない。
 
-**Primary owner**: Composer Light Review
+### RULE-CODE-002 — Do not mask failures
 
-## 9. Code quality rules
+LEVEL: MUST NOT  
+OWNER: Composer Light Review
 
-### RULE-CODE-001 — Minimal scope
+Exception / exit / cleanup failureを成功へ変換しない。
 
-**MUST**
+### RULE-CODE-003 — Avoid speculative abstraction
 
-- Issue #43に必要な変更だけを行う。
+LEVEL: SHOULD NOT  
+OWNER: Composer Light Review
 
-**MUST NOT**
+将来用途だけのabstractionを追加しない。
 
-- unrelated refactor
-- business abstraction
-- health framework
-- backup framework
+### RULE-CODE-004 — Avoid tautological evidence
 
-**Primary owner**: Composer Light Review
+LEVEL: MUST NOT  
+OWNER: Luna Light Review
 
-### RULE-CODE-002 — No exception swallowing
+Productionとtestで同じ値を独立hard-codeし、constant同士の比較でcontractを証明したことにしない。
 
-**MUST NOT**
+## 9. Documentation / CI
 
-- catchしてfailureを成功へ変換する。
-- cleanup failureを黙って無視する。
+### RULE-DOC-001 — Copyable canonical commands
 
-**Primary owner**: Composer Light Review
+LEVEL: MUST  
+OWNER: Composer Light Review
 
-### RULE-CODE-003 — No speculative abstraction
+D-04でlockしたcommandをcopyableに記録し、expected success / failure stateを併記する。
 
-**MUST NOT**
+### RULE-DOC-002 — Known boundaries are explicit
 
-- 将来用途だけのinterface / factory / orchestration layerを追加する。
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-**MUST**
-
-- 現在の3 service contractを最小構造で表現する。
-
-**Primary owner**: Composer Light Review
-
-### RULE-CODE-004 — Centralize contract values
-
-**MUST**
-
-- image reference、service name、environment key等の正本を可能な範囲で一元化する。
-
-**MUST NOT**
-
-- testとproductionで同じ値を独立hard-codeし、互いをtautologyで検証する。
-
-**Primary owner**: Luna Light Review
-
-## 10. Documentation rules
-
-### RULE-DOC-001 — Commands are copyable
-
-**MUST**
-
-- documented commandをそのまま実行できる形で記載する。
-- expected stateとfailure resultを記載する。
-
-**MUST NOT**
-
-- pseudo commandを正本手順にする。
-
-**Primary owner**: Composer Light Review
-
-### RULE-DOC-002 — Known limitations are explicit
-
-**MUST**
-
-- FND-06 health未実装
-- production deployment対象外
-- canonical restartの意味
-- secret source前提
-
-を明記する。
-
-**Primary owner**: Luna Light Review
-
-## 11. Git / CI rules
+FND-06 health未実装、production deployment対象外、D-03 / D-04の前提を正確に記載する。
 
 ### RULE-CI-001 — Exact Head identity
 
-**MUST**
+LEVEL: MUST  
+OWNER: Luna Light Review
 
-- candidate full Head SHAとdirect-head CIを記録する。
-- merge-refの場合はactual checkout SHAとBase / Headを分けて記録する。
+Direct-headとmerge-refを区別し、actual checkout SHAを記録する。
 
-**MUST NOT**
+### RULE-CI-002 — No temporary residue
 
-- merge-ref runをdirect-head runと呼ぶ。
+LEVEL: MUST NOT  
+OWNER: Static Gate
 
-**Primary owner**: Luna Light Review
+Generated logs、temporary mutation / override、secret material等をcommitしない。
 
-### RULE-CI-002 — No unrelated generated files
+## 10. Hardening preferences
 
-**MUST NOT**
+次はSHOULD / SHOULD NOT。上位security contractやpre-run lockがない限り、単独違反でMajorにしない。
 
-- secret file
-- build output
-- generated logs
-- temporary mutation
-- local Compose override
+- unnecessary host port exposureを避ける
+- host network / privileged execution / Docker socket mountを避ける
+- runtime imageを必要以上に大きくしない
+- obsolete / conflicting Compose definitionを避ける
+- fixed `container_name`等、project isolationを損ねる設定を避ける
 
-をcommitする。
+## 11. Reviewer behavior
 
-**Primary owner**: Static Check
-
-## 12. Scope rules
-
-### RULE-SCOPE-001 — FND-06 boundary
-
-**MUST NOT**
-
-- `/health/live`
-- `/health/ready`
-- API healthcheck endpoint
-
-を追加する。
-
-PostgreSQL containerのreadiness healthcheckはFND-05責任として許可する。
-
-### RULE-SCOPE-002 — No business schema
-
-**MUST NOT**
-
-- Customer / Account / Operator / AuditLog / Transaction等のbusiness table、migration、seed dataを追加する。
-
-### RULE-SCOPE-003 — No backup / production deployment
-
-**MUST NOT**
-
-- pg_dump / pg_restore workflow
-- remote registry publish
-- Kubernetes / Swarm
-- cloud deployment
-
-を追加する。
-
-## 13. Reviewer behavior
-
-- Light reviewerはこのcatalogを網羅的に確認する。
-- Heavy reviewerはこのcatalogの全件再監査をしない。
-- Heavy scopeのBlocker / Major root causeへ直結するrule violationだけをHeavy findingとして扱う。
+- Primary ownerがruleを完全判定する。
+- L1 ComposerはComposer-owned ruleだけを全件判定する。
+- S0 / Luna / Heavy-owned ruleをL1で再採点しない。
+- 他owner領域でBlocker / Major root cause候補を発見したら`ESCALATION`する。
+- Heavy reviewerはcatalog全件を再監査しない。
+- `SHOULD / SHOULD NOT`違反は、具体的な実害なしにMajorへ昇格しない。
