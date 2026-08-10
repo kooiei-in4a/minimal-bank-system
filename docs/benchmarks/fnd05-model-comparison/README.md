@@ -2,171 +2,233 @@
 
 Target Issue: #43 `[FND-05] Docker Compose実行基盤を確立する`
 
-Status: **PREPARATION DRAFT / IMPLEMENTATION PROHIBITED**
+Status: **PREPARATION FIX REQUIRED / IMPLEMENTATION PROHIBITED**
 
-このdirectoryは、FND-05の実装開始前に、ADR・Issue・実装設計・テスト設計・project rule・review責任を固定する。
+このdirectoryはFND-05実装開始前に、ADR・Issue・実装設計・test oracle・Project Rule・review責任を固定する。
 
-Benchmark文書は製品仕様、Accepted ADR、Issue #43を上書きしない。矛盾する場合は上位正本を優先し、実装を停止する。
+Benchmark文書は製品仕様、Accepted ADR、Issue #43を上書きしない。
+
+## Mutable-state source of truth
+
+Mutableなrun identity / gate / decision / stage artifact stateの正本は`run.json`。
+
+Markdown / executable promptは可読性のため値を再掲できるが、実行時は`run.json`のlocked value / evidence / artifact identityを照合する。
 
 ## Final process shape
 
 ```text
-ADR / Issue / Implementation Design / Test Design lock
+Product authority / D-01..D-08 lock
+  ↓
+Issue Ready PASS
+  ↓
+Koo explicit start authorization
   ↓
 3 independent implementations
   - GPT-5.6 Luna / Codex
   - Claude Sonnet 5 / Claude Code
-  - Grok 4.5 / Cursor
+  - Grok 4.5 / Cursor high
   ↓
-common evaluation / element-level Selection
+common evaluation
   ↓
-curated Final Synthesis
+element-level Selection / Adjudication
   ↓
-static project-rule checks
+curated Final Synthesis from current main
   ↓
-2 lightweight reviews
-  - Composer 2.5 / Cursor: project quality / rules
-  - GPT-5.6 Luna / Codex: ADR / Issue / AC conformance
+S0 static gate
   ↓
-light findings fix / CI / Final Head lock
+L1 Composer project-quality review
   ↓
-2 heavy final reviews — 原則各1回
-  - GPT-5.6 Sol / Codex: architecture / contract
-  - Claude Opus 5 / Claude Code: failure / lifecycle / false assurance
+L2 Luna contract-conformance review
+  ↓
+Light finding fix / CI / Final Head lock
+  ↓
+H1 Sol architecture final review — 原則1回
+  ↓
+H2 Opus adversarial final review — 原則1回
   ↓
 B0 / M0
   ├─ YES → merge gate
-  └─ NO  → targeted fix / blast-radius-based re-review
+  └─ NO  → targeted fix / finding-owned re-review
 ```
+
+JudgeはSol / OpusのBlocker・Major、root cause、required fix、merge readiness等が割れた場合だけconditionalに実行する。
 
 OpenCodeは使用しない。
 
+## Authority model
+
+### Product authority
+
+1. Koo-approved product policy / approved specification
+2. Accepted ADR-0001 / ADR-0008 / ADR-0009
+3. Issue #43
+4. `AGENTS.md`
+5. locked FND-05 contracts
+
+### Gate / current-state evidence
+
+- Parent Issue #3
+- WP-1 Issue #33
+- dependency #42
+- Issue Ready
+- Koo start authorization
+
+Parent / WPをProduct authorityとして使用しない。
+
 ## Self-review policy
 
-独立したFormal Self-Review phaseは実施しない。
+独立Formal Self-Review / H1 phaseは実施しない。
 
-Agent Aの基本的なdiff確認・検証は、`prompts/implementation.md`へ事前定義したCompletion Checksとして組み込む。
+Implementation promptへ事前定義したevidence-backed Completion Checksを組み込む。
 
-- 「自由にセルフレビューせよ」と指示しない。
-- review観点、prohibited pattern、required evidence、mutationを実装開始前に固定する。
-- H0 → Formal SR → H1という別実行は作らない。
+- 「自由にセルフレビューせよ」と指示しない
+- Checkごとに一次証拠を要求する
+- Author自己申告を最終証拠にしない
+- rule catalog全件自己採点は要求せず、Static / Light / Heavyへ責任分離する
 
 ## Implementation candidates — 3
 
-| Slot | Model + Harness | Effort target | Purpose |
-| --- | --- | --- | --- |
-| C1 | GPT-5.6 Luna / Codex | xHigh相当、実行前にexact label確認 | ADR・Issueへ忠実な基準実装 |
-| C2 | Claude Sonnet 5 / Claude Code | xHigh相当、実行前にexact label確認 | 別系列の設計・実装解釈 |
-| C3 | Grok 4.5 / Cursor | high。high fastは使用しない | 別Harness・Compose運用経路の異質性 |
-
-実行直前にproduct-visible model labelとeffortを再確認し、`run.json`へ固定する。変更・利用不能なlabelを黙って代替しない。
+| Slot | Model + Harness | Effort |
+| --- | --- | --- |
+| C1 | GPT-5.6 Luna / Codex | exact labelを実行前lock |
+| C2 | Claude Sonnet 5 / Claude Code | exact labelを実行前lock |
+| C3 | Grok 4.5 / Cursor | high。high fast禁止 |
 
 ## Light reviews — 2
 
-| Slot | Model + Harness | Checks |
+| Slot | Model + Harness | Primary responsibility |
 | --- | --- | --- |
-| L1 | Composer 2.5 / Cursor | code quality、project rule、配置、Compose構造、明白な設定・secret・scope問題 |
-| L2 | GPT-5.6 Luna / Codex | ADR → Issue → AC → implementation → test → evidenceのtraceability |
+| L1 | Composer 2.5 / Cursor | Composer-owned code/config quality / Project Rule |
+| L2 | GPT-5.6 Luna / Codex | ADR → Issue → implementation → test → evidence traceability |
 
-Light Reviewはmerge可否の最終判断ではない。Heavy reviewerへ明白な問題を持ち込まないための前処理である。
+L1は全catalogを再採点しない。S0 / Luna / Heavy-owned ruleは既存resultをconsumeし、Blocker / Major root cause候補だけescalateする。
 
 ## Heavy final reviews — 2
 
-| Slot | Model + Harness | Checks | Full-review budget |
+| Slot | Model + Harness | Primary responsibility | Full-review budget |
 | --- | --- | --- | ---: |
-| H1 | GPT-5.6 Sol / Codex | architecture、ADR、責務境界、Issue本質 | 1 |
-| H2 | Claude Opus 5 / Claude Code | failure、lifecycle、ordering、secret、false assurance | 1 |
+| H1 | GPT-5.6 Sol / Codex | architecture / contract / responsibility | 1 |
+| H2 | Claude Opus 5 / Claude Code | failure / lifecycle / false assurance | 1 |
 
-Heavy promptには、確認する項目と**原則確認しない項目**を同じ強さで明記する。style、軽微な命名、formatter、README typo、単純な配置・version照合等はLight Gateの責任とする。
+Heavy reviewerが原則確認しないのは、Lightで**ACCEPTED + FIXED + VERIFIED**された低リスク項目。
 
-## Conditional Judge
+REJECTED / UNRESOLVED / ESCALATED Blocker・Major候補は除外しない。Heavyのprimary scopeに入る場合、exact Final Headから独立再確認する。
 
-Judgeは通常工程へ置かない。次の場合だけ発動する。
+## Observable contract vs implementation preference
 
-- Sol / OpusでBlocker・Major有無が割れる
-- root causeまたはrequired fix方向が割れる
-- merge readinessが割れる
-- 両者が同じ未検証assumptionへ依存している
+Issue #43が必須とするobservable behaviorをMUSTとする。
 
-Judgeのexact identityはtrigger時にfresh context・非author・非reviewer優先で固定する。
+- PostgreSQL 18 runtime / named volume
+- PostgreSQL usable後にFND-04 Migratorを実行
+- Migrator success後だけAPI start
+- Migrator failure時API never-start
+- API no-auto-migration
+- digest pinning
+- external secret / connection configuration
+- deterministic lifecycle / external evidence
+
+Dedicated `postgres` / `migrator` / `api` service names、exact Compose condition、exact file path等はreference design / conventionであり、pre-runでKooが共通shapeとしてlockしない限り独立ACへ昇格しない。
+
+## Mutation model
+
+CandidateにはM-01〜M-10のprotected contract / observable propertyを開示する。Evaluatorのexact injection recipeへ過学習させない。
+
+Final Synthesisでは原則M-01〜M-10をすべて実行し、
+
+```text
+baseline GREEN
+→ one controlled defect
+→ RED for expected reason
+→ revert
+→ GREEN
+→ residue 0
+```
+
+を確認する。
+
+M-08はtest oracle自体を壊さず、Migratorがexit 0でもexpected migration stateを作らないruntime defectとして検証する。
+
+## Immutable stage artifact handoff
+
+Evaluation以降のstage artifactは次を持つ。
+
+```text
+artifact_path
+content_sha256
+prompt_revision
+target_head_sha
+source_artifact_refs
+producer_slot
+producer_commit_sha
+```
+
+`run.json.stage_artifacts`へ同じidentityを記録する。Downstream promptはexact refを照合してから読む。
+
+## Open decisions before lock
+
+D-01〜D-08は`run.json.open_decisions`で`locked_value = null`の間は未確定。
+
+- D-01 minimum Compose version / features
+- D-02 PostgreSQL + .NET exact image identities
+- D-03 secret source / reader design
+- D-04 lifecycle commands + semantics
+- D-05 external state capture method
+- D-06 failure injection override
+- D-07 cross-platform contract
+- D-08 Final Synthesis exact identity
+
+Example / draft noteをcandidateへの必須answerとみなさない。
 
 ## Pre-run gates
 
-- [ ] FND-04 final retrospective PR #144がreview済み
-- [ ] Issue #43のdependency #42 COMPLETE / MERGEDを再確認
-- [ ] Issue #43のGate statusを現在状態へ更新
-- [ ] `reference/assumption-ledger.md`の`TO_LOCK`が0
-- [ ] `reference/implementation-and-test-design-contract.md` locked
-- [ ] `reference/project-rule-catalog.md` locked
-- [ ] `reference/review-perspective-matrix.md` locked
-- [ ] `reference/mandatory-mutations.md` locked
-- [ ] `scoring.md` locked
-- [ ] implementation / evaluation / selection / final synthesis prompt revisions locked
-- [ ] light / heavy / fix / re-review prompt revisions locked
-- [ ] exact common base full SHA fixed
-- [ ] 3 candidate branches created from exact common base
-- [ ] 3 / 3 branch Head identity verified
-- [ ] 3 Draft PR事前作成
-- [ ] exact model / harness / effort fixed
-- [ ] candidate output 0件を確認
-- [ ] Issue #43 Issue Ready = PASS
-- [ ] Kooがcandidate execution開始を許可
+- [ ] PR #144 review済み
+- [ ] PR #145 3-review共通finding修正済み
+- [ ] finding-owned targeted re-review B0 / M0
+- [ ] D-01〜D-08 locked with evidence
+- [ ] prompt / reference revision locked
+- [ ] common base full SHA fixed
+- [ ] 3 candidate branches / Draft PRs created from same base
+- [ ] exact Model / Harness / Effort locked
+- [ ] candidate output 0件
+- [ ] Issue #43 Issue Ready PASS
+- [ ] Koo explicit start authorization
 
-全項目を満たすまでimplementationを開始しない。
+Issue Ready PASSだけではcandidate executionを開始しない。
 
 ## Files
 
 ### State / scoring
 
-- `run.json`: machine-readable pre-run state
-- `pre-run-checklist.md`: human-readable completion checklist
-- `scoring.md`: 3 candidate共通の評価基準
+- `run.json`
+- `pre-run-checklist.md`
+- `scoring.md`
 
 ### Reference
 
-- `reference/assumption-ledger.md`: Docker / project assumptions and open decisions
-- `reference/implementation-and-test-design-contract.md`: ADR起点の実装・test設計
-- `reference/project-rule-catalog.md`: MUST / MUST NOT / placement rule
-- `reference/review-perspective-matrix.md`: review責任分担と非対象
-- `reference/mandatory-mutations.md`: Final Synthesisで必ず検証するmutation
+- `reference/assumption-ledger.md`
+- `reference/implementation-and-test-design-contract.md`
+- `reference/project-rule-catalog.md`
+- `reference/review-perspective-matrix.md`
+- `reference/mandatory-mutations.md`
 
-### Implementation / synthesis
+### Prompts
 
-- `prompts/implementation.md`: 3 candidate共通実装prompt
-- `prompts/implementation-evaluation.md`: 3 candidate比較
-- `prompts/selection-adjudication.md`: element-level selection
-- `prompts/final-synthesis.md`: current mainからのcurated実装
-
-### Light gate
-
-- `prompts/light-review-project-quality.md`: Composer用
-- `prompts/light-review-contract-conformance.md`: Luna用
-- `prompts/light-findings-fix.md`: Light finding disposition / fix
-
-### Heavy gate / conditional path
-
-- `prompts/heavy-review-sol.md`: Sol architecture final gate
-- `prompts/heavy-review-opus.md`: Opus adversarial final gate
-- `prompts/conditional-judge.md`: Heavy disagreement時のみ
-- `prompts/targeted-fix.md`: locked Blocker / Majorの最小修正
-- `prompts/targeted-re-review.md`: finding-owned re-review
-
-### Gate
-
-- `prompts/issue-ready-review.md`: candidate開始前のfresh gate review
-
-## External behavior assumptions
-
-Docker公式文書により、Composeはshort syntaxの`depends_on`だけではdependencyのready状態を待たない。`service_healthy`と`service_completed_successfully`は実装手段として使用できるが、FND-05ではCompose定義の存在だけを検証証拠にせず、container state、exit code、timestamp、migration historyを外部観測する。
-
-- https://docs.docker.com/compose/how-tos/startup-order/
-- https://docs.docker.com/reference/compose-file/services/
-- https://docs.docker.com/reference/cli/docker/compose/ps/
-- https://docs.docker.com/reference/cli/docker/compose/config/
-- https://docs.docker.com/compose/how-tos/use-secrets/
+- `prompts/implementation.md`
+- `prompts/implementation-evaluation.md`
+- `prompts/selection-adjudication.md`
+- `prompts/final-synthesis.md`
+- `prompts/light-review-project-quality.md`
+- `prompts/light-review-contract-conformance.md`
+- `prompts/light-findings-fix.md`
+- `prompts/heavy-review-sol.md`
+- `prompts/heavy-review-opus.md`
+- `prompts/conditional-judge.md`
+- `prompts/targeted-fix.md`
+- `prompts/targeted-re-review.md`
+- `prompts/issue-ready-review.md`
 
 ## Start boundary
 
-このpreparationがreview・mergeされ、そのmerge commitをcommon baseとして固定した後に、3 candidate branchとDraft PRを事前作成する。
+Prompt-suite targeted re-review → D-01〜D-08 lock → Issue #43同期 → Issue Ready PASS → Koo明示開始許可、の順序を崩さない。
 
-branch / PR作成後もcandidate executionは開始しない。Issue #43 Issue Ready PASSとKooの明示的開始指示をもって開始する。
+現時点ではFND-05 implementationは禁止。
