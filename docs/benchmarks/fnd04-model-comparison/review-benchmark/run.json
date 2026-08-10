@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "benchmark_id": "fnd04-final-synthesis-independent-review",
   "run_id": "fnd04-final-review-20260810",
-  "status": "formal_agent_b_technical_gate_pass_merge_preconditions",
+  "status": "final_complete",
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
   "target_pr": 140,
@@ -39,7 +39,9 @@
     "new_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
     "pr_merge_ref_sha": "2e69049bd8b38e57cd4fee2c42e17edaeaf23df1",
     "commit_count": 1,
-    "changed_files": ["tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs"],
+    "changed_files": [
+      "tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs"
+    ],
     "additions": 18,
     "deletions": 0,
     "production_code_changed": false,
@@ -79,8 +81,22 @@
     "prompt_revision": "fnd04-final-major-fix-rereview-v1",
     "expected": "2_of_2",
     "completed": "2_of_2",
-    "t1": {"model":"GPT-5.6 Sol","harness":"Codex","effort":"xHigh","verdict":"G01_FIXED","new_blocker":0,"new_major":0},
-    "t2": {"model":"NOT_EXPOSED","harness":"Cursor","effort":"Auto","verdict":"G01_FIXED","new_blocker":0,"new_major":0},
+    "t1": {
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "effort": "xHigh",
+      "verdict": "G01_FIXED",
+      "new_blocker": 0,
+      "new_major": 0
+    },
+    "t2": {
+      "model": "NOT_EXPOSED",
+      "harness": "Cursor",
+      "effort": "Auto",
+      "verdict": "G01_FIXED",
+      "new_blocker": 0,
+      "new_major": 0
+    },
     "clearance_result": "pass"
   },
   "major_fix_clearance": {
@@ -115,9 +131,17 @@
   "merge_actions": {
     "technical_gate": "passed",
     "github_approved_state": "not_obtained_due_self_approval_prohibition",
-    "repository_rule_requirement": "not_yet_verified",
-    "pr_ready": "eligible_after_repository_rule_check",
-    "merge": "eligible_after_ready_and_repository_rule_check",
-    "issue_close": "after_merge_and_close_evidence_complete"
+    "repository_rule_requirement": "separate_actor_approval_not_required",
+    "repository_rule_evidence": "recent_fnd03_repository_rule_check_plus_normal_pr_merge_enforcement",
+    "pr_ready": "completed",
+    "merge": "completed",
+    "merge_method": "merge",
+    "merge_commit_sha": "9a352a3a61945647273ccc7dfbc8e1816c3ca07c",
+    "main_head_sha": "9a352a3a61945647273ccc7dfbc8e1816c3ca07c",
+    "merged_at": "2026-08-10T07:40:42Z",
+    "issue_close": "completed",
+    "issue_close_reason": "completed",
+    "issue_closed_at": "2026-08-10T07:42:09Z",
+    "close_evidence_comment_id": 5237276272
   }
 }
