@@ -9,10 +9,10 @@ REVIEW_MANIFEST: "pre-run-prompt-suite-review-manifest.md"
 OUTPUT_BRANCH: "agent/fnd05-prompt-suite-independent-review"
 OUTPUT_PR: 146
 OUTPUT_FILE: "docs/benchmarks/fnd05-model-comparison/reviews/pre-run-prompt-suite-independent-review.md"
-REVIEWER_MODEL: "GPT 5.6 Sol"
-REVIEWER_HARNESS: "Browser"
-REVIEWER_EFFORT: "xHigh"
-REVIEWER_SLUG: "gpt-5.6-sol-Browser-xhigh"
+REVIEWER_MODEL: "Grok 4.5"
+REVIEWER_HARNESS: "Cursor"
+REVIEWER_EFFORT: "High"
+REVIEWER_SLUG: "grok-4.5-cursor-high"
 ATTEMPT: 1
 ```
 
@@ -21,35 +21,34 @@ ATTEMPT: 1
 ```text
 VERDICT: FIX_REQUIRED
 BLOCKER_COUNT: 0
-MAJOR_COUNT: 5
+MAJOR_COUNT: 6
 MINOR_COUNT: 4
-NIT_COUNT: 0
+NIT_COUNT: 1
 TARGET_HEAD_VERIFIED: YES
 ```
 
-全体構造は成立している。3 candidate → Selection → curated Final Synthesis → Static / Light 2 → fixed Head → Heavy 2 → conditional fix / re-review というFND-05の固定方針を再設計する必要はない。
+固定方針（3 candidate / Formal Self-Review廃止 / Light 2 → Head lock / Heavy 2 / Judge conditional / curated Final Synthesis）自体は上位正本と矛盾せず、再設計は不要である。
 
-一方、lock前に修正すべき問題がある。最重要は次の5点である。
+ただし D-01〜D-08 の一次証拠 lock へ進む前に、prompt suite 側で次を修正する必要がある。
 
-1. benchmark側のdraft design / ruleが、Issue #43が許可する実装自由度より狭い方式をMUST化している。
-2. M-08がtest oracle自身を弱体化するmutationになっており、期待REDを信頼できない。
-3. Light findingのREJECTED / UNRESOLVED Blocker・Major候補をHeavyが再確認しない解釈が可能で、blind spotが残る。
-4. Evaluation → Selection → Final Synthesis → Light → Heavy → targeted fix間の「locked artifact」を一意に参照するcontrol-plane契約が不足している。
-5. `Authority`を名乗る一部promptで、Approved specification / ADR / IssueよりParent / WP等が上に見える並びになっている。
-
-したがって、D-01〜D-08の値をlockする前に、P0 / P1のprompt-suite修正を行い、finding-owned再レビューを1回実施することを推奨する。
+1. Issue #43 が許す「同等 Compose 経路」を、exact 3-service / exact Compose condition / exact placement の MUST へ昇格している。
+2. M-08 が production defect ではなく oracle 自身を壊す mutation になっており、期待 RED を信頼できない。
+3. Light の REJECTED / UNRESOLVED Blocker・Major 候補を Heavy が再確認しない解釈が可能で、blind spot が残る。
+4. 一部 prompt の `Authority` 番号リストが Parent / WP を ADR・Issue より上に見せる。
+5. D-03 / D-05 / D-08 が open 宣言と同時に preferred / default / 狭義定義を先取りしている。
+6. stage 間の locked artifact を path + content identity で一意参照する control-plane 契約が不足している。
 
 ---
 
 ## 2. Target Verification
 
-GitHub一次証拠で次を確認した。
+GitHub 一次証拠（`gh pr view 145`）で確認した。
 
 ```yaml
 REPOSITORY: "kooiei-in4a/minimal-bank-system"
 TARGET_PR: 145
 TITLE: "docs(fnd05): prepare ADR-first implementation and review funnel"
-STATE: "OPEN / DRAFT"
+STATE: OPEN
 BASE_BRANCH: "agent/fnd04-final-retrospective-synthesis"
 BASE_SHA: "a69471578eed12823a1469017dac7fddf32ad41b"
 HEAD_BRANCH: "agent/fnd05-pre-run-preparation"
@@ -59,161 +58,100 @@ ADDITIONS: 5006
 DELETIONS: 0
 ```
 
-22 filesはすべて `docs/benchmarks/fnd05-model-comparison/**` 配下で、review manifestのexact listと一致する。対象外ファイルの混入は確認されなかった。
+22 files はすべて `docs/benchmarks/fnd05-model-comparison/**` 配下で、review manifest の exact list と一致する。対象外ファイルの混入はなし。
 
-Output PR #146も、baseがPR #145 exact Head `57df6ae1...` であることを確認した。
+Output branch の merge-base も `57df6ae1a30ac23151fbcd707f191f5d26dba029` であることを確認した。
 
-Target identityは固定条件と一致するため、`BLOCKED — TARGET MOVED` ではない。
+`BLOCKED — TARGET MOVED` ではない。
 
 ---
 
 ## 3. Phase A Reference Review
 
-Target suiteを評価する前に、Issue #43、Accepted ADR-0001 / 0008 / 0009、`AGENTS.md`、PR #144 FND-04 final retrospectiveを確認し、次をReferenceとして固定した。
+target suite 評価前に、Issue #43、ADR-0001 / 0008 / 0009、`AGENTS.md`、PR #144 FND-04 final retrospective を固定した。
 
-### 3.1 Authority
+### 3.1 Issue #43 Close condition
 
-正本は次の順で扱う。
+Docker Compose v2 で PostgreSQL、one-shot migrator、API を再現可能に起動・停止でき、migration 成功後だけ API が開始し、migration 失敗時は API を開始しない状態を実現した時点で完了する。
 
-1. Kooが承認した製品方針・仕様
-2. Accepted ADR
-3. Target Issue #43
-4. code / automated tests
-5. PR description / comment
+### 3.2 Scope / Out of scope
 
-`AGENTS.md`はこのauthorityと開発統制を定義する。Parent #3 / WP #33はphase / gate / progressの統制証拠であり、製品仕様、ADR、Issue AC、コードレベル設計の正本ではない。
+**Scope:** Compose v2、PostgreSQL 18、API、one-shot migrator **または同等の Compose 正本経路**、named volume、image digest pin、secret 外部注入、migration → API ordering、migration failure 時 API 非起動、deterministic start / stop / clean reset。
 
-`docs/benchmarks/**`は比較実験・再現用artifactであり、製品仕様、ADR、Issue #43を上書きしない。
+**Out of scope:** health endpoint、business endpoint / schema、backup / restore、production deployment、scheduler / orchestrator、API startup auto-migration。
 
-### 3.2 Issue #43 close condition
+### 3.3 Ordering / failure / no-auto-migration
 
-FND-05は、Docker Compose v2でPostgreSQL、explicit one-shot Migrator、APIを再現可能に起動・停止し、次を成立させた時にclose可能となる。
+- PostgreSQL → Migrator → API
+- clean DB では migrator 適用後だけ API 開始
+- migration failure 時 API 非起動
+- migration 未実行を黙って許容しない
+- API 通常 startup では schema migration を実行しない
 
-```text
-PostgreSQL usable
-  -> explicit Migrator
-     -> success: API may start
-     -> failure: API must not start
-```
+### 3.4 Secret / image / volume
 
-Issueは`one-shot migrator service または同等のCompose正本経路`を許可している。
+- connection string / password を repository へ固定しない
+- secret を command-line 引数へ直接展開しない
+- approved major 内の digest で image を固定
+- PostgreSQL data は named volume
 
-### 3.3 Scope / Out of scope
+### 3.5 FND-06 boundary
 
-Required:
+FND-05 は Compose wiring / lifecycle / external observation / secret・image・volume 統合 / ordering を担う。FND-06 の `/health/*` を先取りせず、container state / exit / timestamp / migration history で ordering を証明する。
 
-- Docker Compose v2 execution path
-- PostgreSQL 18
-- API
-- FND-04 explicit Migrator connection
-- named PostgreSQL volume
-- digest pinning
-- external secret / connection configuration
-- migration success before API start
-- migration failure API non-start
-- deterministic start / stop / clean reset
+### 3.6 Agent / review / merge rules (`AGENTS.md` + Issue)
 
-Out of scope:
+- Agent A は仕様不足を独自解釈で埋めない
+- Agent B は正本 → 差分 → テスト順で独立再検証し、原則対象を変更しない
+- Blocker / Major 0、必須証拠、範囲逸脱なし、明示許可が merge gate
+- Parent #3 は統制 Issue であり仕様・ADR・AC の正本ではない
 
-- FND-06 health endpoint logic
-- business endpoint / business schema / business data
-- backup / restore
-- production deployment
-- scheduled service / production orchestrator
-- API startup auto-migration
+### 3.7 PR #144 fixed policy
 
-### 3.4 ADR contract
-
-ADR-0001 fixes .NET 10 / ASP.NET Core 10 / PostgreSQL 18 / EF Core 10 / Docker Compose v2 and requires implementation-time package / image identity pinning within approved majors.
-
-ADR-0009 requires EF migration application through an explicit migrator command or one-shot Compose path before normal API start, prohibits API startup migration and `EnsureCreated`, and requires migration failure to fail deployment rather than be masked.
-
-ADR-0008 requires secrets not to be stored or logged and permits external secret supply through environment, Docker secret, or protected password file. Credentials must not be placed directly in command arguments. PostgreSQL persistence uses a named Docker volume.
-
-### 3.5 FND-04 / FND-05 / FND-06 boundary
-
-- FND-04 owns DbContext, migration machinery, `InitialFoundation`, explicit `MinimalBankSystem.Migrator`, non-zero failure propagation, API no-auto-migration.
-- FND-05 owns Compose wiring, lifecycle, external runtime observation, secret / image / volume integration, migration -> API ordering.
-- FND-06 owns `/health/live` and `/health/ready` application semantics.
-
-FND-05 must prove ordering without introducing FND-06 API health endpoints.
-
-### 3.6 Agent / reviewer / merge rules
-
-- Agent A may implement, test, verify, inspect diff, and update Draft PR within authorized scope.
-- Agent B / reviewers independently re-evaluate from authority and primary evidence.
-- Blocker / Major must be zero before merge gate.
-- Issue Ready and Koo start authorization are separate from WP-1-wide Implementation Ready.
-- PR #145 itself must not start FND-05 implementation.
-
-### 3.7 FND-04 process policy
-
-The fixed FND-05 policy is valid:
-
-- no OpenCode
-- no independent Formal Self-Review / H1 execution
-- author-side verification remains embedded as predefined Completion Checks
-- 3 independent candidates
-- no candidate merge / cherry-pick into Final Synthesis
-- curated Final Synthesis from current main
-- Static + Composer + Luna before Heavy
-- fixed Final Head before Sol / Opus
-- Heavy non-goals with Blocker / Major root-cause exception
-- Judge conditional only
-- re-review by finding owner / blast radius
-
-This review does not reopen those decisions.
+3 candidate、OpenCode 禁止、Formal Self-Review / H1 廃止、Completion Checks 内蔵、Light 2 → Head lock、Heavy 2（原則各1回）、Heavy 非確認項目明示、Judge conditional、re-review は blast radius、candidate merge / cherry-pick 禁止、Selection 後に current main から curated Final Synthesis。
 
 ---
 
 ## 4. Fixed Policy Assessment
 
-| Fixed policy | Assessment | Notes |
-| --- | --- | --- |
-| C1 Luna / Codex | PASS | consistent across README / run / checklist / prompts |
-| C2 Sonnet / Claude Code | PASS | consistent |
-| C3 Grok 4.5 / Cursor high | PASS | `high fast` explicitly prohibited |
-| OpenCode 0 | PASS | consistent |
-| Separate Formal Self-Review 0 | PASS | completion checks preserve Agent A basic verification |
-| Light L1 Composer | PASS | role is understandable |
-| Light L2 Luna | PASS | AC / evidence traceability role is understandable |
-| Heavy H1 Sol | PASS | architecture / contract scope is focused |
-| Heavy H2 Opus | PASS | failure / lifecycle / false assurance scope is focused |
-| Heavy explicit non-goals | PASS WITH CHANGE | non-goals are safe; unresolved Light finding handling must be narrowed |
-| Heavy full review 1 each | PASS | re-review exceptions are blast-radius based |
-| Judge conditional | PASS | trigger set is reasonable |
-| Final Synthesis curated from current main | PASS | no merge / cherry-pick is explicit |
-| Issue Ready + Koo start authorization | PASS | implementation remains prohibited |
+| Policy element | Assessment |
+| --- | --- |
+| C1 Luna / Codex, C2 Sonnet / Claude Code, C3 Grok / Cursor high | PASS — README / run.json / issue-ready と一致 |
+| OpenCode 禁止 | PASS |
+| Formal Self-Review / H1 廃止 | PASS — 方針は成立。Completion Checks 品質は F-07 |
+| Completion Checks in implementation | PASS WITH RISK — 代替は可能だが overload / theater |
+| curated Final Synthesis from main | PASS |
+| Light Composer + Luna → fix → Head lock | PASS WITH RISK — handoff に rejected B/M 必須化が不足（F-03） |
+| Heavy Sol + Opus once each | PASS |
+| Heavy non-goals | PASS WITH RISK — 「解消済み」解釈が blind spot（F-03） |
+| Judge conditional | PASS — trigger 記録主体の明示は Minor |
+| re-review by blast radius | PASS — multi-role 集約は Minor |
+| Issue Ready + Koo start まで実装禁止 | PASS — run.json `implementation_permitted: false` |
 
-No fixed policy requires redesign.
+固定方針そのものを再投票する必要はない。上位正本と根本矛盾する固定方針はない。問題は draft contract / prompt の実装粒度である。
 
 ---
 
 ## 5. Cross-File Consistency Matrix
 
-| Contract / Identity | Source of truth | Referencing files | Result | Gap |
-| --- | --- | --- | --- | --- |
-| Model / harness configuration | run.json + fixed policy | README, checklist, implementation, review prompts | PASS | none |
-| No OpenCode | fixed policy / run.json | README, checklist, implementation | PASS | none |
-| No separate Formal Self-Review | fixed policy / retrospective | README, run, checklist, implementation, final-synthesis | PASS | none |
-| Stage order | retrospective / README | matrix, prompts | PASS | control-plane artifact identity incomplete |
-| Light responsibility | review matrix | L1 / L2 | MODIFY | L1 rechecks catalog rules owned by other stages |
-| Heavy responsibility | review matrix | Sol / Opus | PASS WITH CHANGE | unresolved/rejected Light B/M exception must be explicit |
-| Heavy non-goals | retrospective | matrix, Sol, Opus | MODIFY | matrix wording is broader than Heavy prompts |
-| Judge triggers | run.json / matrix | conditional-judge | PASS | consistent |
-| Re-review scope | retrospective / matrix | targeted-fix / targeted-re-review | PASS | artifact binding should be explicit |
-| Revision IDs | run.json | all 22 files | PASS | v1 identifiers match |
-| D-01 | open decision registry | ledger / checklist / gate | PASS | evidence definition usable |
-| D-02 | open decision registry | ledger / checklist / gate | MODIFY | PostgreSQL digest is split into P-07 instead of the D-02 definition |
-| D-03 | open decision registry | ledger / design contract | MODIFY | concrete preferred answer leaks before lock |
-| D-04 | open decision registry | ledger / design contract / rules | MODIFY | restart semantics are partly hard-coded before command lock |
-| D-05 | open decision registry | ledger / checklist / gate | MODIFY | ledger narrows it to API start timestamp only |
-| D-06 | open decision registry | ledger / design contract | PASS WITH CAUTION | examples are acceptable; exact override remains open |
-| D-07 | open decision registry | ledger / checklist | PASS | no exact shell/helper locked yet |
-| D-08 | open decision registry | ledger / final-synthesis | MODIFY | default Luna/Codex author pre-seeds an explicitly open identity |
-| Metrics | run.json | retrospective / final synthesis | PASS | kill rate / residue targets consistent |
-| Gate status | run.json | checklist / issue-ready | PASS | implementation_permitted=false is maintained |
-| Stage output identity | none | evaluation -> selection -> final -> light -> heavy -> fix | FAIL | fresh context cannot uniquely resolve several `<LOCKED>` inputs |
+| Topic | Canonical source | Consistency | Required change |
+| --- | --- | --- | --- |
+| candidate / Light / Heavy counts | README + run.json | PASS | keep |
+| no OpenCode / no Formal SR | README + run.json + prompts | PASS | keep |
+| process stage order | README | PASS | add S0 handoff clarity |
+| Authority order | AGENTS.md | FAIL | F-04 |
+| 3-service exact shape | design contract / RULE / implementation | FAIL vs Issue #43 | F-01 |
+| Compose conditions as means vs MUST | design §4.4 vs RULE-COMPOSE-002 | FAIL | F-01 |
+| D-01..D-08 registry | run.json + ledger | MODIFY | F-05 |
+| D-05 scope | ledger vs checklist | FAIL | F-05 |
+| D-03 preferred leakage | ledger / contract / checklist | FAIL | F-05 |
+| M-01..M-10 IDs | mandatory-mutations | PASS list / FAIL M-08 design | F-02 |
+| Light / Heavy responsibilities | matrix | PASS intent / FAIL reject escape | F-03 |
+| locked artifact identity | scattered `<LOCKED>` labels | FAIL | F-06 |
+| revision IDs | per-file headers | PASS as labels only | strengthen with hashes |
+| severity / output schemas | prompts | PASS local / MODIFY handoff fields | F-03 / F-06 |
+| scoring metrics | scoring.md / run.json | PASS | keep |
+| implementation prohibition | README / checklist / run.json | PASS | keep |
 
 ---
 
@@ -221,30 +159,30 @@ No fixed policy requires redesign.
 
 | File | Role | Clarity | Consistency | Executability | Required change |
 | --- | --- | --- | --- | --- | --- |
-| `README.md` | process overview | PASS | PASS | PASS | none required; update only if terminology changes |
-| `pre-run-checklist.md` | human pre-run gate | PASS | MODIFY | PASS | align D-02 / D-05 / D-08 wording with ledger/run |
-| `run.json` | machine-readable registry | PASS | MODIFY | MODIFY | add stage artifact refs and locked decision evidence/value fields |
-| `scoring.md` | candidate rubric | PASS | PASS | PASS | none required |
-| `reference/assumption-ledger.md` | external/project assumptions + D-01..08 | PASS | MODIFY | MODIFY | keep D values truly open; broaden D-05; unify D-02 |
-| `reference/implementation-and-test-design-contract.md` | runtime/test contract | PASS | MODIFY | MODIFY | separate upper-source MUSTs from unapproved implementation-shape preferences |
-| `reference/mandatory-mutations.md` | oracle validation | PASS | MODIFY | MODIFY | redesign M-08; clarify candidate-visible vs evaluator injection detail |
-| `reference/project-rule-catalog.md` | enforceable project rules | PASS | MODIFY | MODIFY | remove/lock overconstraints; make owner semantics real |
-| `reference/review-perspective-matrix.md` | role split | PASS | MODIFY | MODIFY | unresolved/rejected Light B/M handling; reduce L1 overlap |
-| `prompts/implementation.md` | candidate implementation | PASS | MODIFY | MODIFY | authority order; overconstraints; mutation visibility contract |
-| `prompts/implementation-evaluation.md` | common evaluation | PASS | MODIFY | MODIFY | approved spec authority + canonical output artifact identity |
-| `prompts/selection-adjudication.md` | element selection | PASS | MODIFY | MODIFY | exact evaluation artifact ref / output ref contract |
-| `prompts/final-synthesis.md` | curated final implementation | PASS | MODIFY | MODIFY | exact Selection/Evaluation artifact refs; remove D-08 default |
-| `prompts/light-review-project-quality.md` | Composer Light | PASS | MODIFY | PASS | authority order; only own catalog scope + escalation |
-| `prompts/light-review-contract-conformance.md` | Luna Light | PASS | MODIFY | PASS | authority order; consume S0/L1 rather than duplicate rules |
-| `prompts/light-findings-fix.md` | Light finding disposition/fix | PASS | MODIFY | MODIFY | mark unresolved/rejected B/M explicitly for Heavy handoff |
-| `prompts/heavy-review-sol.md` | architecture final gate | PASS | MODIFY | PASS | explicitly re-open unresolved/rejected relevant Light B/M candidates |
-| `prompts/heavy-review-opus.md` | adversarial final gate | PASS | MODIFY | PASS | same; otherwise non-goals are sound |
-| `prompts/conditional-judge.md` | disagreement adjudication | PASS | PASS | MODIFY | bind Sol/Opus artifacts by immutable refs, not labels only |
-| `prompts/issue-ready-review.md` | pre-execution gate | PASS | MODIFY | MODIFY | verify all D locks via run registry evidence refs; state authority order explicitly |
-| `prompts/targeted-fix.md` | B/M minimal fix | PASS | PASS | MODIFY | bind locked finding source + reviewer artifact/ref + target head |
-| `prompts/targeted-re-review.md` | finding-owned re-review | PASS | PASS | MODIFY | bind change-surface lock and finding source by immutable artifact refs |
+| `README.md` | process overview / policy | PASS | PASS | PASS | keep; optional S0 / artifact SSOT note |
+| `run.json` | machine registry | PASS | MODIFY | MODIFY | add decision evidence slots; keep values null until lock |
+| `pre-run-checklist.md` | human gate | PASS | MODIFY | PASS | align D-02/D-03/D-05 wording; remove answer-shaped checklist items |
+| `scoring.md` | evaluation rubric | PASS | PASS | PASS | keep |
+| `reference/assumption-ledger.md` | assumptions + open Ds | PASS | MODIFY | MODIFY | remove preferred/default; broaden D-05; unify D-02/P-07 |
+| `reference/implementation-and-test-design-contract.md` | runtime/test contract | PASS | MODIFY | MODIFY | demote exact shape to preferred; keep observable contracts MUST |
+| `reference/project-rule-catalog.md` | MUST / MUST NOT | PASS | MODIFY | MODIFY | align with Issue freedom; assign SCOPE owners; demote overconstraints |
+| `reference/mandatory-mutations.md` | test oracle mutations | PASS | MODIFY | MODIFY | redesign M-08 injection |
+| `reference/review-perspective-matrix.md` | role separation | PASS | MODIFY | MODIFY | rejected/unresolved Light B/M → Heavy must-review |
+| `prompts/implementation.md` | candidate Agent A | MODIFY | MODIFY | MODIFY | Authority split; soften exact topology Checks; compress Checks |
+| `prompts/implementation-evaluation.md` | 3-candidate eval | PASS | MODIFY | MODIFY | require artifact path/hash |
+| `prompts/selection-adjudication.md` | element selection | PASS | MODIFY | MODIFY | require artifact path/hash |
+| `prompts/final-synthesis.md` | curated synthesis | PASS | MODIFY | MODIFY | remove default-author seed; require Selection artifact identity |
+| `prompts/light-review-project-quality.md` | Composer L1 | MODIFY | MODIFY | MODIFY | Authority split; consume S0; own-primary-rules not full catalog |
+| `prompts/light-review-contract-conformance.md` | Luna L2 | MODIFY | MODIFY | MODIFY | Authority split; drop scoring as Authority |
+| `prompts/light-findings-fix.md` | Light fix / Head lock | PASS | MODIFY | MODIFY | require rejected/unresolved B/M handoff list |
+| `prompts/heavy-review-sol.md` | Sol Heavy | PASS | MODIFY | MODIFY | limit DO-NOT-CHECK to ACCEPTED+FIXED Minor/Nit |
+| `prompts/heavy-review-opus.md` | Opus Heavy | PASS | MODIFY | MODIFY | same Light-escape exception |
+| `prompts/conditional-judge.md` | conditional judge | PASS | MODIFY | MODIFY | require immutable review artifact refs |
+| `prompts/targeted-fix.md` | targeted fix | PASS | PASS | MODIFY | bind finding IDs to artifact identity |
+| `prompts/targeted-re-review.md` | finding-owned re-review | PASS | PASS | MODIFY | define multi-role completion aggregation |
+| `prompts/issue-ready-review.md` | pre-run gate | PASS | MODIFY | PASS | Authority wording; verify D list consistency |
 
-No file requires full redesign. The necessary changes are local and cross-file mechanical once the five Major root causes are resolved.
+判定凡例: Clarity / Consistency / Executability は PASS / MODIFY / REDESIGN。全体ファイルを REDESIGN と判定したものはない。
 
 ---
 
@@ -255,46 +193,42 @@ No file requires full redesign. The necessary changes are local and cross-file m
 ```text
 ID: F-01
 SEVERITY: Major
-CATEGORY: AUTHORITY / OVERCONSTRAINT / CANDIDATE LEAKAGE
+CATEGORY: Authority / Scope / Overconstraint
 AFFECTED_FILES:
   - reference/implementation-and-test-design-contract.md
   - reference/project-rule-catalog.md
   - prompts/implementation.md
-  - prompts/selection-adjudication.md
-  - prompts/final-synthesis.md
   - prompts/light-review-project-quality.md
   - prompts/light-review-contract-conformance.md
 ROOT_CAUSE:
-  Draft benchmark design guidance has been promoted to MUST / acceptance criteria
-  without an upper-authority decision that fixes the exact implementation shape.
+  Issue #43 の観測可能契約を満たす「同等経路」自由度が、benchmark draft の exact topology /
+  exact Compose condition / exact placement MUST へ昇格されている。
 PROBLEM:
-  Issue #43 permits a one-shot migrator service OR an equivalent canonical Compose
-  path, but the suite requires exactly postgres/migrator/api, service_healthy +
-  service_completed_successfully, exact Dockerfile/document/test placement, a
-  specific restart interpretation, non-root runtime assumptions, and other
-  implementation details as hard conformance rules.
+  design contract §3 は `postgres` / `migrator` / `api` の正確 3 service を固定し、
+  RULE-COMPOSE-002 は `service_healthy` / `service_completed_successfully` 相当を MUST とし、
+  implementation C-02 は exact 3 service を Completion Check にしている。
+  一方 Issue #43 Scope は "one-shot migrator serviceまたは同等のCompose正本経路" を許可し、
+  design contract §4.4 自身も同条件を「実装手段」と書いている。
 FAILURE_OR_CONFUSION_PATH:
-  A candidate can satisfy Issue #43 and ADR observable behavior with an equivalent
-  safe Compose path but be marked FAIL by Project Rule / Completion Checks. The
-  benchmark then measures conformance to an unapproved draft implementation rather
-  than independent implementation quality. Conversely, candidate design choices are
-  partially decided before the declared open-decision lock.
+  candidate または Final Synthesis author が Issue/ADR の観測可能契約を満たす同等実装
+  （例: wrapper 起動順、別 service 名、同等 condition 機構）を選ぶ
+  → Composer / Luna / Completion Checks が RULE / C-02 FAIL
+  → Selection が Issue 適合より catalog 適合を優先
+  → benchmark が未承認 draft shape への適合試験になる。
 IMPACT:
-  False candidate rejection, reduced implementation diversity, authority inversion,
-  and potential implementation of a Koo-unapproved design detail.
+  false positive FAIL、candidate 多様性の喪失、Issue #43 / ADR 正本の実質上書き。
 EVIDENCE:
-  Issue #43 Scope explicitly says one-shot migrator service "or equivalent canonical
-  Compose path". Design contract §3 fixes three services. RULE-COMPOSE-002 and
-  RULE-PLACE-* hard-code mechanisms/locations. implementation C-02/C-10 make those
-  candidate completion conditions.
+  Issue #43 Scope wording; design contract §3 / §4.4; RULE-COMPOSE-002;
+  implementation.md C-02; Docker docs confirm conditions exist as means, not Issue AC.
 RECOMMENDED_CHANGE:
-  Keep MUST only for upper-source observable contracts. Reclassify exact topology,
-  service names, placement, restart mechanism and hardening preferences as SHOULD /
-  locked-pre-run decisions. If Koo intentionally wants an exact common shape, add an
-  explicit open decision for that shape and lock it before candidate execution.
+  MUST は観測可能契約（ordering / fail-closed / no-auto-migration / named volume /
+  digest / secret non-disclosure / lifecycle reproducibility）に限定する。
+  exact service names、exact condition mechanism、exact file placement、追加 hardening
+  （port 非公開、non-root、no container_name 等）は SHOULD / preferred convention、
+  または Koo が common shape として明示 lock する別 decision にする。
 CROSS_FILE_UPDATES:
-  design contract -> rule catalog -> implementation Completion Checks -> Light review
-  conformance text -> Selection / Final Synthesis wording.
+  design contract, project-rule-catalog, implementation Completion Checks,
+  L1/L2 must-check lists, matrix owner notes.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -303,37 +237,43 @@ FIXED_POLICY_AFFECTED: NO
 ```text
 ID: F-02
 SEVERITY: Major
-CATEGORY: TEST ORACLE / MUTATION
+CATEGORY: Test Oracle / Mutation
 AFFECTED_FILES:
   - reference/mandatory-mutations.md
-  - prompts/implementation.md
-  - prompts/implementation-evaluation.md
   - prompts/final-synthesis.md
   - prompts/heavy-review-opus.md
+  - prompts/implementation.md
+  - run.json
 ROOT_CAUSE:
-  M-08 mutates the oracle/assertion rather than the production/runtime defect class.
+  M-08 の注入対象が production/runtime defect ではなく、migration history assertion /
+  oracle 自身になっている。
 PROBLEM:
-  M-08 says to remove the __EFMigrationsHistory check or force it to success, then
-  expects the clean-start test to turn RED because history is missing. Once the
-  assertion itself is removed/forced-success, that same test cannot reliably detect
-  the missing history.
+  Defect は "__EFMigrationsHistory 確認を削除または常に success へする"。
+  Expected detection は "clean-start test が RED"。
+  つまり検出器を壊して検出器の RED を期待しており、baseline GREEN → mutated RED が
+  「守るべき欠陥クラス検出」ではなく「oracle 自己破壊」になる。
 FAILURE_OR_CONFUSION_PATH:
-  A correct validator receives the mutation that disables its own check and may stay
-  GREEN; or the suite requires a second validator that checks the first validator,
-  changing the intended defect class. Either result invalidates the claimed
-  final_mutation_kill_rate=100% meaning.
+  Final Synthesis が M-08 を実行
+  → history assertion を削ると clean-start が GREEN のまま残る（偽安心）
+  または assertion 削除そのものを別メタ検証で捕らえる必要が出る
+  → `final_mutation_kill_rate: 1.0` が意味を失う
+  → Opus false-assurance gate も同じ壊れた oracle を信じ得る。
 IMPACT:
-  False assurance or unavoidable false failure at the merge-blocking mutation gate.
+  mandatory mutation set の信頼性が崩れ、Issue #43 の "migration 実適用確認" を証明できない。
 EVIDENCE:
-  mandatory-mutations.md M-08 Defect vs Expected detection are self-referential.
+  mandatory-mutations.md §9 M-08 Defect / Expected detection;
+  Applicability table "migration history assertion";
+  run.json metric_targets.final_mutation_kill_rate = 1.0.
 RECOMMENDED_CHANGE:
-  Leave the oracle unchanged. Mutate the runtime path so Migrator appears successful
-  (exit 0) without recording the expected InitialFoundation migration, then require
-  the unchanged migration-history assertion to turn RED. Exact injection mechanism
-  remains under D-06.
+  M-08 を production/runtime 側 defect に再設計する。例:
+  - Migrator 成功ログを出して history write を skip / fake する
+  - history table を別 DB / 空 schema に向けて exit 0 にする
+  - migration apply を no-op にして exit 0 にする
+  Expected RED は "history row absence / schema absence を検出する production-facing oracle"。
+  oracle 削除そのものは別 meta-check とし、M-08 本体にしない。
 CROSS_FILE_UPDATES:
-  M-08 text, implementation C-09 interpretation, evaluator probe list, Final Synthesis
-  mutation report expectation, Opus M-08 review description.
+  mandatory-mutations.md, final-synthesis mutation section, Opus must-check wording,
+  implementation C-09 interpretation, scoring mutation notes if any.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -342,35 +282,40 @@ FIXED_POLICY_AFFECTED: NO
 ```text
 ID: F-03
 SEVERITY: Major
-CATEGORY: LIGHT / HEAVY SEPARATION / BLIND SPOT
+CATEGORY: Light / Heavy Separation / Blind Spot
 AFFECTED_FILES:
-  - reference/review-perspective-matrix.md
   - prompts/light-findings-fix.md
   - prompts/heavy-review-sol.md
   - prompts/heavy-review-opus.md
+  - reference/review-perspective-matrix.md
 ROOT_CAUSE:
-  "Do not repeat / re-score Light findings" is not limited to resolved Light findings,
-  while the Author is allowed to REJECT a Light Blocker/Major candidate.
+  Light finding の disposition は記録できるが、REJECTED / UNRESOLVED / ESCALATED
+  Blocker・Major 候補を Heavy が独立再確認する必須契約がない。
+  同時に Heavy は「Light で解消済み」を原則確認しない。
 PROBLEM:
-  The matrix tells Heavy reviewers to read the Light list and not repeat/re-score the
-  same findings. The fixer can reject a Light B/M candidate with a rationale. There is
-  no explicit rule requiring Heavy to independently verify rejected/unresolved B/M
-  candidates that fall within its own scope.
+  light-findings-fix は ACCEPTED/REJECTED/... を許すが、Heavy handoff に
+  rejected_or_unresolved_blocker_major_candidates が無い。
+  Sol/Opus は "Light Reviewで解消済みのMinor / Nit" を探さないと明記し、
+  Light Gate escape は Blocker/Major root cause でなければ昇格しない。
 FAILURE_OR_CONFUSION_PATH:
-  L1 flags a serious secret/lifecycle issue -> Author rejects it incorrectly -> Heavy
-  sees it in Light list -> "do not repeat/re-score" causes skip -> fixed Head reaches
-  B0/M0 despite unresolved root cause.
+  L1/L2 が secret / lifecycle / ordering の Major 候補を出す
+  → Author が薄く REJECTED（または UNRESOLVED のまま Head lock）
+  → Heavy が「扱済み / 繰り返さない / escape」と解釈して再確認しない
+  → B0/M0 の見た目で merge gate へ進む。
 IMPACT:
-  A deliberate role-separation optimization can become a merge-blocking blind spot.
+  Light 前処理が fail-open escape hatch になり、Heavy final gate の価値が落ちる。
 EVIDENCE:
-  review-perspective-matrix §8 vs light-findings-fix §3 and Heavy non-goal wording.
+  light-findings-fix.md §3 Disposition / §5 Heavy handoff list;
+  heavy-review-sol.md §7 / §8; matrix §6 Explicitly does not check
+  "Light Reviewで解消済みのMinor / Nit".
 RECOMMENDED_CHANGE:
-  Apply the no-repeat rule only to RESOLVED / ACCEPTED+FIXED Minor/Nit and confirmed
-  duplicate findings. REJECTED, UNRESOLVED, or ESCALATED B/M candidates are not
-  excluded; a Heavy reviewer must independently verify them when they intersect its
-  primary scope.
+  1) Light fix output に rejected/unresolved/escalated B/M 候補の必須リストを追加。
+  2) Sol/Opus must-review に当該リストの独立確認を追加。
+  3) DO-NOT-CHECK の「解消済み」を ACCEPTED + FIXED + verified に限定。
+  4) REJECTED B/M は上位正本一次証拠が無い限り Head lock 禁止、または Heavy 必須再オープン。
 CROSS_FILE_UPDATES:
-  review matrix, Light fix handoff schema, Sol/Opus entry/must-review text.
+  light-findings-fix, heavy-review-sol, heavy-review-opus, review-perspective-matrix,
+  README Light→Heavy handoff note.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -379,47 +324,35 @@ FIXED_POLICY_AFFECTED: NO
 ```text
 ID: F-04
 SEVERITY: Major
-CATEGORY: PIPELINE EXECUTABILITY / IDENTITY INTEGRITY
+CATEGORY: Authority / Prompt Executability
 AFFECTED_FILES:
-  - run.json
-  - prompts/implementation-evaluation.md
-  - prompts/selection-adjudication.md
-  - prompts/final-synthesis.md
+  - prompts/implementation.md
   - prompts/light-review-project-quality.md
   - prompts/light-review-contract-conformance.md
-  - prompts/light-findings-fix.md
-  - prompts/heavy-review-sol.md
-  - prompts/heavy-review-opus.md
-  - prompts/conditional-judge.md
-  - prompts/targeted-fix.md
-  - prompts/targeted-re-review.md
   - prompts/issue-ready-review.md
 ROOT_CAUSE:
-  Stage outputs are called "locked" but there is no canonical immutable artifact
-  reference contract or registry binding each output to its input Head/revision.
+  確認対象（Parent / WP gate 証拠）と製品正本（仕様 / ADR / Issue）が、
+  同じ番号付き Authority リストに混在し、Parent/WP が上に見える。
 PROBLEM:
-  Several prompts accept `<LOCKED>`, `<LOCKED_ARTIFACT>`, result names, or revisions,
-  but Final Synthesis in particular has no unambiguous Evaluation/Selection artifact
-  location containing the element decisions. S0 Static Gate also has an output schema
-  in the matrix but no canonical recorded artifact identity.
+  implementation.md §1 は Parent #3 → WP #33 → Issue #43 → AGENTS → ADR の順。
+  L1/L2 も同様。AGENTS.md の正本順は 仕様 → ADR → Issue → code/test → PR。
+  Parent #3 は統制 Issue であり仕様正本ではない。
 FAILURE_OR_CONFUSION_PATH:
-  A fresh harness can consume a stale Evaluation/Selection or a Light review from a
-  previous Head while all human-readable revision labels look valid. The next prompt
-  then acts on the wrong decisions/findings without an exact identity failure.
+  candidate / Light reviewer が番号リストだけを読む
+  → Parent コメントや WP 文言を ADR / Issue AC より優先
+  → 誤った停止・修正・適合判定。
 IMPACT:
-  Wrong-target fixes, stale selection, stale review disposition, and loss of the exact
-  Head integrity that the process is explicitly designed to preserve.
+  authority inversion。benchmark docs が上位正本を実質変更し得る。
 EVIDENCE:
-  run.json has revisions/gates but no stage-artifact registry. Selection expects a
-  locked Evaluation; Final Synthesis only carries `<LOCKED>` revisions; Light/Heavy
-  prompts use free-form artifact placeholders.
+  implementation.md §1; light-review-*.md Authority; issue-ready-review.md §2;
+  AGENTS.md §2 / §2.1; design contract §1 と heavy prompts は正しい順を使用。
 RECOMMENDED_CHANGE:
-  Add a machine-readable `stage_artifacts` registry to run.json. Every stage output
-  records artifact ref/location, revision, source/target Head SHA(s), and producing
-  commit/comment ID. Downstream prompts require those exact refs and verify target
-  binding before reading content.
+  Authority を二分割する。
+  A. Product authority: Approved specification → ADR → Issue #43 → AGENTS → code/test
+  B. Gate evidence to verify: Parent #3 phase/gate, WP #33 status, Issue Ready
+  「矛盾時は A を優先し停止」を明示。
 CROSS_FILE_UPDATES:
-  run.json and every post-candidate prompt input/output schema.
+  implementation, L1, L2, issue-ready; optionally README authority reminder.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -428,34 +361,39 @@ FIXED_POLICY_AFFECTED: NO
 ```text
 ID: F-05
 SEVERITY: Major
-CATEGORY: AUTHORITY ORDER / PROMPT EXECUTABILITY
+CATEGORY: Open Decision Integrity / Candidate Leakage
 AFFECTED_FILES:
-  - prompts/implementation.md
-  - prompts/implementation-evaluation.md
-  - prompts/light-review-project-quality.md
-  - prompts/light-review-contract-conformance.md
-  - prompts/issue-ready-review.md
+  - reference/assumption-ledger.md
+  - reference/implementation-and-test-design-contract.md
+  - pre-run-checklist.md
+  - prompts/final-synthesis.md
+  - run.json
 ROOT_CAUSE:
-  Some copy-paste prompts present gate/control Issues before specification/ADR in a
-  section named Authority, and some omit Approved specification entirely.
+  D-01〜D-08 を TO_LOCK としながら、一部 decision に preferred/default 値や
+  狭義定義が本文へ混入し、ファイル間で D-05 の範囲が不一致。
 PROBLEM:
-  Parent #3 / WP #33 are necessary current-state evidence, but AGENTS.md explicitly
-  says they are not product/design authority. A fresh model can infer numeric list
-  order as precedence and allow stale control state or benchmark references to
-  override ADR / Issue semantics.
+  - D-03: preferred host-env → Compose secret → file reader → exec dotnet が先書き
+  - D-08: default author = Luna/Codex が先書き
+  - D-05: ledger 見出しが "API start timestamp" のみ、checklist は Migrator exit/finish /
+    API state/start / history まで含む
+  - D-02 / P-07: .NET digest と PostgreSQL digest が二重管理
 FAILURE_OR_CONFUSION_PATH:
-  Parent/WP state or prose disagrees with Accepted ADR / Issue -> reviewer follows the
-  numbered `Authority` list -> wrong stop/fix/conformance judgement.
+  pre-run 実行者が ledger の D-05 だけを埋めて TO_LOCK=0 と誤認
+  → または D-03/D-08 preferred を「決まっている」と読んで candidate/common shape へ漏洩
+  → Issue Ready PASS 後に観測方法欠落、または設計多様性が潰れる。
 IMPACT:
-  Incorrect review/implementation decision at a safety-critical gate.
+  open decision 隔離失敗、false clearance、candidate leakage。
 EVIDENCE:
-  implementation §1 and L1/L2 §3 list Parent/WP/Issue/AGENTS before ADRs; Approved
-  specification is omitted. Heavy prompts correctly use Approved spec -> ADR -> Issue.
+  assumption-ledger D-03/D-05/D-08/P-07; pre-run-checklist §3 D-02/D-03/D-05;
+  final-synthesis default author wording; run.json open_decisions list.
 RECOMMENDED_CHANGE:
-  Use the exact authority order everywhere and place Parent/WP under a separate
-  `Gate / current-state evidence` heading.
+  各 D を question + required evidence のみにする。
+  preferred/default は `DRAFT_NOTE` へ隔離し lock 前は非拘束。
+  D-05 を full external state capture に改名・拡張。
+  D-02 に PostgreSQL + .NET digests を統合するか、P-07 を D-02 配下へ明示統合。
 CROSS_FILE_UPDATES:
-  implementation, evaluator, L1, L2, issue-ready; reuse the Heavy authority wording.
+  assumption-ledger, checklist, design contract secret section, final-synthesis,
+  run.json decision schema.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -463,36 +401,40 @@ FIXED_POLICY_AFFECTED: NO
 
 ```text
 ID: F-06
-SEVERITY: Minor
-CATEGORY: OPEN DECISIONS / CONSISTENCY
+SEVERITY: Major
+CATEGORY: Evidence / Identity Integrity / Prompt Chain
 AFFECTED_FILES:
-  - run.json
-  - pre-run-checklist.md
-  - reference/assumption-ledger.md
-  - reference/implementation-and-test-design-contract.md
+  - prompts/implementation-evaluation.md
+  - prompts/selection-adjudication.md
   - prompts/final-synthesis.md
-  - prompts/issue-ready-review.md
+  - prompts/light-findings-fix.md
+  - prompts/conditional-judge.md
+  - prompts/targeted-fix.md
+  - prompts/targeted-re-review.md
+  - run.json
+  - README.md
 ROOT_CAUSE:
-  Open-decision records mix evidence requirements with draft preferred answers, and
-  D-05 is scoped differently across files.
+  stage 出力の "LOCKED" が revision ラベル / プレースホルダ文字列に止まり、
+  immutable artifact path + content identity + target Head の共通契約がない。
 PROBLEM:
-  D-03 contains a preferred host-env -> Compose-secret -> file-reader design before
-  lock; D-08 names Luna/Codex as the default author before identity lock; D-05 in the
-  ledger is only API start timestamp whereas checklist/user contract requires the
-  complete external state capture method. D-02 also splits PostgreSQL digest into P-07.
+  Evaluation / Selection / Light / Heavy / Judge が `<LOCKED_ARTIFACT>` や
+  `revision:` 文字列だけで次工程へ渡される。S0 Static Gate は matrix にあるが
+  dedicated prompt / handoff field が弱い。Judge trigger 記録主体も未定義。
 FAILURE_OR_CONFUSION_PATH:
-  Pre-run reviewers can clear TO_LOCK while one external observation remains
-  unspecified, or Koo/candidates can be anchored toward a draft D-03/D-08 answer.
+  Selection が古い Evaluation を読む / Final Synthesis が別 Selection を読む /
+  Heavy が別 Head の Light disposition を読む / Judge が未固定 review を比較する
+  → wrong-target または stale-contract で後工程が成立しない。
 IMPACT:
-  Local ambiguity and candidate-design leakage before lock; process remains stoppable.
+  exact identity 保全が崩れ、benchmark 再現性と merge gate 証拠が壊れる。
 EVIDENCE:
-  assumption-ledger D-03/D-05/D-08 vs checklist D-02/D-05/D-08 and run.json open IDs.
+  evaluation/selection/judge output schemas; light-findings-fix L1_RESULT/L2_RESULT
+  placeholders; README stage diagram vs missing S0 artifact contract.
 RECOMMENDED_CHANGE:
-  Keep each D entry question/evidence-only until lock. D-05 must enumerate Migrator
-  exit/finish time, API state/start time, migration history and the local/CI command.
-  Remove D-08 default identity. Keep PostgreSQL + .NET image identities under D-02.
+  全 stage に共通 lock schema を導入:
+  artifact_path, content_sha256, prompt_revision, target_head_sha, produced_at, producer_slot.
+  README に S0 → Light の必須入力、Judge trigger 記録者、multi-role re-review 完了条件を追記。
 CROSS_FILE_UPDATES:
-  ledger, checklist, run registry, design contract, final-synthesis, issue-ready.
+  all stage prompts listed above, README, optionally run.json stage registry.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -501,33 +443,29 @@ FIXED_POLICY_AFFECTED: NO
 ```text
 ID: F-07
 SEVERITY: Minor
-CATEGORY: ROLE DUPLICATION / PROCESS EFFICIENCY
+CATEGORY: Self-Review Replacement / Prompt Executability
 AFFECTED_FILES:
-  - reference/project-rule-catalog.md
-  - reference/review-perspective-matrix.md
-  - prompts/light-review-project-quality.md
-  - prompts/light-review-contract-conformance.md
+  - prompts/implementation.md
+  - prompts/final-synthesis.md
 ROOT_CAUSE:
-  Rule `Primary owner` metadata is contradicted by L1's instruction to evaluate the
-  entire catalog.
+  Completion Checks C-01〜C-11 が Formal Self-Review 代替として広すぎ、
+  証拠パス必須でない自己申告 PASS を許しやすい。
 PROBLEM:
-  Static-, Luna-, Sol-, and Opus-owned rules are still re-evaluated by Composer L1.
-  This duplicates the exact work the FND-05 funnel is intended to separate.
+  実装 1 snapshot に authority、topology、ordering、secret、mutation readiness、
+  catalog 確認、CI identity 等を同時要求。C-10 の catalog 全件確認は theater 化しやすい。
 FAILURE_OR_CONFUSION_PATH:
-  S0 already proves a static digest rule -> L1 rechecks it; Luna later rechecks
-  contract; Heavy may see the same rule again. Primary owner becomes descriptive only.
+  candidate が Checks を全部 PASS と書いて SNAPSHOT LOCKED
+  → Evaluation が自己申告に引きずられる
+  → 深い欠陥が Light/Heavy へ先送りされ、置換意図（事前固定 DoD）が薄まる。
 IMPACT:
-  Increased prompt length/review cost and lower signal-to-noise, without additional
-  safety if escalation rules are retained.
+  process は成立するが、Formal SR 廃止の品質代替が弱まる。
 EVIDENCE:
-  project-rule-catalog has per-rule Primary owner but §13 says Light reviewer checks
-  catalog comprehensively; L1 §5.1 requires all rules.
+  implementation.md §8 C-01..C-11 and result schema; separate SR prohibition §7.
 RECOMMENDED_CHANGE:
-  L1 must fully adjudicate Composer-owned rules and obvious cross-cutting violations.
-  It consumes S0/L2/Heavy-owned rule status instead of recreating them. Cross-owner
-  B/M suspicion is escalated, not silently ignored.
+  Checks を identity / runtime mandatory evidence / scope boundary / mutation readiness
+  に圧縮。rule catalog 網羅は S0 + L1 primary-owner へ委譲。各 Check に evidence path 必須化。
 CROSS_FILE_UPDATES:
-  catalog reviewer behavior, matrix L1 scope, L1/L2 prompts.
+  implementation.md, final-synthesis additional checks, optionally matrix.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -536,33 +474,31 @@ FIXED_POLICY_AFFECTED: NO
 ```text
 ID: F-08
 SEVERITY: Minor
-CATEGORY: BENCHMARK VALIDITY / MUTATION DISCLOSURE
+CATEGORY: Project Rule Catalog / Light Separation
 AFFECTED_FILES:
-  - reference/mandatory-mutations.md
-  - prompts/implementation.md
-  - prompts/implementation-evaluation.md
+  - reference/project-rule-catalog.md
+  - reference/review-perspective-matrix.md
+  - prompts/light-review-project-quality.md
 ROOT_CAUSE:
-  The mutation document says not to give candidates the mutation "answer", while the
-  implementation prompt requires candidates to read the same document and explicitly
-  prepare for M-01..M-10.
+  Primary owner 分散と「L1 が catalog 網羅」指示が同時に存在する。
+  SCOPE-001〜003 に Primary owner がない。
 PROBLEM:
-  It is unclear whether FND-05 measures general defect-class protection or explicit
-  conformance to known mutation recipes.
+  matrix / catalog は L1 に網羅判定を求めつつ、Static / Luna / Sol / Opus にも owner を割り当てる。
 FAILURE_OR_CONFUSION_PATH:
-  Candidate overfits a validator to the listed mutation mechanism and receives a high
-  mutation score without broader oracle quality; evaluator later interprets the result
-  as independent mutation sensitivity.
+  Composer が全 RULE を再判定し Luna/Static と重複
+  → Heavy の「明白な rule 違反 0」指標が解釈不能
+  → または SCOPE drift を誰も primary で見ない。
 IMPACT:
-  Benchmark interpretation ambiguity; product gate still has other reviews.
+  Light 分離の効率低下、局所的 gap/overlap。
 EVIDENCE:
-  mandatory-mutations §1 vs implementation Authority/C-09.
+  project-rule-catalog Primary owner fields; SCOPE section without owner;
+  matrix L1 objective wording.
 RECOMMENDED_CHANGE:
-  Choose and state one model. Recommended: candidate sees mutation ID, protected
-  contract and required observable oracle property; evaluator injection mechanics are
-  pre-locked but not part of the candidate task. If full disclosure is intentional,
-  remove the "do not give answer" statement and label the metric accordingly.
+  L1 は Composer-owned RULE + obvious escape のみ。
+  Luna/Static/Heavy owned RULE は参照するが増殖再採点しない。
+  SCOPE rules に Primary owner（L1 or L2）を割り当てる。
 CROSS_FILE_UPDATES:
-  mandatory mutation rules, implementation C-09, evaluator probe policy.
+  project-rule-catalog, review-perspective-matrix, light-review-project-quality.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -571,32 +507,58 @@ FIXED_POLICY_AFFECTED: NO
 ```text
 ID: F-09
 SEVERITY: Minor
-CATEGORY: SINGLE SOURCE / MAINTAINABILITY
+CATEGORY: Open Decision / Lifecycle Feasibility
 AFFECTED_FILES:
-  - README.md
+  - reference/assumption-ledger.md
+  - reference/implementation-and-test-design-contract.md
+  - reference/project-rule-catalog.md
   - pre-run-checklist.md
-  - run.json
-  - reference/*
-  - prompts/*
 ROOT_CAUSE:
-  Mutable identities, gate states, revisions and open-decision state are duplicated in
-  Markdown and JSON without a declared update direction.
+  D-04 は canonical command 文言のみ TO_LOCK だが、restart 意味論
+  （Migrator 再作成必須、API-only restart 禁止）は既に MUST 化されている。
 PROBLEM:
-  run.json is described as machine-readable state, but prompts/checklists also carry
-  independently editable values. After D locks and branch creation, drift is likely.
+  open decision の対象範囲と、既に固定された観測意味論の境界が曖昧。
 FAILURE_OR_CONFUSION_PATH:
-  run.json says one Head/revision/model effort while a copied prompt/checklist contains
-  another; the agent follows whichever artifact it receives first.
+  D-04 で command 文字列だけ lock して完了扱い
+  → restart 意味論の異議や同等手順が後から出る
+  → candidate / docs が不一致。
 IMPACT:
-  Maintenance drift and wrong-target risk after pre-run lock.
+  D-04 lock 作業の完了判定が曖昧。
 EVIDENCE:
-  same model/revision/gate/open-decision values are repeated across most files.
+  ledger D-04; design contract restart section; RULE-LIFE-001; checklist D-04 items.
 RECOMMENDED_CHANGE:
-  Declare run.json authoritative for mutable run identity/state. Markdown may repeat
-  fixed policy for readability but must reference run keys for mutable values. Add a
-  lock/update checklist that changes run.json first, then generated/copied prompts.
+  D-04 を (a) command strings と (b) restart semantics に分け、
+  semantics を common contract として先に Koo lock するか、SHOULD に戻す。
 CROSS_FILE_UPDATES:
-  README + checklist conventions, run.json schema, prompt variable blocks.
+  assumption-ledger, design contract, RULE-LIFE-001, checklist.
+FIXED_POLICY_AFFECTED: NO
+```
+
+### F-10
+
+```text
+ID: F-10
+SEVERITY: Nit
+CATEGORY: Process Efficiency / Wording
+AFFECTED_FILES:
+  - prompts/implementation-evaluation.md
+  - prompts/light-review-contract-conformance.md
+ROOT_CAUSE:
+  用語の局所的あいまいさ。
+PROBLEM:
+  Evaluation の MERGE_READY と candidate direct-merge 禁止が並立し紛らわしい。
+  L2 Authority に scoring.md が入ると採点項目を AC のように読まれ得る。
+FAILURE_OR_CONFUSION_PATH:
+  evaluator が candidate を merge 可能と誤解 / Luna が scoring 減点を AC 欠落扱い。
+IMPACT:
+  process 判断への実害は小さいが誤解コストがある。
+EVIDENCE:
+  implementation-evaluation output fields; light-review-contract-conformance Authority.
+RECOMMENDED_CHANGE:
+  MERGE_READY → ELEMENT_SELECTION_ELIGIBLE 等へ改名。
+  L2 Authority から scoring.md を外し Reference only へ。
+CROSS_FILE_UPDATES:
+  implementation-evaluation.md, light-review-contract-conformance.md.
 FIXED_POLICY_AFFECTED: NO
 ```
 
@@ -604,108 +566,47 @@ FIXED_POLICY_AFFECTED: NO
 
 ## 8. Role Separation Assessment
 
-### Static vs Composer
+| Layer | Intended job | Assessment |
+| --- | --- | --- |
+| S0 Static | mechanical restore/build/config/secret/digest/allowlist | 方向 PASS。prompt chain 接続は F-06 |
+| L1 Composer | project quality / rule conformance | 意図 PASS。full-catalog 指示で overlap（F-08） |
+| L2 Luna | ADR/Issue/AC traceability | 意図 PASS。Authority / scoring 混入は修正（F-04/F-10） |
+| H1 Sol | architecture / contract final | 意図 PASS。解消済み解釈を限定（F-03） |
+| H2 Opus | failure / lifecycle / false assurance | 意図 PASS。同上 |
+| Judge | conditional only | 意図 PASS。trigger/artifact identity を強化 |
+| Targeted fix/re-review | blast radius | 意図 PASS。multi-role 集約を明示 |
 
-Direction is correct but current implementation duplicates work. S0 should own deterministic rules such as Compose validation, changed-file allowlist, digest syntax, prohibited exact keys, source scan and identity checks. Composer should consume S0 output and inspect only semantic/structural quality not machine-proven facts.
-
-### Composer vs Luna
-
-The conceptual split is good:
-
-- Composer: placement, code/config quality, obvious misuse, maintainability, simple scope drift.
-- Luna: ADR/Issue/AC -> implementation -> test -> runtime evidence traceability.
-
-The catalog must stop forcing Composer to re-adjudicate Luna-owned rules.
-
-### Light vs Heavy
-
-The funnel is valid. Light should remove broad/obvious issues; Heavy should independently hunt merge-blocking root causes. The required fix is not to broaden Heavy, but to ensure unresolved/rejected Light B/M candidates do not become a `do not review` list.
-
-### Sol vs Opus
-
-Separation is strong and should be kept.
-
-- Sol: architecture, responsibility, authority, essential contract, design-level security.
-- Opus: failure, lifecycle, race, hidden dependency, ownership, false assurance, mutation evidence.
-
-Overlap on ordering/security is justified because each approaches a different failure model.
-
-### Heavy non-goals
-
-The explicit non-goals are appropriate. The root-cause exception is sufficient for ordinary Light escapes. Only the unresolved/rejected Light finding rule requires correction.
-
-### Heavy budget / re-review
-
-One full invocation each is practical. The blast-radius matrix is superior to severity-only blanket re-review and should remain.
-
-### Conditional Judge
-
-Trigger conditions are narrow enough. Phase A before reading Sol/Opus is a good anti-anchoring control.
+Composer / Luna の前処理として Light は機能し得る。Heavy non-goals は重複削減に有効だが、F-03 を閉じないと blind spot になる。Sol / Opus の意図的重複（ordering / secret）は merge-blocking 領域として許容できる。
 
 ---
 
 ## 9. Self-Review Replacement Assessment
 
-### Verdict
+| Question | Answer |
+| --- | --- |
+| Completion Checks で Formal SR を代替できるか | YES — 方針は成立 |
+| implementation prompt が過重か | YES — F-07 |
+| checklist theater を許すか | PARTIAL — 証拠 path 必須化で防ぐ必要 |
+| 自己申告だけで PASS できるか | 現状 YES になり得る → 修正必要 |
+| evidence 優先順位 | 概ね正しい（runtime > PR self-report）。artifact identity 不足が弱点 |
 
-**成立する。Separate Formal Self-Reviewを復活させる必要はない。**
-
-Implementation C-01〜C-11 include:
-
-- authority/scope
-- topology/order/failure
-- explicit migration boundary
-- secret/image/volume
-- lifecycle
-- runtime state evidence
-- negative-test positive markers
-- mutation readiness
-- project rules
-- exact Head CI / diff check
-
-This preserves the `AGENTS.md` requirement that Agent A verify tests and inspect its diff without creating a separate independent Self-Review phase.
-
-### Checklist-theater resistance
-
-Good controls already exist:
-
-- PR self-report is lowest evidence.
-- actual container state / exit / timestamp / history are required.
-- negative tests need intended-path and failure-reason markers.
-- Final Synthesis mutation must RED and recover GREEN.
-- UNVERIFIED cannot be reported as success.
-
-The main risk is not missing Completion Checks; it is that some checks currently encode draft implementation preferences as hard rules (F-01).
-
-### Prompt load
-
-The implementation prompt is long but still executable because the checks are ordered and concrete. Do not reintroduce another Self-Review execution. Reduce load by centralizing mutable identities and by making the rule catalog owner-specific rather than deleting safety-critical checks.
+**結論:** separate Formal Self-Review / H1 を復活させる必要はない。Checks を薄く強くし、深い探索は Light/Heavy に残す。
 
 ---
 
 ## 10. Project Rule Catalog Assessment
 
-### Strengths
+| Aspect | Assessment |
+| --- | --- |
+| MUST / MUST NOT 検証可能性 | 多くは検証可能 |
+| correct placement 明確性 | 明確だが Issue より狭い（F-01） |
+| static / Composer / Luna / Heavy owner | 概ね妥当。SCOPE owner 欠落（F-08） |
+| false positive risk | 高い — exact shape / condition MUST（F-01） |
+| false negative risk | rejected Light B/M escape（F-03） |
+| D-01..D-08 との矛盾 | D-03/D-04 意味論の先取りあり（F-05/F-09） |
+| 1方式への過剰固定 | YES — Compose condition / topology |
 
-- RULE-ID / PASS-FAIL-N/A format is audit-friendly.
-- MUST / MUST NOT / Evidence / Primary owner are generally testable.
-- Good prohibitions include API auto-migration, exit masking, committed secrets, secret argv, anonymous DB data volume, production test hooks, false `exit != 0` oracles, and scope drift.
-- Static vs human review can be separated cleanly.
-
-### Required corrections
-
-1. Only upper-authority or explicitly pre-run-locked decisions may be `MUST`.
-2. Exact service count/name, exact file placement, exact Compose condition mechanism, restart mechanics and additional hardening constraints require either a lock decision or downgrade to `SHOULD / preferred convention`.
-3. `Primary owner` must control the main adjudication; L1 should not automatically re-run all rules.
-4. Catalog should reference design contract rule IDs rather than restating long behavior where possible.
-
-### False-positive risk
-
-Current false-positive risk is material because an Issue-compliant equivalent implementation can fail catalog conformance. This is the primary reason F-01 is Major.
-
-### False-negative risk
-
-Current catalog is broad; false-negative risk is mainly the Light->Heavy rejected-finding gap, not missing rules.
+Catalog は有用。lock 前に「観測契約 MUST」と「common shape SHOULD」を分離すれば、過剰拘束と false positive を下げられる。
 
 ---
 
@@ -713,31 +614,20 @@ Current catalog is broad; false-negative risk is mainly the Light->Heavy rejecte
 
 | Mutation | Defect class valid | Expected RED reliable | False-positive risk | Execution cost | Required change |
 | --- | --- | --- | --- | --- | --- |
-| M-01 API waits only for Migrator start | YES | HIGH | LOW if Compose remains valid | Medium | KEEP |
-| M-02 failure becomes exit 0 | YES | HIGH | LOW with real failure marker | Medium | KEEP |
-| M-03 API auto-migration | YES | HIGH | LOW | Medium | KEEP |
-| M-04 secret in argv | YES | HIGH | LOW with sentinel | Medium | KEEP |
-| M-05 digest removed | YES | HIGH | LOW | Low | KEEP |
-| M-06 named volume replaced | YES | HIGH | Low-Medium | Medium | KEEP |
-| M-07 test fails before intended path | YES | HIGH if marker asserted | LOW | Medium | KEEP |
-| M-08 migration history ignored | YES defect class / NO current injection | LOW | HIGH | Medium | **REDESIGN INJECTION** |
-| M-09 API starts then exits | YES | HIGH | LOW | Medium | KEEP |
-| M-10 reset leaves resource | YES | HIGH | Medium if project-scoping is weak | Medium | KEEP + assert exact project resource identity |
+| M-01 ordering weaken | YES | MEDIUM — timing flake possible | MEDIUM | Medium | clarify reliable observation |
+| M-02 exit-0 mask | YES | HIGH | LOW | Medium | keep |
+| M-03 API auto-migrate | YES | HIGH | LOW | Medium | keep |
+| M-04 secret in argv | YES | HIGH | LOW | Low | keep |
+| M-05 digest removed | YES | HIGH | LOW | Low | keep |
+| M-06 volume replaced | YES | HIGH | LOW | Medium | keep |
+| M-07 fail before path | YES meta-oracle | MEDIUM — RED can be trivial | MEDIUM | Medium | keep as oracle-quality; document as meta |
+| M-08 history ignored | YES class / NO injection | LOW | HIGH | Medium | **REDESIGN** |
+| M-09 API instant exit | YES | HIGH | LOW | Medium | keep |
+| M-10 reset residue | YES | HIGH | LOW | Medium | keep |
 
-Required mutation sequence is correct:
+baseline GREEN → mutation RED → restore GREEN → residue 0 の枠組み自体は明確で良い。candidate 全件強制ではなく Final Synthesis 完走という負荷配分も妥当。
 
-```text
-baseline GREEN
--> inject exactly one controlled defect
--> target RED for expected reason
--> revert
--> GREEN
--> residue 0
-```
-
-A syntax error, build error, missing executable, registry outage or unrelated pre-path failure is not a valid kill unless that is the explicit defect class being tested.
-
-M-08 must be corrected before lock.
+M-08 は lock 前必須修正。
 
 ---
 
@@ -745,365 +635,178 @@ M-08 must be corrected before lock.
 
 | Decision | Correctly open | Evidence sufficient | Candidate leakage | Missing dependency | Required change |
 | --- | --- | --- | --- | --- | --- |
-| D-01 minimum Compose version | YES | YES | NO | exact local/CI support proof | lock from actual versions + required features |
-| D-02 exact image digests | YES | PARTIAL | NO | PostgreSQL is split as P-07 | unify PostgreSQL + .NET identities under D-02 |
-| D-03 secret source / reader | PARTIAL | YES | **YES** | cross-platform behavior | remove preferred concrete answer until lock |
-| D-04 lifecycle commands | PARTIAL | YES | YES, restart semantics partly fixed | command semantics vs implementation mechanism | lock commands/semantics first or downgrade hard rules |
-| D-05 external state capture | **NO — too narrow in ledger** | PARTIAL | NO | Migrator exit/finish, API state/start, history | rename/expand D-05 to full observation method |
-| D-06 failure injection override | YES | YES | LOW | exact test-only mechanism | keep exact mechanism open; examples are fine |
-| D-07 cross-platform contract | YES | YES | NO | supported shell/helper and path policy | lock from local + CI evidence |
-| D-08 Final Synthesis identity | PARTIAL | YES | **YES** | exact visible label/effort | remove default Luna/Codex before Koo lock |
+| D-01 min Compose version | YES | YES — features listed | LOW — features as requirements OK | installed local/GA versions | keep; confirm support matrix |
+| D-02 image digests | YES | PARTIAL — split with P-07 | LOW | PostgreSQL digest ownership | unify D-02/P-07 |
+| D-03 secret source/reader | PARTIAL | YES | **YES** preferred answer | cross-platform reader behavior | remove preferred until lock |
+| D-04 lifecycle commands | PARTIAL | YES for strings | MEDIUM — semantics pre-locked | restart semantics scope | split strings vs semantics |
+| D-05 external state capture | **NO — too narrow in ledger** | PARTIAL | NO | Migrator exit/finish, API state, history | expand/rename |
+| D-06 failure injection | YES | YES | LOW | no production backdoor proof | keep |
+| D-07 cross-platform | YES | YES | LOW | primary local env identity | keep |
+| D-08 Final Synthesis identity | YES | YES | **YES** default author | Selection completion | remove default seed |
 
-### Missing decision check
+追加で不足する独立 decision 候補:
 
-There is one conditional missing decision:
+- **D-09（任意）:** common service topology / placement / Compose condition mechanism を Issue 自由度より狭く固定するか。F-01 を Koo lock で解消する場合に使用。推測 lock はしない。
 
-```text
-D-09 candidate-common implementation-shape contract
-```
-
-Do **not** add D-09 automatically.
-
-- If exact three-service topology, service names, Dockerfile/doc/test placement, exact dependency mechanism, restart mechanism, network/privilege hardening are intended as common candidate MUSTs, those choices need an explicit Koo/pre-run lock. In that case add D-09 (or split it into appropriately scoped decisions).
-- If they are not intended as product/benchmark-fixed choices, remove the hard MUSTs and allow candidate designs that satisfy the observable contract. Then D-09 is unnecessary.
-
-This review does not choose the value.
+Docker 公式文書（startup-order）により、`service_healthy` / `service_completed_successfully` は実在する実装手段である。FND-06 health なしでも、exit / state / timestamp / history による検証方針は可行。
 
 ---
 
 ## 13. Simplification Opportunities
 
-### S-1 — run.json as mutable-state SSOT
+品質を落とさず削減できるもの:
 
-Keep fixed policy prose in Markdown, but centralize mutable values in `run.json`:
+1. Completion Checks を少数の evidence-backed DoD へ圧縮（F-07）
+2. L1 の full-catalog 再監査を primary-owner へ縮小（F-08）
+3. Authority / policy / candidate count の repeated prose を README + run.json 参照へ寄せる
+4. Heavy DO-NOT-CHECK リストは維持（固定方針）。文言正規化のみ
+5. Evaluation / Selection / Light / Heavy の lock footer を共通 block 化（F-06）
 
-- common base
-- exact model/harness/effort
-- candidate branches/PRs/Heads
-- D-01..D-08 state/value/evidence
-- prompt revisions
-- stage artifact refs
-- gate state
+削ってはいけないもの:
 
-This removes the highest-risk duplication without making copy-paste prompts non-self-contained.
-
-### S-2 — Design contract owns behavior; catalog owns validation
-
-Do not repeat a full behavioral design twice.
-
-- design contract: what observable behavior is required
-- rule catalog: how a rule is evaluated, evidence, owner
-
-Catalog rules can cite a design-contract section/ID.
-
-### S-3 — Owner-scoped Light review
-
-L1 should not enumerate Static/Luna/Heavy-owned rules. This reduces review length while preserving escalation.
-
-### S-4 — Common identity block
-
-All post-candidate prompts need the same immutable identity fields:
-
-```text
-REPOSITORY
-TARGET_ISSUE
-BASE_SHA
-TARGET_HEAD_SHA
-SOURCE_ARTIFACT_REF(S)
-SOURCE_ARTIFACT_REVISION(S)
-PROMPT_REVISION
-```
-
-Keep those fields repeated in each copy-paste prompt for safety; generate values from `run.json` rather than hand-maintaining them.
-
-### S-5 — Do not shorten Heavy non-goals
-
-The Heavy exclusion lists are long but useful. Removing them would undo a fixed FND-05 experiment. Only normalize the unresolved/rejected Light exception.
+- mandatory mutations（M-08 再設計後）
+- external observation vs Compose-file-only evidence の分離
+- candidate independence / curated Final Synthesis
+- Light → Head lock → Heavy once
+- rejected B/M の Heavy 再確認（追加が必要）
 
 ---
 
 ## 14. Consolidated Change Plan — P0 / P1 / P2
 
-### P0 — Blocker / Major
+### P0 — before D lock / Issue Ready
 
-#### P0-1 Remove or explicitly lock implementation-shape overconstraints
+1. **F-01** exact shape MUST を観測契約 MUST + preferred convention に分離
+2. **F-02** M-08 injection redesign
+3. **F-03** rejected/unresolved Light B/M → Heavy must-review
+4. **F-04** Authority 二分割
+5. **F-05** D-03/D-05/D-08 open integrity
+6. **F-06** locked artifact identity schema
 
-Affected:
+### P1 — before lock polish
 
-- design contract
-- project rule catalog
-- implementation
-- L1/L2
-- Selection / Final Synthesis
+1. **F-07** Completion Checks 圧縮 + evidence path
+2. **F-08** L1 owner scope / SCOPE primary owners
+3. **F-09** D-04 strings vs semantics
+4. Judge trigger recorder + multi-role re-review aggregation
+5. run.json decision evidence fields
 
-Dependency: Koo only if exact shape is intentionally fixed. Otherwise mechanical downgrade to observable-contract language.
+### P2 — optional
 
-#### P0-2 Redesign M-08 injection
+1. **F-10** MERGE_READY naming / L2 scoring Authority
+2. M-01 timing reliability note
+3. prose dedupe across README/checklist/prompts
 
-Affected:
-
-- mandatory mutations
-- implementation/evaluator/final synthesis mutation references
-- Opus mutation assessment
-
-Dependency: D-06 determines exact injection mechanism, not the defect contract.
-
-#### P0-3 Close rejected/unresolved Light B/M blind spot
-
-Affected:
-
-- review matrix
-- Light fix output
-- Sol/Opus entry rules
-
-No policy redesign required.
-
-#### P0-4 Add immutable stage-artifact registry
-
-Affected:
-
-- run.json
-- evaluation / selection / final / light / heavy / judge / targeted fix / re-review / issue-ready schemas
-
-Required before first cross-harness handoff.
-
-#### P0-5 Normalize authority order
-
-Affected:
-
-- implementation
-- evaluator
-- L1/L2
-- issue-ready
-
-Approved specification -> Accepted ADR -> Issue #43 -> AGENTS governance -> benchmark contract; Parent/WP become gate evidence.
-
-### P1 — Minor before lock
-
-#### P1-1 Normalize D-01..D-08
-
-- D-02 includes all exact image identities.
-- D-03 removes preferred answer until lock.
-- D-05 covers all external state capture.
-- D-08 removes default author.
-
-#### P1-2 Make rule ownership enforceable
-
-L1 only owns Composer rules plus escalation; S0/L2/Heavy outputs are consumed.
-
-#### P1-3 Clarify mutation disclosure model
-
-State whether candidate sees only defect classes/oracle properties or full injection recipe.
-
-#### P1-4 Declare update direction
-
-`run.json` first for mutable state; Markdown/prompt values derived or copied from locked run state.
-
-### P2 — Optional polish
-
-- Add short cross-reference IDs from catalog rules to design-contract sections.
-- Collapse repeated explanatory paragraphs that do not carry independent stop conditions.
-- Keep safety-critical identity, prohibition and operation-permission blocks self-contained in each executable prompt.
+修正後は finding-owned 再レビュー 1 回で足りる。suite 全体の REDESIGN は不要。
 
 ---
 
 ## 15. Exact Rewrite Proposals
 
-### P0-A — Authority block replacement
-
-Apply to implementation / evaluator / L1 / L2 / issue-ready as appropriate:
+### P0-1 — Authority block（implementation / L1 / L2 / issue-ready）
 
 ```text
-## Authority order
+## Authority
 
-1. Koo-approved product policy and approved product specification
+### Product authority (highest first)
+1. Koo-approved product policy / approved specification
 2. Accepted ADR-0001 / ADR-0008 / ADR-0009
-3. Target Issue #43
-4. AGENTS.md governance rules
-5. Locked FND-05 pre-run benchmark contracts
-6. PR descriptions / model self-report
+3. Issue #43 (scope, out of scope, AC, verification)
+4. AGENTS.md
+5. FND-05 design contract / project rules / mutations
+   (benchmark docs never override 1-4)
 
-Parent Issue #3 and WP-1 Issue #33 are current phase/gate/progress evidence.
-They do not override product specification, Accepted ADR, or Issue #43.
-If a lower source conflicts with a higher source, stop and report the conflict.
+### Gate evidence to verify (not product authority)
+- Parent Issue #3: current phase / gates / prohibitions
+- WP-1 Issue #33: package status
+- Issue Ready / Koo start authorization
+
+If gate evidence conflicts with product authority, stop and report.
+Do not resolve by preferring Parent/WP wording over ADR/Issue.
 ```
 
-### P0-B — Observable topology contract
-
-Replace exact-three-service acceptance wording with:
+### P0-2 — M-08 replacement sketch
 
 ```text
-Required observable runtime roles are:
-
-- PostgreSQL 18 runtime with named data volume
-- FND-04 explicit Migrator execution before API permission
-- normal API runtime
-
-A dedicated one-shot `migrator` Compose service is allowed and is the current
-reference design, but Issue #43 also permits an equivalent canonical Compose path.
-Until an explicit pre-run decision fixes the exact implementation shape, service
-count/name and orchestration mechanism are not independent acceptance criteria.
-
-Any accepted design MUST prove:
-- PostgreSQL is actually usable before migration begins;
-- Migrator failure is non-zero and prevents API start;
-- only Migrator success permits API start;
-- API startup does not apply migrations;
-- the behavior is externally observable and reproducible.
-```
-
-For exact paths:
-
-```text
-Repository-root `compose.yaml`, project-local Dockerfiles and
-`docs/operations/docker-compose.md` are preferred conventions.
-Treat them as MUST only when an upper-source or explicit pre-run lock fixes them.
-Otherwise an equivalent placement is acceptable when ownership is unambiguous and
-all candidates are evaluated by the same observable contract.
-```
-
-### P0-C — M-08 replacement
-
-```text
-## M-08 — Migrator reports success without applying expected migration
+## 9. M-08 — Migration apply skipped while Migrator exits 0
 
 ### Defect
-
-Keep the production test / validator unchanged. Temporarily alter only the runtime
-or Migrator execution path so that the Migrator completes with exit code 0 while the
-expected `InitialFoundation` row is not recorded in `public.__EFMigrationsHistory`.
-The exact injection mechanism is locked under D-06.
+Make the Migrator production path report success (exit 0) while skipping real
+schema application / __EFMigrationsHistory write.
+Examples:
+- no-op apply path behind temporary override
+- point Migrator at an empty alternate database and still exit 0
+- fake success after connect without applying migrations
 
 ### Protected contract
-
-Migrator exit 0 alone is insufficient; successful migration application must be
-confirmed from external database state.
+Clean-start success requires actual migration application evidence, not exit 0 alone.
 
 ### Expected detection
-
-- clean-start / migration-history oracle is RED;
-- observed Migrator exit remains 0;
-- API/order observations alone cannot turn the test GREEN;
-- expected migration-history row is absent or otherwise does not match the contract.
+- clean-start oracle RED
+- missing expected __EFMigrationsHistory row and/or missing expected schema object
+- failure reason matches "migration not applied" class
 
 ### Invalid detection
-
-- changing/removing the history assertion itself;
-- forcing the validator result to failure;
-- YAML/build/CLI failure before the runtime path is reached.
+- deleting the history assertion from the test
+- build/syntax failure
 ```
 
-### P0-D — Heavy handoff exception
-
-Replace the matrix common rule with:
+### P0-3 — Light fix Heavy handoff addition
 
 ```text
-Heavy reviewers do not repeat findings that are RESOLVED and verified, or accepted
-and fixed Minor/Nit findings already owned by Light.
-
-REJECTED, UNRESOLVED, ESCALATED, or evidence-incomplete Blocker/Major candidates are
-NOT excluded from Heavy scope. When such a finding intersects the Heavy reviewer's
-primary responsibility, the reviewer independently verifies the root cause from the
-fixed Final Head and primary evidence rather than accepting either the Light finding
-or the Author rejection.
+REJECTED_OR_UNRESOLVED_BLOCKER_MAJOR_CANDIDATES:
+- FINDING_ID:
+  SOURCE: L1 / L2
+  DISPOSITION: REJECTED / UNRESOLVED / ESCALATED
+  SUMMARY:
+  AUTHOR_REASON:
+  REQUIRED_HEAVY_RECHECK: YES
 ```
 
-Add to Light fix output:
+### P0-4 — Heavy DO-NOT-CHECK clarification
 
 ```text
-HEAVY_HANDOFF:
-- resolved_findings:
-- rejected_or_unresolved_blocker_major_candidates:
-- evidence_incomplete_findings:
+- Minor / Nit that are ACCEPTED + FIXED + verified by Light disposition/evidence
+- Do NOT treat REJECTED, UNRESOLVED, or ESCALATED Blocker/Major candidates as resolved
+- Must independently re-check REJECTED_OR_UNRESOLVED_BLOCKER_MAJOR_CANDIDATES
 ```
 
-### P0-E — run.json stage artifact registry
-
-Add a structure equivalent to:
-
-```json
-"stage_artifacts": {
-  "implementation_evaluation": {
-    "ref": null,
-    "revision": null,
-    "source_head_shas": [],
-    "producer_commit_sha": null
-  },
-  "selection_adjudication": {
-    "ref": null,
-    "revision": null,
-    "source_artifact_ref": null,
-    "producer_commit_sha": null
-  },
-  "light_l1": {
-    "ref": null,
-    "target_head_sha": null,
-    "producer_commit_sha": null
-  },
-  "light_l2": {
-    "ref": null,
-    "target_head_sha": null,
-    "producer_commit_sha": null
-  },
-  "light_fix": {
-    "ref": null,
-    "old_head_sha": null,
-    "final_head_sha": null,
-    "producer_commit_sha": null
-  },
-  "heavy_sol": {
-    "ref": null,
-    "target_head_sha": null,
-    "producer_commit_sha": null
-  },
-  "heavy_opus": {
-    "ref": null,
-    "target_head_sha": null,
-    "producer_commit_sha": null
-  }
-}
-```
-
-Downstream prompts must carry exact `*_ARTIFACT_REF` and verify the stored Head/revision before using content.
-
-### P1-A — D-05 replacement
+### P0-5 — Open decision entry template
 
 ```text
-### D-05 — External state capture method
-
+### D-0X — <question only>
 status: TO_LOCK
-
-Lock one reproducible local/CI method for each required observation:
-
-- Migrator container/process exit code
-- Migrator finished timestamp
-- API container state, including never-started vs started-then-exited
-- API started timestamp
-- PostgreSQL migration-history query/result
-- Compose/project identity required to avoid stale-resource observation
-
-The lock records the exact command/tool source and expected machine-readable fields.
-No candidate chooses a different evidence method after execution starts.
+question: <what must be decided>
+required_evidence:
+  - <commands / docs / SHA>
+draft_note_non_binding: <optional; ignored by candidates>
+locked_value: null
 ```
 
-### P1-B — D-03 / D-08 neutral wording
+### P0-6 — Common stage lock schema
 
 ```text
-D-03 defines required security properties and evidence only until Koo locks the
-source/reader design. Do not include a preferred concrete implementation in the
-candidate contract before that lock.
-
-D-08 remains MODEL=null / HARNESS=null / EFFORT=null until Koo fixes the exact
-Final Synthesis identity. Do not name a default author in the executable prompt.
+ARTIFACT_LOCK:
+  stage:
+  artifact_path:
+  content_sha256:
+  prompt_revision:
+  target_head_sha:
+  producer_slot:
+  produced_at:
+STATUS: LOCKED / NOT_LOCKED
 ```
 
-### P1-C — Rule ownership
+### P0-7 — design contract topology demotion（pseudodiff）
 
 ```text
-A rule's Primary owner performs the full PASS/FAIL/N/A adjudication.
-Other stages consume that result and do not repeat the full check.
-If another stage observes a potential Blocker/Major root cause in its own evidence,
-it records an ESCALATION and may independently verify only that root cause.
+- Compose projectは最低限次の3 serviceを持つ。
++ Preferred common shape is three services named postgres / migrator / api.
++ MUST: one PostgreSQL runtime, one explicit one-shot Migrator path, one API service,
++       with observable PostgreSQL→Migrator→API success/failure contracts.
++ Exact names/condition mechanism may vary if Issue #43 equivalent path is preserved
++ and documented; silent redesign across candidates is prohibited once D-09/common shape
++ is locked by Koo.
 ```
 
 ---
@@ -1112,69 +815,58 @@ it records an ESCALATION and may independently verify only that root cause.
 
 ### KEEP
 
-- 3 independent candidates
-- no OpenCode
-- no separate Formal Self-Review
-- predefined Completion Checks
-- common evaluation + element-level Selection
-- candidate merge/cherry-pick prohibition
-- curated Final Synthesis from current main
-- Static -> Composer -> Luna -> Light fix -> fixed Head
-- Sol / Opus Heavy roles
-- Heavy explicit non-goals
-- Heavy root-cause exception
-- Heavy budget 1 each
-- conditional Judge
-- finding-owner / blast-radius re-review
-- external runtime evidence
-- baseline GREEN -> mutation RED -> restore GREEN -> residue 0
-- M-01..M-07 / M-09 / M-10 defect classes
-- Issue Ready + Koo start authorization
+- 3 candidate + Light 2 + Heavy 2 funnel
+- Formal Self-Review / OpenCode 禁止
+- curated Final Synthesis / no candidate cherry-pick
+- Heavy non-goals（正規化後）
+- Judge conditional
+- external observation over Compose-file-only evidence
+- M-01..M-07, M-09, M-10 framework
+- implementation prohibition until Issue Ready + Koo start
+- docs-only benchmark scope declaration
 
 ### MODIFY
 
-- exact implementation-shape MUST rules
+- exact topology / condition / placement MUST → preferred or D-09
 - M-08 injection
-- Light rejected/unresolved finding handoff
-- authority order in several prompts
-- D-02 / D-03 / D-05 / D-08 open-decision wording
-- rule ownership semantics
-- stage artifact identity
-- run.json SSOT responsibility
-- mutation disclosure wording
+- Light rejected B/M handoff + Heavy exception
+- Authority lists
+- D-03/D-05/D-08 open records
+- Completion Checks volume
+- L1 catalog sweep scope
+- artifact lock schema
 
 ### DROP
 
-- D-08 default Final Synthesis author before lock
-- candidate-facing wording that implies an unapproved preferred D-03 answer is already chosen
-- unconditional Composer re-review of every catalog rule
-- blanket `do not repeat Light findings` wording
-- M-08 mutation that removes/forces-success in the oracle itself
+- separate Formal Self-Review revival proposals
+- OpenCode revival proposals
+- preference-based extra reviewers
+- treating scoring.md as product Authority
 
 ### ADD
 
-- immutable stage-artifact registry
-- explicit Heavy handling for rejected/unresolved Light B/M
-- complete D-05 observation contract
-- conditional D-09 only if Koo wants exact implementation shape fixed before candidates
+- common ARTIFACT_LOCK schema
+- rejected/unresolved B/M Heavy recheck list
+- optional D-09 common-shape decision（Koo用、今回は lock しない）
+- S0 / Judge-trigger / multi-role re-review completion notes in README
 
 ---
 
 ## 17. Final Lock Recommendation
 
 ```text
-CURRENT: FIX_REQUIRED
-NEXT: apply P0 + P1 prompt-suite fixes
-THEN: finding-owned re-review of F-01..F-09
-AFTER B0/M0: proceed to D-01..D-08 primary-evidence lock
-AFTER D LOCK: synchronize run.json / checklist / Issue #43 current contract
-THEN: fresh Issue Ready Gate
-THEN: wait for Koo explicit candidate-start authorization
+VERDICT: FIX_REQUIRED
 ```
 
-Do not start candidate implementation from PR #145 as currently written.
+D-01〜D-08 の一次証拠 lock と Issue Ready Gate へ進む前に、P0（F-01〜F-06）を prompt suite へ適用し、finding-owned 再レビューを 1 回行うこと。
 
-A complete redesign of the FND-05 funnel is not recommended. The architecture of the process is sound; the necessary work is to tighten authority, identity, mutation validity and role handoff before lock.
+P0 修正後の見込み:
+
+- Blocker 0 を維持
+- Major 0 へ収束可能
+- その時点で `READY_FOR_LOCK_WORK` へ移行可能
+
+これは PR #145 をそのまま merge せよという意味ではない。
 
 ---
 
@@ -1185,13 +877,15 @@ TARGET_FILES_CHANGED: NO
 TARGET_PR_CHANGED: NO
 ISSUE_CHANGED: NO
 FND05_IMPLEMENTATION_STARTED: NO
-OUTPUT_FILE_ONLY: YES
+D-01_TO_D-08_SPECULATIVELY_LOCKED: NO
+NEW_PR_CREATED: NO
+OUTPUT_FILE_ONLY_WRITE: YES
 ```
 
-This review changes only the prepared review output file on `agent/fnd05-prompt-suite-independent-review`.
+本レビューは OUTPUT_FILE 1 件のみを更新する。PR #145 の 22 files、Issue #43、製品コード / テスト / Compose 実装には手を入れない。
 
 ---
 
 ## 19. Final one-line assessment
 
-**FND-05のreview funnel自体は成立しているが、上位正本を超えるMUST化、M-08、Light→Heavy handoff、stage artifact identityを修正するまでD-01〜D-08 lockへ進めるべきではない。**
+固定ファネルは健全だが、Issue 自由度の MUST 昇格・M-08 oracle 自己破壊・Light reject の Heavy 盲点・Authority 混線・open decision 漏洩・artifact identity 不足を直すまで lock 作業へ進むべきではない。
