@@ -51,6 +51,18 @@ All use common base:
 | #137 | `claude-sonnet-5-claude-code` | `agent/issue-42-fnd-04-claude-sonnet-5-claude-code` | `af7bdc27f8daaae682a602946b04b122b50dee38` | `benchmark/fnd04/claude-sonnet-5-claude-code` | VERIFIED |
 | #138 | `gpt-5.6-luna-codex` | `agent/issue-42-fnd-04-gpt-5.6-luna-codex` | `006319444f1e18172beb5664b045b5bccb2bcdf8` | `benchmark/fnd04/gpt-5.6-luna-codex` | VERIFIED |
 
+## Tag namespace collision check
+
+The eight planned tag refs above were resolved explicitly before cleanup. All eight returned `No commit found for the ref`.
+
+```yaml
+PLANNED_TAG_REF_EXISTS: 0_of_8
+TAG_NAME_COLLISIONS: 0
+SAFE_TO_CREATE_PLANNED_TAG_NAMES: YES
+```
+
+This check does not substitute for post-creation remote tag verification.
+
 ## Expected annotated tag messages
 
 Use one annotated tag per candidate. Suggested message format:
@@ -67,6 +79,7 @@ Archived candidate Head <full-sha>
 ```yaml
 CANDIDATE_COUNT: 8
 IDENTITY_VERIFIED: 8_of_8
+TAG_NAMESPACE_COLLISION_CHECK: 8_of_8_ABSENT
 ANNOTATED_TAGS_CREATED: 0_of_8
 REMOTE_TAGS_VERIFIED: 0_of_8
 CANDIDATE_PRS_CLOSED: 0_of_8
