@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "status": "ready_for_reviewer_execution",
+  "repository": "kooiei-in4a/minimal-bank-system",
+  "target_issue": 42,
+  "target_pr": 140,
+  "target": {
+    "base_branch": "main",
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_branch": "agent/issue-42-fnd-04-final-code",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "known_pr_merge_ref_sha": "d12de2ae07003a10d19d576808cf88ec7796da23",
+    "known_ci_run": 31350916189
+  },
+  "revisions": {
+    "final_synthesis_snapshot": "fnd04-final-synthesis-snapshot-v1",
+    "review_prompt": "fnd04-final-review-v1",
+    "review_result_schema": "1.0"
+  },
+  "reviewers": [
+    {
+      "slot": "R1",
+      "expected_model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "primary_role": "runtime_failure_path",
+      "effort": "reverify_at_execution",
+      "status": "not_started"
+    },
+    {
+      "slot": "R2",
+      "expected_model": "Claude Opus 5",
+      "harness": "Claude Code",
+      "primary_role": "deep_technical_test_assurance",
+      "effort": "reverify_at_execution",
+      "status": "not_started"
+    },
+    {
+      "slot": "R3",
+      "expected_model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "primary_role": "specification_scope",
+      "effort": "reverify_at_execution",
+      "status": "not_started"
+    },
+    {
+      "slot": "R4",
+      "expected_model": "ChatGPT Opus 5.6 Sol",
+      "harness": "Browser",
+      "primary_role": "framework_official_source_cross_check",
+      "effort": "reverify_at_execution",
+      "identity_reverify_before_execution": true,
+      "status": "not_started"
+    },
+    {
+      "slot": "R5",
+      "expected_model": "GPT-5.6 Luna",
+      "harness": "Open Code",
+      "primary_role": "tool_driven_independent_review",
+      "effort": "reverify_at_execution",
+      "status": "not_started"
+    },
+    {
+      "slot": "R6",
+      "expected_model": "Grok 4.5",
+      "harness": "Cursor",
+      "primary_role": "fast_independent_review",
+      "effort": "reverify_at_execution",
+      "status": "not_started"
+    }
+  ],
+  "raw_capture": {
+    "expected": "6_of_6",
+    "completed": "0_of_6",
+    "format": "markdown_plus_json_pair",
+    "semantic_editing": "prohibited"
+  },
+  "isolation": {
+    "candidate_rankings_visible_to_reviewer": false,
+    "implementation_evaluation_visible_to_reviewer": false,
+    "selection_adjudication_visible_to_reviewer": false,
+    "other_reviewer_results_visible_to_reviewer": false,
+    "gold_visible_to_reviewer": false
+  },
+  "gold": {
+    "published_before_raw_capture": false,
+    "status": "held_out_not_published",
+    "note": "Coordinator pre-review snapshot is not Gold. Root-cause adjudication/scoring artifact is published only after raw reviewer capture to prevent leakage."
+  },
+  "controlled_mutant": {
+    "status": "not_started",
+    "part_of_current_real_target_run": false
+  },
+  "judge_quorum": {
+    "judge_a": "GPT-5.6 Sol / Codex",
+    "judge_b": "Claude Opus 5 / Claude Code",
+    "conditional_judge_c": "GPT-5.6 Pro / Browser",
+    "judge_c_condition": "first two judges disagree on reference verdict, blocking root cause, or merge-ready judgement"
+  },
+  "formal_agent_b": {
+    "status": "not_started",
+    "role": "product_merge_gate"
+  }
+}
