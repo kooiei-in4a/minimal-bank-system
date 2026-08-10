@@ -2,11 +2,9 @@
 
 Target Issue: #42 `[FND-04] EF Core・明示的migration実行基盤を確立する`
 
-Status: **FINAL SYNTHESIS LOCKED / READY FOR ROLE-DIVERSE INDEPENDENT REVIEW**
+Status: **FINAL SYNTHESIS REVIEW 5/5 COMPLETE / READY FOR JUDGE QUORUM**
 
-このdirectoryはFND-04 benchmarkの実行条件、candidate snapshots、Implementation Evaluation、Selection / Adjudication、Final Synthesis snapshot、independent review runを管理するbenchmark control正本である。
-
-candidate branchはH1 LOCK後に変更していない。Final Synthesisはcandidate rankingとは別のcurated implementationとして扱う。
+このdirectoryはFND-04 benchmarkの実行条件、candidate snapshots、Implementation Evaluation、Selection / Adjudication、Final Synthesis snapshot、independent review、Judge adjudicationを管理するbenchmark control正本である。
 
 ## Current state
 
@@ -17,10 +15,10 @@ H1 self-review fix snapshot      8/8 LOCKED
 H1 exact-head CI                 8/8 SUCCESS
 Implementation Evaluation        COMPLETE / LOCKED
 Selection / Adjudication         COMPLETE / LOCKED
-Final Synthesis prompt           LOCKED
 Final Synthesis implementation   COMPLETE / SNAPSHOT LOCKED
-Role-diverse independent review  READY / 0 OF 5 STARTED
-Judge quorum                     NOT STARTED
+Role-diverse independent review  COMPLETE / 5 OF 5
+Finding normalization            COMPLETE / PRE-JUDGE
+Judge quorum                     READY / NOT STARTED
 Formal Agent B                   NOT STARTED
 ```
 
@@ -33,31 +31,7 @@ Formal Agent B                   NOT STARTED
 - Non-merge-ready candidate: `deepseek-v4-flash-opencode`
 - Blocking candidate finding: `C8-M01`
 
-H0 / SR / H1 Durationは全candidateで一貫収集できなかったためN/A。Speed Score / Quality-Time Index / Practical Score speed componentは計算しない。
-
-## Locked Selection / Adjudication
-
-Primary:
-
-- C5 `claude-opus-5-claude-code`
-- H1 Head: `3a788cc31b3f65177d60dd3995842231dd505187`
-- architecture / production-path verification base
-
-Additional adoption:
-
-- C1: failed Migrator outputのcredential / password non-disclosure regression
-- C8-M01: missing `ConnectionStrings__Database`時のconnection-required design-time fail-closed regression
-
-Explicit non-selection:
-
-- C6 `TimeProvider` seamは初期Final Synthesisへ追加しない
-- C8 fabricated `127.0.0.1 / design_time` destinationは禁止
-- C2 / C3 / C4 / C7からC5を置換する要素は採用しない
-
-Canonical files:
-
-- `results/selection-adjudication.md`
-- `results/selection-adjudication.json`
+H0 / SR / H1 Durationは全candidateで一貫収集できなかったためN/A。Final Synthesisのみexplicit Agent recordとして29分を保持する。
 
 ## Final Synthesis locked target
 
@@ -69,188 +43,121 @@ Head SHA:      99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
 Commits:       1
 Changed files: 25
 Diff:          +1149 / -1
-Duration:      29 minutes (explicit Agent record)
+Duration:      29 minutes
 ```
 
-PR #140はsnapshot lock時点でOPEN / DRAFT / UNMERGED。
+PR #140はOPEN / DRAFT / UNMERGED。
 
-Coordinator pre-review gateでは、selection application、C8-M01 regression、scope boundary、real PostgreSQL verification構造をGitHub一次証拠から再確認し、review工程を止めるBlocker / Majorは検出していない。
+## Final Synthesis CI
 
-これは**merge-ready判定ではない**。
-
-Canonical Final Synthesis snapshot:
-
-- `results/final-synthesis-snapshot.md`
-- `results/final-synthesis-snapshot.json`
-- Revision: `fnd04-final-synthesis-snapshot-v1`
-
-## Final Synthesis CI identity
-
-Known run:
+Both CI identities are now independently resolved:
 
 ```text
-Build and Test #427
-Run ID: 31350916189
-Conclusion: SUCCESS
+PR merge-ref run:
+  31350916189
+  checkout d12de2ae07003a10d19d576808cf88ec7796da23
+  SUCCESS
+
+Direct-head push run:
+  31350870902
+  checkout 99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
+  SUCCESS
 ```
 
-成功step:
+Direct-head run evidence:
 
-- restore
-- local tool restore
-- build
-- pending-model check
-- non-PostgreSQL tests
-- real PostgreSQL tests
+- build: 0 warnings / 0 errors
+- pending-model: PASS
+- non-PostgreSQL: Unit 4 + Integration 38 = 42 PASS
+- real PostgreSQL: 23 PASS
 
-Observed CI result:
+The earlier coordinator note that direct-head CI was unresolved is superseded by this verified push run.
 
-- build: warnings 0 / errors 0
-- non-PostgreSQL: Unit 4 / 4 + Integration 38 / 38
-- real PostgreSQL: 23 / 23
+## Role-diverse independent review — COMPLETE
 
-Identity nuance:
+Reviewer pool revision: `fnd04-reviewer-pool-v2`
 
-- runはPR Head `99cee438...`に関連付く
-- actual checkout logはGitHub pull-request merge ref `d12de2ae07003a10d19d576808cf88ec7796da23`
-- merge refはexact Head `99cee...`をexact Base `38c07...`へmergeした状態
-- available connectorではseparate direct-head push-runを独立解決できていない
+| Slot | Model + Harness | Role | Verdict | Merge-ready |
+|---|---|---|---|---|
+| R1 | GPT-5.6 Sol / Codex | runtime / failure-path | APPROVE_WITH_FINDINGS | YES |
+| R2 | Claude Opus 5 / Claude Code | deep technical / test assurance | CHANGES_REQUIRED | **NO** |
+| R3 | GPT-5.6 Luna / Codex | specification / scope | APPROVE_WITH_FINDINGS | YES |
+| R4 | GPT-5.6 Sol / Browser | framework / official-source | APPROVE | YES |
+| R5 | Cursor Auto / Cursor | fast practical broad scan | APPROVE_WITH_FINDINGS | YES |
 
-したがってこのrunを「PR merge-state CI SUCCESS」と記録し、direct branch-Head checkout CIと混同しない。
+Raw Markdown + JSON pair: **5 / 5 captured** under `review-benchmark/reviews/`.
 
-## Role-diverse independent review
+## Key disputed finding
 
-Run identity:
+Only one reviewer reported a Blocker/Major:
 
-```text
-BENCHMARK_ID: fnd04-final-synthesis-independent-review
-RUN_ID:       fnd04-final-review-20260810
-POOL:         fnd04-reviewer-pool-v2
-PROMPT:       fnd04-final-review-v1
-RAW CAPTURE:  0 / 5
-```
+- R2-F01 — Major / blocking
+- normalized root cause: `NR-01`
 
-### Reviewer pool revision 2
+Topic: `DesignTimeConnectionSafetyTests` may be false assurance for the prior C8-M01 defect class.
 
-Reviewer実行開始前、raw capture `0 / 6`の時点でpoolを改訂した。旧poolのClaude Sonnet 5 / Claude CodeとGPT-5.6 Luna / Open Codeを外し、Grok 4.5固定も廃止した。
+Important distinction:
 
-現在のpool:
+- multiple reviewers independently consider the current production factory behavior fail-closed and correct;
+- R2 demonstrates that the committed regression test itself can remain green when an off-blocklist fabricated destination is injected or when the `--no-build` command cannot reach the factory;
+- R5 independently identified the same basic test-evidence weakness but rated it Minor;
+- R4 did not raise a finding but acknowledged the blocklist-only assertion is weak in isolation.
 
-| Slot | Expected Model + Harness | Primary role |
-| --- | --- | --- |
-| R1 | GPT-5.6 Sol / Codex | runtime / failure-path |
-| R2 | Claude Opus 5 / Claude Code | deep technical / test assurance |
-| R3 | GPT-5.6 Luna / Codex | specification / scope |
-| R4 | ChatGPT Opus 5.6 Sol / Browser | framework / official-source cross-check |
-| R5 | Cursor Auto / Cursor | fast independent review / practical broad scan |
+Therefore `NR-01` is **not yet a confirmed Major**. It is a valid root-cause candidate with disputed Severity / blocking status and goes to Judge A/B.
 
-Policy:
+## Other normalized findings
 
-- Claude Opus 5は高コストでも、deep technical / test assuranceへピンポイント投入する。
-- Claude Sonnet 5はreview poolでは使用しない。
-- Open Codeはこのreview phaseでは使用しない。
-- GPT-5.6 LunaはCodexでspecification / scopeを担当する。
-- Cursorは特定モデル固定ではなく標準Auto modeを実務review枠として使う。
-- 6枠を維持するためだけの冗長reviewerは追加せず、5 reviewerでraw capture completeとする。
+- `NR-02`: CommandTimeout(60) vs CTS(60s) timeout classification — R1/R5 Minor, disputed
+- `NR-03`: temporary model-drift evidence — initial evidence limitation, but R1/R2 independently reproduced drift detection and clean recovery
+- `NR-04`: PR CI wording — Nit; direct-head CI evidence now resolved
+- `NR-05`: ordinary failure exit-code taxonomy not specifically pinned — R2 Minor
+- `NR-06`: low-information constant assertions — R2 Nit
 
-Revision record:
+Canonical normalization:
 
-- `review-benchmark/reviewer-pool-revision-2.md`
-- authoritative review run control: `review-benchmark/run.json` schema 1.1
+- `review-benchmark/finding-normalization-prejudge.md`
+- `review-benchmark/finding-normalization-prejudge.json`
 
-Top-level `run.json` schema 1.9に残る初期reviewer list / 6-of-6記述は、reviewer poolについてのみこのRevision 2でsupersedeされる。candidate / implementation / selection / Final Synthesis snapshot情報は変更しない。
+## Judge quorum — NEXT
 
-Exact product-visible model identity / effortは各execution直前に再確認する。silent substitutionは禁止。
+Canonical prompt:
 
-Cursor Autoは特定modelのreview結果として扱わない。実際のrouted modelがproduct上で表示される場合のみ追加記録し、表示されない場合は推測しない。
+- `prompts/final-synthesis-judge.md`
+- Revision: `fnd04-final-judge-v1`
 
-Common reviewer prompt:
-
-- `prompts/final-synthesis-independent-review.md`
-- Revision: `fnd04-final-review-v1`
-
-Review run control:
-
-- `review-benchmark/README.md`
-- `review-benchmark/run.json`
-- `review-benchmark/reviewer-pool-revision-2.md`
-
-### Independence boundary
-
-reviewerは次を見ない。
-
-- candidate ranking / score
-- Implementation Evaluation
-- Selection / Adjudication
-- 他reviewer結果
-- Gold / Judge結果
-
-raw reviewer outputはチャット等からCollectorがMarkdown + JSON pairとして保存し、semantic editingしない。
-
-Gold / Reference Reviewの内容はraw reviewer capture前にreviewer-visible directoryへ公開しない。Coordinator snapshotはGoldではない。
-
-Controlled Mutantはcurrent real-target runでは開始していない。
-
-## Judge quorum
+Judges:
 
 - Judge A: GPT-5.6 Sol / Codex
 - Judge B: Claude Opus 5 / Claude Code
 - Conditional Judge C: GPT-5.6 Pro / Browser
 
-Judge Cはfirst two Judgesがreference verdict、blocking root cause、merge-ready判断で不一致の場合のみ使用する。
+Judge A/Bは互いの結果を見ずfresh contextで実行する。まずraw reviewsを読まずにIssue / ADR / exact source / tests / CIからPhase-A Referenceを固定し、その後normalized findingsを裁定する。
 
-## Experiment shape
+Judge CはA/Bが次のいずれかで不一致の場合のみ追加する。
+
+- Reference verdict
+- blocking root cause
+- merge-ready judgement
+
+## Gold / Reference
+
+Raw reviewer capture前にGoldは公開していない。Final adjudicated Gold / ReferenceはJudge quorum後に固定する。
+
+## Experiment flow
 
 ```text
 8 candidates
-  H0 implementation snapshot
-    -> Formal Self-Review
-      -> H1 self-review fix snapshot
-        -> implementation evaluation        [COMPLETE / LOCKED]
-          -> selection / adjudication        [COMPLETE / LOCKED]
-            -> curated Final Synthesis       [COMPLETE / LOCKED]
-              -> role-diverse independent review [NEXT / 0 OF 5]
-                -> 2 Judges (+ 1 conditional tie-breaker)
-                  -> Formal Agent B review
+  -> H0 / SR / H1
+    -> Implementation Evaluation          COMPLETE
+      -> Selection / Adjudication         COMPLETE
+        -> Final Synthesis                COMPLETE
+          -> 5 role-diverse reviews       COMPLETE
+            -> finding normalization      COMPLETE / PRE-JUDGE
+              -> Judge A + Judge B        NEXT
+                -> Judge C if required
+                  -> adjudicated Gold / Reference
+                    -> targeted fix if blocking finding confirmed
+                      -> Formal Agent B product merge review
 ```
 
-## Locked revisions
-
-```text
-H0 implementation prompt:       fnd04-h0-v1
-Formal Self-Review prompt:      fnd04-sr-v1
-H1 fix prompt:                  fnd04-h1-v1
-H1 execution wrapper:           fnd04-h1-exec-time-v1
-Implementation scoring:         fnd04-implementation-v1
-Evaluator probes:               fnd04-evaluator-probes-v1
-Assumption ledger:              fnd04-assumptions-v1
-Implementation result:          fnd04-implementation-evaluation-v1
-Selection / adjudication:       fnd04-selection-adjudication-v1
-Final Synthesis prompt:         fnd04-final-synthesis-v1
-Final Synthesis snapshot:       fnd04-final-synthesis-snapshot-v1
-Final review prompt:            fnd04-final-review-v1
-Reviewer pool:                  fnd04-reviewer-pool-v2
-```
-
-## Key files
-
-- `run.json`: overall machine-readable benchmark phase state（reviewer pool v1部分はrevision 2でsuperseded）
-- `scoring.md`: H0/H1 scoring rubric
-- `reference/assumption-ledger.md`: pre-locked external assumptions
-- `reference/evaluator-probes.md`: evaluator-only probes
-- `prompts/final-synthesis.md`: Final Synthesis implementation prompt
-- `prompts/final-synthesis-independent-review.md`: role-diverse independent review prompt
-- `results/implementation-evaluation.md/json`
-- `results/selection-adjudication.md/json`
-- `results/final-synthesis-snapshot.md/json`
-- `review-benchmark/README.md`
-- `review-benchmark/run.json`: authoritative current reviewer pool
-- `review-benchmark/reviewer-pool-revision-2.md`
-
-## Gate boundary
-
-Final Synthesis snapshotまでcomplete / locked。
-
-**次工程はR1-R5の独立レビューraw capture。**
-
-この状態はPR #140 Ready化、merge、Issue #42 closeを許可しない。role-diverse review → Judge → Formal Agent Bを経て初めてproduct merge gateを評価する。
+PR #140 Ready化、merge、Issue #42 closeはまだ許可しない。
