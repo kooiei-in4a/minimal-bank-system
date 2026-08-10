@@ -149,3 +149,18 @@ ARCHIVE_STATUS: complete_archived
 ```
 
 各candidateのremote tagはannotated tag objectとして存在し、`^{}` dereferenceは指定H1 Headと一致する。8件すべてのcandidate PRは未mergeのままCloseし、working branchもremoteから削除した。PR #140、final-code branch、benchmark-control branch、Issue #42およびFND-05関連成果物は変更していない。
+
+## 9. Canonical traceability
+
+```yaml
+TARGET_ISSUE: 42
+COMMON_BASE_SHA: 38c07e210fe4e8689f1d8aeabbb07b92610d1826
+FINAL_SYNTHESIS_PR: 140
+FINAL_REVIEWED_HEAD: 3511688401533f60bb77c7dcc647c4c2c4aa84c6
+FINAL_MERGE_COMMIT: 9a352a3a61945647273ccc7dfbc8e1816c3ca07c
+CANDIDATE_COUNT: 8
+ARCHIVE_STATUS: complete_archived
+ISSUE_STATE: CLOSED / COMPLETED
+```
+
+このcanonical summaryは、root `run.json`、`archive-manifest.json`、Final Synthesis snapshot、review-benchmark final runのidentityを相互参照するための追跡情報であり、candidate rankingとFinal Synthesisを混同しない。
