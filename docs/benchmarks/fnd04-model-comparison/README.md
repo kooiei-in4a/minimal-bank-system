@@ -19,7 +19,7 @@ Implementation Evaluation        COMPLETE / LOCKED
 Selection / Adjudication         COMPLETE / LOCKED
 Final Synthesis prompt           LOCKED
 Final Synthesis implementation   COMPLETE / SNAPSHOT LOCKED
-Role-diverse independent review  READY / 0 OF 6 STARTED
+Role-diverse independent review  READY / 0 OF 5 STARTED
 Judge quorum                     NOT STARTED
 Formal Agent B                   NOT STARTED
 ```
@@ -125,22 +125,44 @@ Run identity:
 ```text
 BENCHMARK_ID: fnd04-final-synthesis-independent-review
 RUN_ID:       fnd04-final-review-20260810
+POOL:         fnd04-reviewer-pool-v2
 PROMPT:       fnd04-final-review-v1
-RAW CAPTURE:  0 / 6
+RAW CAPTURE:  0 / 5
 ```
 
-Reviewer pool:
+### Reviewer pool revision 2
+
+Reviewer実行開始前、raw capture `0 / 6`の時点でpoolを改訂した。旧poolのClaude Sonnet 5 / Claude CodeとGPT-5.6 Luna / Open Codeを外し、Grok 4.5固定も廃止した。
+
+現在のpool:
 
 | Slot | Expected Model + Harness | Primary role |
 | --- | --- | --- |
 | R1 | GPT-5.6 Sol / Codex | runtime / failure-path |
 | R2 | Claude Opus 5 / Claude Code | deep technical / test assurance |
-| R3 | Claude Sonnet 5 / Claude Code | specification / scope |
+| R3 | GPT-5.6 Luna / Codex | specification / scope |
 | R4 | ChatGPT Opus 5.6 Sol / Browser | framework / official-source cross-check |
-| R5 | GPT-5.6 Luna / Open Code | tool-driven independent review |
-| R6 | Grok 4.5 / Cursor | fast independent review |
+| R5 | Cursor Auto / Cursor | fast independent review / practical broad scan |
+
+Policy:
+
+- Claude Opus 5は高コストでも、deep technical / test assuranceへピンポイント投入する。
+- Claude Sonnet 5はreview poolでは使用しない。
+- Open Codeはこのreview phaseでは使用しない。
+- GPT-5.6 LunaはCodexでspecification / scopeを担当する。
+- Cursorは特定モデル固定ではなく標準Auto modeを実務review枠として使う。
+- 6枠を維持するためだけの冗長reviewerは追加せず、5 reviewerでraw capture completeとする。
+
+Revision record:
+
+- `review-benchmark/reviewer-pool-revision-2.md`
+- authoritative review run control: `review-benchmark/run.json` schema 1.1
+
+Top-level `run.json` schema 1.9に残る初期reviewer list / 6-of-6記述は、reviewer poolについてのみこのRevision 2でsupersedeされる。candidate / implementation / selection / Final Synthesis snapshot情報は変更しない。
 
 Exact product-visible model identity / effortは各execution直前に再確認する。silent substitutionは禁止。
+
+Cursor Autoは特定modelのreview結果として扱わない。実際のrouted modelがproduct上で表示される場合のみ追加記録し、表示されない場合は推測しない。
 
 Common reviewer prompt:
 
@@ -151,6 +173,7 @@ Review run control:
 
 - `review-benchmark/README.md`
 - `review-benchmark/run.json`
+- `review-benchmark/reviewer-pool-revision-2.md`
 
 ### Independence boundary
 
@@ -186,7 +209,7 @@ Judge Cはfirst two Judgesがreference verdict、blocking root cause、merge-rea
         -> implementation evaluation        [COMPLETE / LOCKED]
           -> selection / adjudication        [COMPLETE / LOCKED]
             -> curated Final Synthesis       [COMPLETE / LOCKED]
-              -> role-diverse independent review [NEXT / 0 OF 6]
+              -> role-diverse independent review [NEXT / 0 OF 5]
                 -> 2 Judges (+ 1 conditional tie-breaker)
                   -> Formal Agent B review
 ```
@@ -206,11 +229,12 @@ Selection / adjudication:       fnd04-selection-adjudication-v1
 Final Synthesis prompt:         fnd04-final-synthesis-v1
 Final Synthesis snapshot:       fnd04-final-synthesis-snapshot-v1
 Final review prompt:            fnd04-final-review-v1
+Reviewer pool:                  fnd04-reviewer-pool-v2
 ```
 
 ## Key files
 
-- `run.json`: overall machine-readable benchmark phase state
+- `run.json`: overall machine-readable benchmark phase state（reviewer pool v1部分はrevision 2でsuperseded）
 - `scoring.md`: H0/H1 scoring rubric
 - `reference/assumption-ledger.md`: pre-locked external assumptions
 - `reference/evaluator-probes.md`: evaluator-only probes
@@ -220,12 +244,13 @@ Final review prompt:            fnd04-final-review-v1
 - `results/selection-adjudication.md/json`
 - `results/final-synthesis-snapshot.md/json`
 - `review-benchmark/README.md`
-- `review-benchmark/run.json`
+- `review-benchmark/run.json`: authoritative current reviewer pool
+- `review-benchmark/reviewer-pool-revision-2.md`
 
 ## Gate boundary
 
 Final Synthesis snapshotまでcomplete / locked。
 
-**次工程はR1-R6の独立レビューraw capture。**
+**次工程はR1-R5の独立レビューraw capture。**
 
 この状態はPR #140 Ready化、merge、Issue #42 closeを許可しない。role-diverse review → Judge → Formal Agent Bを経て初めてproduct merge gateを評価する。
