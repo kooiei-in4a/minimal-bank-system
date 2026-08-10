@@ -2,9 +2,9 @@
 
 Target Issue: #42 `[FND-04] EF Core・明示的migration実行基盤を確立する`
 
-Status: **FINAL SYNTHESIS REVIEW 5/5 COMPLETE / READY FOR JUDGE QUORUM**
+Status: **FINAL REVIEW + JUDGE COMPLETE / CONFIRMED MAJOR / TARGETED FIX REQUIRED**
 
-このdirectoryはFND-04 benchmarkの実行条件、candidate snapshots、Implementation Evaluation、Selection / Adjudication、Final Synthesis snapshot、independent review、Judge adjudicationを管理するbenchmark control正本である。
+このdirectoryはFND-04 benchmarkの実行条件、candidate snapshots、Implementation Evaluation、Selection / Adjudication、Final Synthesis、role-diverse review、Judge adjudicationを管理するbenchmark control正本である。
 
 ## Current state
 
@@ -15,149 +15,152 @@ H1 self-review fix snapshot      8/8 LOCKED
 H1 exact-head CI                 8/8 SUCCESS
 Implementation Evaluation        COMPLETE / LOCKED
 Selection / Adjudication         COMPLETE / LOCKED
-Final Synthesis implementation   COMPLETE / SNAPSHOT LOCKED
+Final Synthesis                  COMPLETE / SNAPSHOT LOCKED
 Role-diverse independent review  COMPLETE / 5 OF 5
-Finding normalization            COMPLETE / PRE-JUDGE
-Judge quorum                     READY / NOT STARTED
-Formal Agent B                   NOT STARTED
+Finding normalization            COMPLETE
+Judge A / B                      COMPLETE / QUORUM MATCH
+Judge C                          NOT REQUIRED
+Gold / Reference                 LOCKED / CHANGES_REQUIRED
+Targeted Major fix               READY / NOT STARTED
+Formal Agent B                   BLOCKED UNTIL FIX + RE-REVIEW
 ```
 
-## Locked implementation result
-
-- H1 winner: `claude-opus-5-claude-code` — 99
-- H0 winner: `gpt-5.6-sol-codex` — 98
-- Maximum Self-Review Gain: `claude-sonnet-5-claude-code` — +3
-- Merge-ready candidate at Implementation Evaluation: 7 / 8
-- Non-merge-ready candidate: `deepseek-v4-flash-opencode`
-- Blocking candidate finding: `C8-M01`
-
-H0 / SR / H1 Durationは全candidateで一貫収集できなかったためN/A。Final Synthesisのみexplicit Agent recordとして29分を保持する。
-
-## Final Synthesis locked target
+## Final Synthesis target under adjudication
 
 ```text
 PR:            #140
 Branch:        agent/issue-42-fnd-04-final-code
 Base SHA:      38c07e210fe4e8689f1d8aeabbb07b92610d1826
 Head SHA:      99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
-Commits:       1
-Changed files: 25
-Diff:          +1149 / -1
 Duration:      29 minutes
 ```
 
-PR #140はOPEN / DRAFT / UNMERGED。
-
-## Final Synthesis CI
-
-Both CI identities are now independently resolved:
+CI identities:
 
 ```text
-PR merge-ref run:
-  31350916189
+PR merge-ref:
+  Run 31350916189
   checkout d12de2ae07003a10d19d576808cf88ec7796da23
   SUCCESS
 
-Direct-head push run:
-  31350870902
+Direct Head:
+  Run 31350870902
   checkout 99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
   SUCCESS
 ```
 
-Direct-head run evidence:
+Direct-head CI: build 0 warnings / 0 errors、pending-model PASS、non-PG 42 PASS、real PG 23 PASS。
 
-- build: 0 warnings / 0 errors
-- pending-model: PASS
-- non-PostgreSQL: Unit 4 + Integration 38 = 42 PASS
-- real PostgreSQL: 23 PASS
-
-The earlier coordinator note that direct-head CI was unresolved is superseded by this verified push run.
-
-## Role-diverse independent review — COMPLETE
+## Reviewer pool — completed
 
 Reviewer pool revision: `fnd04-reviewer-pool-v2`
 
 | Slot | Model + Harness | Role | Verdict | Merge-ready |
 |---|---|---|---|---|
 | R1 | GPT-5.6 Sol / Codex | runtime / failure-path | APPROVE_WITH_FINDINGS | YES |
-| R2 | Claude Opus 5 / Claude Code | deep technical / test assurance | CHANGES_REQUIRED | **NO** |
+| R2 | Claude Opus 5 / Claude Code | deep technical / test assurance | CHANGES_REQUIRED | NO |
 | R3 | GPT-5.6 Luna / Codex | specification / scope | APPROVE_WITH_FINDINGS | YES |
-| R4 | GPT-5.6 Sol / Browser | framework / official-source | APPROVE | YES |
-| R5 | Cursor Auto / Cursor | fast practical broad scan | APPROVE_WITH_FINDINGS | YES |
+| R4 | GPT-5.6 Sol / Browser | framework official-source | APPROVE | YES |
+| R5 | Cursor Auto / Cursor | practical broad scan | APPROVE_WITH_FINDINGS | YES |
 
-Raw Markdown + JSON pair: **5 / 5 captured** under `review-benchmark/reviews/`.
+Raw artifacts 5/5 captured.
 
-## Key disputed finding
+## Judge quorum — complete
 
-Only one reviewer reported a Blocker/Major:
+Judge AとJudge Bは互いの結果を見ず、まずraw reviewsを読まないPhase AからReferenceを構築した。
 
-- R2-F01 — Major / blocking
-- normalized root cause: `NR-01`
+```text
+Judge A — GPT-5.6 Sol / Codex
+  CHANGES_REQUIRED
+  Blocking root cause: NR-01
+  Merge-ready: NO
 
-Topic: `DesignTimeConnectionSafetyTests` may be false assurance for the prior C8-M01 defect class.
+Judge B — Claude Opus 5 / Claude Code
+  CHANGES_REQUIRED
+  Blocking root cause: NR-01
+  Merge-ready: NO
+```
 
-Important distinction:
+Reference verdict / blocking root cause / merge-readyが完全一致したためJudge Cは不要。
 
-- multiple reviewers independently consider the current production factory behavior fail-closed and correct;
-- R2 demonstrates that the committed regression test itself can remain green when an off-blocklist fabricated destination is injected or when the `--no-build` command cannot reach the factory;
-- R5 independently identified the same basic test-evidence weakness but rated it Minor;
-- R4 did not raise a finding but acknowledged the blocklist-only assertion is weak in isolation.
+## Adjudicated Gold / Reference
 
-Therefore `NR-01` is **not yet a confirmed Major**. It is a valid root-cause candidate with disputed Severity / blocking status and goes to Judge A/B.
+Canonical:
 
-## Other normalized findings
+- `review-benchmark/gold-review.md`
+- `review-benchmark/gold-review.json`
+- Revision: `fnd04-final-gold-v1`
 
-- `NR-02`: CommandTimeout(60) vs CTS(60s) timeout classification — R1/R5 Minor, disputed
-- `NR-03`: temporary model-drift evidence — initial evidence limitation, but R1/R2 independently reproduced drift detection and clean recovery
-- `NR-04`: PR CI wording — Nit; direct-head CI evidence now resolved
-- `NR-05`: ordinary failure exit-code taxonomy not specifically pinned — R2 Minor
-- `NR-06`: low-information constant assertions — R2 Nit
+```text
+Gold verdict:       CHANGES_REQUIRED
+Merge-ready:        NO
+Blocker:            0
+Major:              1
+Confirmed blocker:  G-01 / NR-01
+```
 
-Canonical normalization:
+### G-01 / NR-01 — design-time regression false assurance
 
-- `review-benchmark/finding-normalization-prejudge.md`
-- `review-benchmark/finding-normalization-prejudge.json`
+Current production `BankDbContextFactory`のfail-closed behavior自体は正しい。
 
-## Judge quorum — NEXT
+しかし`DesignTimeConnectionSafetyTests`は、主に`exit != 0`と固定destination文字列の不在だけを検証しており、Judge A/Bは独立mutationで次を確認した。
+
+- off-blocklist fabricated destinationを再導入してもtestがgreen
+- factoryへ到達できないtool/build failureでもtestがgreen
+
+したがってFinal SynthesisでmandatoryとしたC8-M01 regression guardがguard対象のdefect classを防げておらず、merge-required verificationが実質未達としてMajor / blocking。
+
+production code変更は不要。test-only fixで解消する。
+
+## Nonblocking Gold
+
+- G-02 / NR-02 — 60s timeout mechanisms / exit taxonomy coupling: Minor
+- G-03 / NR-04 — PR CI wording: Nit
+- G-04 / NR-05 — ordinary failure exit taxonomy coverage: Minor
+- G-05 / NR-06 — low-information assertions: Nit
+- NR-03 — product findingとして棄却。model-drift negativeは独立再現済み
+
+今回のtargeted fixへ非blocking source改善を混ぜない。
+
+## Next — targeted Major fix
 
 Canonical prompt:
 
-- `prompts/final-synthesis-judge.md`
-- Revision: `fnd04-final-judge-v1`
+- `prompts/final-synthesis-major-fix.md`
+- Revision: `fnd04-final-major-fix-v1`
 
-Judges:
+原則変更対象:
 
-- Judge A: GPT-5.6 Sol / Codex
-- Judge B: Claude Opus 5 / Claude Code
-- Conditional Judge C: GPT-5.6 Pro / Browser
+```text
+tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs
+```
 
-Judge A/Bは互いの結果を見ずfresh contextで実行する。まずraw reviewsを読まずにIssue / ADR / exact source / tests / CIからPhase-A Referenceを固定し、その後normalized findingsを裁定する。
+目標:
 
-Judge CはA/Bが次のいずれかで不一致の場合のみ追加する。
+- connection-required production design-time / Npgsql pathへ到達したことをpositiveにassert
+- destination未構成がfailure原因であることをpositiveにassert
+- arbitrary non-zero tool/build failureをPASSにしない
+- off-blocklist fabricated destination mutationでtestがFAILする
+- factory未到達failureでtestがFAILする
+- mutationをdiscard後、production baselineでPASS
+- new direct-head CI / PR merge-ref CIの両方SUCCESS
 
-- Reference verdict
-- blocking root cause
-- merge-ready judgement
-
-## Gold / Reference
-
-Raw reviewer capture前にGoldは公開していない。Final adjudicated Gold / ReferenceはJudge quorum後に固定する。
+その後、G-01だけを対象にMajor-fix independent re-reviewを行う。
 
 ## Experiment flow
 
 ```text
 8 candidates
-  -> H0 / SR / H1
+  -> H0 / SR / H1                         COMPLETE
     -> Implementation Evaluation          COMPLETE
       -> Selection / Adjudication         COMPLETE
         -> Final Synthesis                COMPLETE
-          -> 5 role-diverse reviews       COMPLETE
-            -> finding normalization      COMPLETE / PRE-JUDGE
-              -> Judge A + Judge B        NEXT
-                -> Judge C if required
-                  -> adjudicated Gold / Reference
-                    -> targeted fix if blocking finding confirmed
-                      -> Formal Agent B product merge review
+          -> role-diverse review 5/5      COMPLETE
+            -> Judge A/B                  COMPLETE
+              -> Gold / Reference         CHANGES_REQUIRED
+                -> G-01 targeted fix      NEXT
+                  -> Major-fix re-review
+                    -> Formal Agent B
 ```
 
-PR #140 Ready化、merge、Issue #42 closeはまだ許可しない。
+PR #140はDraft / unmergedのまま。Ready化、merge、Issue #42 closeは禁止。
