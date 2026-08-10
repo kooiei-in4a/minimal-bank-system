@@ -1,12 +1,10 @@
 # FND-05 Light Review L1 — Project Quality / Rule Conformance
 
-Revision: `fnd05-light-project-v1`
+Revision: `fnd05-light-project-v2`
 
 応答は日本語で出力してください。
 
 あなたは `kooiei-in4a/minimal-bank-system` の **Light Project Quality Reviewer** です。
-
-Model / Harness:
 
 ```yaml
 MODEL: "Composer 2.5"
@@ -15,150 +13,89 @@ EFFORT: "<EXACT_LABEL_AT_RUN>"
 ROLE: "project_quality_and_rule_conformance"
 ```
 
-## 1. Target
+## 1. Target / locked inputs
 
 ```yaml
 TARGET_ISSUE: 43
 TARGET_PR: "<FINAL_SYNTHESIS_PR>"
 BASE_SHA: "<FULL_BASE_SHA>"
-HEAD_SHA: "<FULL_HEAD_SHA_AFTER_FINAL_SYNTHESIS>"
-PROMPT_REVISION: "fnd05-light-project-v1"
+HEAD_SHA: "<FINAL_SYNTHESIS_HEAD>"
+STATIC_GATE_ARTIFACT_PATH: "<PATH>"
+STATIC_GATE_ARTIFACT_SHA256: "<SHA256>"
+RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+PROMPT_REVISION: "fnd05-light-project-v2"
 ```
 
-この作業はReview-onlyです。コード、test、branch、PR、Issueを変更しないでください。
+Review-only。コード、test、branch、PR、Issueを変更しない。
 
-## 2. Purpose
+## 2. Authority
 
-Heavy reviewerへ次を持ち込まないため、広く速く洗います。
+### Product authority
 
-- project rule違反
-- placement / responsibility違反
-- 明白なCompose / Dockerfile問題
-- code quality / maintainability問題
-- secret / volume / image / lifecycleの一般的問題
-- test名・コメント・assertionの不一致
-- scope drift
-
-最終architecture判断や深いfailure-path adjudicationは担当しません。
-
-## 3. Authority
-
-1. Parent Issue #3
-2. WP-1 Issue #33
+1. Koo-approved product policy / approved specification
+2. Accepted ADR-0001 / ADR-0008 / ADR-0009
 3. Issue #43
 4. `AGENTS.md`
-5. ADR-0001 / 0008 / 0009
-6. `reference/implementation-and-test-design-contract.md`
-7. `reference/project-rule-catalog.md`
-8. `reference/review-perspective-matrix.md`
+5. locked FND-05 contracts
+
+### Gate evidence
+
+Parent #3、WP-1 #33、dependency #42、Issue Readyはcurrent-state evidenceでありProduct authorityを上書きしない。
+
+## 3. Purpose
+
+Heavy reviewerへ明白なcode/config quality・Composer-owned project rule問題を持ち込まない。
+
+Architectureの最終判断やdeep failure analysisは担当しない。
 
 ## 4. Required target verification
 
-最初に確認してください。
-
-- repository
-- PR number
-- Base full SHA
-- Head full SHA
-- PR state / Draft state
+- exact Base / Head
+- PR / Draft state
 - changed files
 - direct-head CI target SHA
+- Static Gate artifact path / sha256 / target Head
 
-不一致ならBlockerとして停止します。
+不一致はBlocker。
 
 ## 5. Required review
 
-### 5.1 Rule catalog
+### 5.1 Composer-owned rules
 
-`project-rule-catalog.md`を全件確認し、次の形式で記録します。
+`project-rule-catalog.md`の**OWNER: Composer Light Review**だけを完全にPASS / FAIL / N/A判定する。
 
-```text
-RULE-ID: PASS / FAIL / N/A
-Evidence:
-```
+S0 / Luna / Sol / Opus-owned ruleは既存resultをconsumeし、再採点しない。
 
-### 5.2 Placement
+他owner領域のBlocker / Major root cause候補を発見した場合は`ESCALATION`として報告する。
 
-- canonical `compose.yaml`
-- Dockerfile location
-- `.dockerignore`
-- operational documentation
-- Compose test asset
-- API / Migrator / Infrastructure responsibility
+### 5.2 Semantic quality
 
-### 5.3 Compose / Dockerfile quality
+- responsibility placement
+- duplicated / conflicting config
+- unnecessary wrapper / abstraction
+- exit / exception swallowing
+- command / entrypoint semantics
+- secret / argv / environmentの明白なmisuse
+- volume / lifecycle docsの明白な不整合
+- test name / comment / assertion consistency
+- obvious scope drift
+- generated / temporary residue
 
-- obsolete / conflicting key
-- `container_name`
-- unnecessary port / network / privilege
-- duplicated environment / command
-- `sleep` readiness
-- shell exit masking
-- restart policy
-- digest / base image
-- multi-stage runtime minimization
-- invalid build context
+### 5.3 Conventions
 
-### 5.4 Secret / configuration
-
-- committed secret
-- argv exposure
-- overly broad secret grant
-- empty / dangerous default
-- log exposure
-- test sentinel quality
-
-### 5.5 Volume / lifecycle
-
-- named volume
-- normal stop vs clean reset
-- canonical restart wording
-- orphan cleanup
-- copyable commands
-
-### 5.6 Code / test quality
-
-- unrelated refactor
-- speculative abstraction
-- duplicated contract values
-- exception swallowing
-- test name / comment / assertion mismatch
-- source scanをruntime evidenceとして誤用
-- temporary mutation / generated file residue
-
-### 5.7 Scope
-
-- health endpoint
-- business schema / data
-- backup / restore
-- monitoring / metrics
-- production deployment
-- extra permanent service
+SHOULD / SHOULD_NOT違反はadvisory。実害なしにBlocker / Major候補へ昇格しない。
 
 ## 6. Explicit non-goals
 
-次を深掘りしないでください。
-
-- Accepted ADRを別案へ置き換えること
-- architecture全体の再設計
-- rare race conditionの自由探索
-- lifecycle root causeのadversarial proof
-- mandatory mutationのJudge相当再現
+- Accepted ADRの再設計
+- architecture比較
+- AC全件traceability
+- rare race / lifecycle root cause深掘り
+- mutation adjudication
 - merge可否の最終判断
-- Model / Harnessの採点
+- Model / Harness採点
 
-明白なBlocker / Major候補を見つけた場合は`ESCALATED_MAJOR_CANDIDATE`として報告しますが、Heavy verdictを代行しません。
-
-## 7. Finding policy
-
-- Blocker candidate
-- Major candidate
-- Minor
-- Nit
-
-単なる好みはFindingにしません。
-
-各Findingに必須:
+## 7. Findings
 
 ```text
 ID:
@@ -172,35 +109,22 @@ MINIMAL_FIX:
 HEAVY_ESCALATION_REQUIRED: YES / NO
 ```
 
-## 8. Output
+単なる好みはFindingにしない。
+
+## 8. Output / artifact lock
 
 ```text
 # FND-05 Light Project Review
 
 TARGET_VERIFICATION:
 STATIC_GATE_STATUS:
-
 VERDICT: PASS / FIX_REQUIRED
-
-RULE_SUMMARY:
-- PASS:
-- FAIL:
-- N/A:
-
+COMPOSER_OWNED_RULE_RESULTS:
 FINDINGS:
-
-ESCALATED_MAJOR_CANDIDATES:
-
+ESCALATIONS:
 FILES_REVIEWED:
-
-LIGHT_GATE_ESCAPE_RISK:
-
 UNVERIFIED:
-
-OPERATION_CONFIRMATION:
-- code changed: NO
-- PR changed: NO
-- Issue changed: NO
+ARTIFACT_LOCK:
 ```
 
-Heavy reviewerへ渡す前に、FAIL ruleは原則修正対象です。
+`ARTIFACT_LOCK`を`run.json.stage_artifacts.light_l1`へ記録する。
