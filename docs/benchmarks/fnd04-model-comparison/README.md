@@ -2,9 +2,9 @@
 
 Target Issue: #42 `[FND-04] EF Core・明示的migration実行基盤を確立する`
 
-Status: **G-01 MAJOR FIX COMPLETE / TARGETED RE-REVIEW READY**
+Status: **G-01 CLEARED / FORMAL AGENT B READY**
 
-このdirectoryはFND-04 benchmarkのH0/SR/H1、Implementation Evaluation、Selection / Adjudication、Final Synthesis、独立review、Judge、Gold、Major fixを管理するbenchmark control正本である。
+このdirectoryはFND-04 benchmarkのH0/SR/H1、Implementation Evaluation、Selection / Adjudication、Final Synthesis、独立review、Judge、Gold、Major fix、clearanceを管理するbenchmark control正本である。
 
 ## Current state
 
@@ -18,13 +18,27 @@ Selection / Adjudication         COMPLETE / LOCKED
 Final Synthesis initial Head      COMPLETE / SNAPSHOT LOCKED
 Role-diverse independent review  COMPLETE / 5 OF 5
 Judge A / B                      COMPLETE / QUORUM MATCH
-Gold / Reference                 LOCKED / G-01 MAJOR
-G-01 targeted fix                COMPLETE / SNAPSHOT LOCKED
-Targeted Major-fix re-review     READY / 0 OF 2
-Formal Agent B                   BLOCKED UNTIL G-01 CLEARANCE
+Judge C                          NOT REQUIRED
+Gold / Reference                 LOCKED / G-01 MAJOR ON OLD HEAD
+G-01 targeted fix                COMPLETE / NEW HEAD LOCKED
+Targeted Major-fix re-review     COMPLETE / 2 OF 2 G01_FIXED
+G-01 clearance                   PASS / LOCKED
+Formal Agent B                   READY / NOT STARTED
 ```
 
-## Gold result on old Head
+## Final Synthesis current target
+
+```text
+PR:            #140
+Branch:        agent/issue-42-fnd-04-final-code
+Base SHA:      38c07e210fe4e8689f1d8aeabbb07b92610d1826
+Current Head:  3511688401533f60bb77c7dcc647c4c2c4aa84c6
+PR merge ref:  2e69049bd8b38e57cd4fee2c42e17edaeaf23df1
+```
+
+PR #140 remains OPEN / DRAFT / UNMERGED.
+
+## Gold history
 
 Old Head:
 
@@ -36,7 +50,7 @@ Judge A/B quorum:
 
 ```text
 CHANGES_REQUIRED
-Blocking root cause: NR-01
+Blocking root cause: G-01 / NR-01
 Merge-ready: NO
 ```
 
@@ -46,17 +60,9 @@ Canonical Gold:
 - `review-benchmark/gold-review.json`
 - Revision: `fnd04-final-gold-v1`
 
-Confirmed Major `G-01 / NR-01`: `DesignTimeConnectionSafetyTests` could stay green for an off-blocklist fabricated destination or a factory-unreachable unrelated failure.
+## G-01 targeted fix
 
-## Targeted Major fix
-
-New Head:
-
-```text
-3511688401533f60bb77c7dcc647c4c2c4aa84c6
-```
-
-Old -> New:
+Old -> new:
 
 ```text
 1 commit
@@ -72,30 +78,14 @@ tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyT
 
 Production code change: **NONE**.
 
-New positive assertions require the intended failure signature:
+The new regression positively pins:
 
 - uninitialized ConnectionString
-- empty database / server destination
-- Npgsql path
-- EF Migrations path
+- empty destination
+- Npgsql execution path
+- EF Migrations execution path
 
-Author mutation verification:
-
-```text
-baseline PASS
-M1 off-blocklist destination -> targeted test FAIL
-M2 factory unreachable       -> targeted test FAIL
-recovery PASS
-residue NONE
-```
-
-Duration: **30 minutes** (`14:28` -> `14:58` JST; explicit author metadata).
-
-Canonical snapshot:
-
-- `review-benchmark/major-fix-snapshot.md`
-- `review-benchmark/major-fix-snapshot.json`
-- Revision: `fnd04-final-major-fix-snapshot-v1`
+Duration: 30 minutes (`14:28` -> `14:58` JST, explicit author metadata).
 
 ## New Head CI
 
@@ -112,43 +102,68 @@ PR merge-ref:
 ```text
 Run 31360094852
 checkout 2e69049bd8b38e57cd4fee2c42e17edaeaf23df1
-Merge 3511688401533f60bb77c7dcc647c4c2c4aa84c6
-  into 38c07e210fe4e8689f1d8aeabbb07b92610d1826
+Merge 3511688401533f60bb77c7dcc647c4c2c4aa84c6 into 38c07e210fe4e8689f1d8aeabbb07b92610d1826
 SUCCESS
 ```
 
-Both runs independently verified:
+Both passed:
 
 - build 0 warnings / 0 errors
-- pending-model PASS
-- non-PostgreSQL 42 PASS
-- real PostgreSQL 23 PASS
+- pending-model
+- non-PostgreSQL 42
+- real PostgreSQL 23
 
-## Next gate — targeted G-01 re-review
+## G-01 targeted re-review — COMPLETE
 
-Common prompt:
+| Slot | Model / Harness | Verdict | New B | New M |
+|---|---|---|---:|---:|
+| T1 | GPT-5.6 Sol / Codex / xHigh | G01_FIXED | 0 | 0 |
+| T2 | Cursor / Auto | G01_FIXED | 0 | 0 |
 
-- `prompts/final-synthesis-major-fix-re-review.md`
-- Revision: `fnd04-final-major-fix-rereview-v1`
+Both independently verified baseline PASS, M1 FAIL, M2 FAIL, recovery PASS and mutation residue NONE.
 
-Reviewers:
+Canonical clearance:
 
-| Slot | Model / Harness | Scope |
-|---|---|---|
-| T1 | GPT-5.6 Sol / Codex / xHigh | independent G-01 mutation sensitivity |
-| T2 | Cursor Auto / Cursor | independent practical targeted verification |
+- `review-benchmark/major-fix-clearance.md`
+- `review-benchmark/major-fix-clearance.json`
+- Revision: `fnd04-final-major-fix-clearance-v1`
 
-The old 5-review pool is **not rerun**. Targeted re-review checks only whether G-01 is fixed and whether the 18-line test-only patch introduced a new Blocker/Major.
+**G-01 status: CLEARED.**
 
-Clearance condition:
+Known Gold nonblocking findings remain nonblocking and were not mixed into the Major fix.
+
+## Next — Formal Agent B product merge gate
+
+Canonical prompt:
+
+- `prompts/final-synthesis-formal-agent-b.md`
+- Revision: `fnd04-formal-agent-b-v1`
+
+Recommended execution:
 
 ```text
-T1 G01_FIXED
-T2 G01_FIXED
-new Blocker 0
-new Major 0
+Claude Opus 5 / Claude Code / xHigh
 ```
 
-After clearance, proceed to Formal Agent B product merge gate.
+Formal Agent B independently reviews the complete Issue #42 contract against exact current Head and records one formal GitHub review on PR #140.
 
-PR #140 remains OPEN / DRAFT / UNMERGED. Ready, merge and Issue #42 close remain prohibited until Formal Agent B completes.
+If Blocker / Major = 0, it may record `APPROVE`; if Blocker / Major exists, `REQUEST_CHANGES`.
+
+Formal Agent B itself must not Ready the PR, merge, or close Issue #42.
+
+## Experiment flow
+
+```text
+8 candidates
+  -> H0 / SR / H1                         COMPLETE
+    -> Implementation Evaluation          COMPLETE
+      -> Selection / Adjudication         COMPLETE
+        -> Final Synthesis                COMPLETE
+          -> role-diverse review 5/5      COMPLETE
+            -> Judge A/B                  COMPLETE
+              -> Gold / Reference         COMPLETE
+                -> G-01 targeted fix      COMPLETE
+                  -> G-01 re-review 2/2   COMPLETE / CLEARED
+                    -> Formal Agent B      NEXT
+                      -> Ready / merge / Issue close only after approval
+```
