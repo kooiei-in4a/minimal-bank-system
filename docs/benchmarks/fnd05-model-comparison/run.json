@@ -133,7 +133,7 @@
     "project_rules": "fnd05-project-rules-v2",
     "review_matrix": "fnd05-review-matrix-v2",
     "mandatory_mutations": "fnd05-mutations-v2",
-    "scoring": "fnd05-scoring-v1",
+    "scoring": "fnd05-scoring-v2",
     "implementation_prompt": "fnd05-implementation-v2",
     "implementation_evaluation_prompt": "fnd05-implementation-evaluation-v2",
     "selection_adjudication_prompt": "fnd05-selection-adjudication-v2",
@@ -149,176 +149,28 @@
     "targeted_re_review_prompt": "fnd05-targeted-re-review-v2"
   },
   "open_decisions": {
-    "D-01": {
-      "question": "minimum Docker Compose version and required feature support",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    },
-    "D-02": {
-      "question": "exact PostgreSQL and .NET image identities/digests",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    },
-    "D-03": {
-      "question": "secret source and reader design",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    },
-    "D-04": {
-      "question": "canonical lifecycle commands and lifecycle semantics",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    },
-    "D-05": {
-      "question": "external state capture method for Migrator exit/finish, API state/start, migration history and project identity",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    },
-    "D-06": {
-      "question": "test-only failure injection mechanisms without production backdoor",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    },
-    "D-07": {
-      "question": "cross-platform execution contract",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    },
-    "D-08": {
-      "question": "Final Synthesis exact model/harness/effort identity",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
-    }
+    "D-01": {"question": "minimum Docker Compose version and required feature support", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-02": {"question": "exact PostgreSQL and .NET image identities/digests", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-03": {"question": "secret source and reader design", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-04": {"question": "canonical lifecycle commands and lifecycle semantics", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-05": {"question": "external state capture method for Migrator exit/finish, API state/start, migration history and project identity", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-06": {"question": "test-only failure injection mechanisms without production backdoor", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-07": {"question": "cross-platform execution contract", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []},
+    "D-08": {"question": "Final Synthesis exact model/harness/effort identity", "status": "TO_LOCK", "locked_value": null, "evidence_refs": []}
   },
   "stage_artifacts": {
-    "static_gate": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "implementation_evaluation": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "selection_adjudication": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "final_synthesis_initial": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "light_l1": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": "L1",
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "light_l2": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": "L2",
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "light_fix": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "heavy_sol": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": "H1",
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "heavy_opus": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": "H2",
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "conditional_judge": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "targeted_fix": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    },
-    "targeted_re_review": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
-    }
+    "static_gate": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
+    "implementation_evaluation": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
+    "selection_adjudication": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
+    "final_synthesis_initial": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
+    "light_l1": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "L1", "producer_commit_sha": null, "status": "not_started"},
+    "light_l2": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "L2", "producer_commit_sha": null, "status": "not_started"},
+    "light_fix": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
+    "heavy_sol": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "H1", "producer_commit_sha": null, "status": "not_started"},
+    "heavy_opus": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": "H2", "producer_commit_sha": null, "status": "not_started"},
+    "conditional_judge": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
+    "targeted_fix": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"},
+    "targeted_re_review": {"artifact_path": null, "content_sha256": null, "prompt_revision": null, "target_head_sha": null, "source_artifact_refs": [], "producer_slot": null, "producer_commit_sha": null, "status": "not_started"}
   },
   "gates": {
     "final_retrospective_reviewed": false,
