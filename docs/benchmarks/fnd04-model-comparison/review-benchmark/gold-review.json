@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "gold_revision": "fnd04-final-gold-v1",
+  "status": "locked_targeted_fix_required",
+  "target": {
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"
+  },
+  "judge_quorum": {
+    "judge_a": {"model":"GPT-5.6 Sol","harness":"Codex","verdict":"CHANGES_REQUIRED","merge_ready":false,"blocking_root_causes":["NR-01"]},
+    "judge_b": {"model":"Claude Opus 5","harness":"Claude Code","verdict":"CHANGES_REQUIRED","merge_ready":false,"blocking_root_causes":["NR-01"]},
+    "judge_c_used": false,
+    "quorum_match": true
+  },
+  "verdict": "CHANGES_REQUIRED",
+  "merge_ready": false,
+  "severity_counts": {"blocker":0,"major":1,"minor":2,"nit":2},
+  "findings": [
+    {
+      "id": "G-01",
+      "normalized_id": "NR-01",
+      "severity": "Major",
+      "blocking": true,
+      "title": "C8-M01 regression test remains green when the guarded defect class or unrelated tooling failure is introduced",
+      "affected_path": "tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs",
+      "production_defect_confirmed": false,
+      "root_cause": "The regression accepts any non-zero process exit and infers destination safety only from absence of a fixed forbidden-string list. It does not positively prove that the production design-time Npgsql connection-required path was reached or that the destination remained unconfigured.",
+      "evidence": [
+        "Judge A and Judge B independently reproduced an off-blocklist fabricated destination such as Host=db;Database=ambient_fallback while the committed regression remained green.",
+        "Judge A and Judge B independently reproduced a factory-unreachable build/tooling failure while the committed regression remained green.",
+        "Unmodified production Head was independently observed to fail closed with no configured destination; the Major concerns regression assurance, not a current production behavior defect."
+      ],
+      "required_fix": "Strengthen the test with positive assertions proving the intended production design-time/Npgsql connection-required path was reached and failed because no destination was configured. Ensure arbitrary build/tool/MSBuild failures cannot satisfy the test. Keep the destination blocklist only as supplementary evidence."
+    },
+    {
+      "id": "G-02",
+      "normalized_id": "NR-02",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Coincident 60-second command and whole-operation budgets couple the published exit taxonomy to an implicit ordering margin",
+      "root_cause": "Npgsql CommandTimeout and the whole-operation CTS use the same nominal deadline while exception type determines exit 1 versus exit 2.",
+      "note": "The stricter sub-claim that provider timeout necessarily can win the race is not part of Gold because Judge A/B differed on that reachability detail."
+    },
+    {
+      "id": "G-03",
+      "normalized_id": "NR-04",
+      "severity": "Nit",
+      "blocking": false,
+      "title": "PR body mislabels merge-ref CI as exact direct-head CI",
+      "evidence": ["Run 31350916189 checks out d12de2ae... PR merge ref.","Run 31350870902 checks out exact Head 99cee438... and succeeds." ]
+    },
+    {
+      "id": "G-04",
+      "normalized_id": "NR-05",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Ordinary failure exit-code taxonomy is not pinned by negative tests",
+      "note": "Judge A rated this Nit and Judge B rated it Minor. Gold uses Minor because the README exposes the 0/1/2 taxonomy as a deployment-facing contract, while still treating it as nonblocking."
+    },
+    {
+      "id": "G-05",
+      "normalized_id": "NR-06",
+      "severity": "Nit",
+      "blocking": false,
+      "title": "Low-information assertions and naming"
+    }
+  ],
+  "rejected_or_evidence_limit": [
+    {
+      "normalized_id": "NR-03",
+      "disposition": "EVIDENCE_LIMIT_ONLY",
+      "reason": "Independent Judges reproduced temporary model drift detection and clean recovery; no current product finding remains."
+    }
+  ],
+  "ci": {
+    "pr_merge_ref_run": 31350916189,
+    "pr_merge_ref_checkout_sha": "d12de2ae07003a10d19d576808cf88ec7796da23",
+    "direct_head_run": 31350870902,
+    "direct_head_checkout_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "direct_head_conclusion": "success"
+  },
+  "next_gate": "targeted_major_fix_G-01"
+}
