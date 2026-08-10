@@ -616,13 +616,119 @@ SolとOpusは「何度も考え直させるモデル」ではなく、「最後�
 
 ---
 
-## 16. Source Links
+## 16. FND-05 pre-run review後のprocess v2
+
+PR #145のpre-run prompt suiteに対する独立review（PR #146〜#148）で、初期方針を実行可能なcontractへ精密化するための改善が確定した。ここではFND-04で実際に行った内容や、初期FND-05方針を書き換えず、その後に追加されたv2を記録する。
+
+### 16.1 Observable contractをexact implementation shapeより優先する
+
+FND-05のAcceptance Criteriaは、Kooが別途固定しない限り、exactな3-service構成、service名、Compose condition構文、ファイル配置そのものではなく、外部から観測できる結果を対象とする。
+
+```text
+PostgreSQL usable
+  → explicit Migrator
+    → success only permits API start
+    → failure means API never starts
+```
+
+実装形状の好みを独立のFAIL条件へ昇格させず、同じ安全なobservable contractを満たす同等実装を許容する。FND-06 health endpoint、business schema、backup、production orchestratorをFND-05へ先取りしない境界は維持する。
+
+### 16.2 Product authorityとgate evidenceを分離する
+
+製品挙動・設計の正本と、工程を進めるためのgate evidenceを同じ権限として扱わない。
+
+```text
+Product authority:
+approved specification
+  → Accepted ADR
+  → Issue #43
+  → AGENTS.md
+  → locked benchmark contract
+
+Gate evidence:
+Parent Issue #3
+  → WP-1 #33
+  → Issue Ready
+  → dependency state
+  → Koo explicit start authorization
+```
+
+Parent #3とWP #33はphase、gate、dependency、Blockerを追跡するための証拠であり、承認済み仕様・ADR・Issue #43の製品設計を上書きしない。矛盾を下位資料で補完せず停止する。
+
+### 16.3 LightからHeavyへの未解決Blocker/Major引き継ぎ
+
+Heavy Reviewが独立再確認を省略できるのは、Light findingが`ACCEPTED`、`FIXED`、`VERIFIED`まで閉じている場合、およびMinor/Nitとして扱える場合に限る。
+
+Lightで`REJECTED`、`UNRESOLVED`、`ESCALATED`、`EVIDENCE_INCOMPLETE`となったBlocker/Major候補は、該当Heavy reviewerへ明示的に引き継ぎ、同じfindingを独立再確認する。AuthorのdispositionだけでHeavyのblind spotへ落とさない。
+
+### 16.4 工程間artifactのimmutable identity
+
+工程間で渡すartifactはファイル名や論理名だけで参照せず、少なくとも次のidentityを固定する。
+
+```yaml
+artifact_path:
+content_sha256:
+target_head_sha:
+prompt_revision:
+producer:
+producer_commit_sha:
+source_artifact_refs:
+```
+
+後続stageは、artifact hash、対象Head、producer、prompt revisionがlockされた入力と一致しなければ開始しない。これにより、古いHeadのreviewやfindingを別Headへ誤用しない。
+
+### 16.5 Issue Readyと開始許可を分離する
+
+```text
+Issue Ready PASS
+≠
+candidate implementation permission
+```
+
+Issue ReadyはIssueの範囲・受入条件・依存関係が実装可能な状態であることだけを示す。candidate開始には、これとは別にKooのexplicit start authorizationが必要であり、実行許可は両方の証拠が揃った場合だけ導出する。Issue Ready review単体で`IMPLEMENTATION_PERMITTED`を生成しない。
+
+### 16.6 Evidence-backed Completion Checks
+
+Formal Self-Review phaseは復活させない。Implementation promptに埋め込むCompletion Checksは、PASSの自己申告ではなく、Definition of Doneとして次の証拠を伴う。
+
+```text
+command
+artifact
+runtime observation
+evidence
+target_head_sha
+```
+
+未検証をPASSへ読み替えず、必要なcommand、artifact、runtime observation、対象Headを記録できない項目は`UNVERIFIED`として扱う。Static、Light、Heavyがそれぞれの責任範囲を独立に保つ方針も維持する。
+
+### 16.7 Mutation oracleを壊さない
+
+mutationはtestやvalidatorのoracle自体を変更せず、runtime defectまたは実行経路の欠陥を投入する。
+
+```text
+baseline GREEN
+  → runtime defectを投入
+  → unchanged oracleが期待理由でRED
+  → mutationをrevert
+  → GREEN
+  → residue 0
+```
+
+特にM-08では、Migratorが成功を報告するが期待するmigration状態が存在しないruntime条件を作り、変更していないvalidatorがREDになることを確認する。oracleのassertionを削除・弱体化してREDを作ったことにはしない。
+
+このv2は、FND-05 candidate実行やD-01〜D-08のlockを開始する許可ではない。prompt-suite targeted re-reviewでBlocker/Major 0を確認し、Issue Ready PASSとKooの開始許可を別々に取得するという停止点を維持する。
+
+## 17. Source Links
 
 - FND-04 Final Synthesis: https://github.com/kooiei-in4a/minimal-bank-system/pull/140
 - Sol retrospective: https://github.com/kooiei-in4a/minimal-bank-system/pull/141
 - Opus retrospective: https://github.com/kooiei-in4a/minimal-bank-system/pull/142
 - Cursor Auto retrospective: https://github.com/kooiei-in4a/minimal-bank-system/pull/143
 - FND-05 Issue: https://github.com/kooiei-in4a/minimal-bank-system/issues/43
+- FND-05 pre-run preparation: https://github.com/kooiei-in4a/minimal-bank-system/pull/145
+- FND-05 independent review / adjudication: https://github.com/kooiei-in4a/minimal-bank-system/pull/146
+- FND-05 Codex review: https://github.com/kooiei-in4a/minimal-bank-system/pull/147
+- FND-05 review adjudication: https://github.com/kooiei-in4a/minimal-bank-system/pull/148
 - ADR-0001: ../adr/0001-application-platform-baseline.md
 - ADR-0008: ../adr/0008-audit-logging-technical-logging-and-backup.md
 - ADR-0009: ../adr/0009-database-schema-migration-and-rollback.md
