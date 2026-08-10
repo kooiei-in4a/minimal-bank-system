@@ -1,9 +1,9 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "benchmark_id": "fnd04-final-synthesis-independent-review",
   "run_id": "fnd04-final-review-20260810",
   "reviewer_pool_revision": 2,
-  "status": "ready_for_reviewer_execution",
+  "status": "raw_capture_complete_ready_for_judges",
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
   "target_pr": 140,
@@ -13,77 +13,117 @@
     "head_branch": "agent/issue-42-fnd-04-final-code",
     "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
     "known_pr_merge_ref_sha": "d12de2ae07003a10d19d576808cf88ec7796da23",
-    "known_ci_run": 31350916189
+    "pr_merge_ref_ci_run": 31350916189,
+    "direct_head_ci_run": 31350870902,
+    "direct_head_ci_checkout_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "direct_head_ci_conclusion": "success"
   },
   "revisions": {
     "final_synthesis_snapshot": "fnd04-final-synthesis-snapshot-v1",
     "review_prompt": "fnd04-final-review-v1",
     "review_result_schema": "1.0",
-    "reviewer_pool": "fnd04-reviewer-pool-v2"
+    "reviewer_pool": "fnd04-reviewer-pool-v2",
+    "finding_normalization_prejudge": "1.0",
+    "judge_prompt": "fnd04-final-judge-v1"
   },
   "pool_revision": {
     "previous_revision": 1,
     "changed_before_any_raw_review": true,
     "previous_completed": "0_of_6",
-    "reason": [
-      "avoid Claude Sonnet 5 token cost for a role that does not require another top-tier expensive reviewer",
-      "avoid Open Code for this review phase",
-      "use GPT-5.6 Luna / Codex for specification and scope review",
-      "use Cursor Auto as the practical fast broad-scan route instead of pinning Grok 4.5",
-      "reduce reviewer count from six to five rather than adding a redundant replacement"
-    ],
     "audit_record": "docs/benchmarks/fnd04-model-comparison/review-benchmark/reviewer-pool-revision-2.md"
   },
   "reviewers": [
     {
       "slot": "R1",
-      "expected_model": "GPT-5.6 Sol",
+      "model": "GPT-5.6 Sol",
       "harness": "Codex",
       "primary_role": "runtime_failure_path",
-      "effort": "reverify_at_execution",
-      "status": "not_started"
+      "effort": "xHigh",
+      "status": "completed",
+      "verdict": "APPROVE_WITH_FINDINGS",
+      "merge_ready": true,
+      "severity_counts": {"blocker":0,"major":0,"minor":1,"nit":1},
+      "markdown": "reviews/gpt-5.6-sol-codex.md",
+      "json": "reviews/gpt-5.6-sol-codex.json"
     },
     {
       "slot": "R2",
-      "expected_model": "Claude Opus 5",
+      "model": "Claude Opus 5",
       "harness": "Claude Code",
       "primary_role": "deep_technical_test_assurance",
-      "effort": "reverify_at_execution",
-      "status": "not_started"
+      "effort": "xHigh",
+      "status": "completed",
+      "verdict": "CHANGES_REQUIRED",
+      "merge_ready": false,
+      "severity_counts": {"blocker":0,"major":1,"minor":1,"nit":2},
+      "markdown": "reviews/claude-opus-5-claude-code.md",
+      "json": "reviews/claude-opus-5-claude-code.json"
     },
     {
       "slot": "R3",
-      "expected_model": "GPT-5.6 Luna",
+      "model": "GPT-5.6 Luna",
       "harness": "Codex",
       "primary_role": "specification_scope",
-      "effort": "reverify_at_execution",
-      "status": "not_started"
+      "effort": "xHigh",
+      "status": "completed",
+      "verdict": "APPROVE_WITH_FINDINGS",
+      "merge_ready": true,
+      "severity_counts": {"blocker":0,"major":0,"minor":1,"nit":0},
+      "markdown": "reviews/gpt-5.6-luna-codex-final-review.md",
+      "json": "reviews/gpt-5.6-luna-codex-final-review.json",
+      "integrity_note": "raw structured target_verification.observed_base_sha used an abbreviated value; top-level target base_sha and Markdown target gate identify the fixed full Base and reviewer verdict is PASS. Raw field retained without semantic correction."
     },
     {
       "slot": "R4",
-      "expected_model": "ChatGPT Opus 5.6 Sol",
+      "model": "GPT-5.6 Sol",
       "harness": "Browser",
       "primary_role": "framework_official_source_cross_check",
-      "effort": "reverify_at_execution",
-      "identity_reverify_before_execution": true,
-      "status": "not_started"
+      "effort": "NOT EXPOSED",
+      "status": "completed",
+      "verdict": "APPROVE",
+      "merge_ready": true,
+      "severity_counts": {"blocker":0,"major":0,"minor":0,"nit":0},
+      "markdown": "reviews/chatgpt-browser-framework-review.md",
+      "json": "reviews/chatgpt-browser-framework-review.json"
     },
     {
       "slot": "R5",
-      "expected_model": "Cursor Auto",
+      "model": "Cursor Auto",
       "harness": "Cursor",
       "primary_role": "fast_independent_review",
-      "effort": "auto_mode",
+      "effort": "Auto",
       "routing_mode": "Auto",
-      "routed_model": "record_if_product_exposes_it_else_NOT_EXPOSED",
-      "status": "not_started"
+      "routed_model": "NOT_EXPOSED",
+      "status": "completed",
+      "verdict": "APPROVE_WITH_FINDINGS",
+      "merge_ready": true,
+      "severity_counts": {"blocker":0,"major":0,"minor":2,"nit":0},
+      "markdown": "reviews/cursor-auto.md",
+      "json": "reviews/cursor-auto.json"
     }
   ],
   "raw_capture": {
     "expected": "5_of_5",
-    "completed": "0_of_5",
+    "completed": "5_of_5",
     "format": "markdown_plus_json_pair",
-    "semantic_editing": "prohibited"
+    "semantic_editing": "prohibited",
+    "status": "complete"
+  },
+  "review_summary": {
+    "approve": 1,
+    "approve_with_findings": 3,
+    "changes_required": 1,
+    "merge_ready_yes": 4,
+    "merge_ready_no": 1,
+    "reviewers_with_blocker": 0,
+    "reviewers_with_major": 1,
+    "blocking_candidate": "NR-01"
+  },
+  "normalization": {
+    "status": "prejudge_complete",
+    "markdown": "finding-normalization-prejudge.md",
+    "json": "finding-normalization-prejudge.json",
+    "normalized_candidates": ["NR-01","NR-02","NR-03","NR-04","NR-05","NR-06"]
   },
   "isolation": {
     "candidate_rankings_visible_to_reviewer": false,
@@ -94,18 +134,21 @@
   },
   "gold": {
     "published_before_raw_capture": false,
-    "status": "held_out_not_published",
-    "note": "Coordinator pre-review snapshot is not Gold. Root-cause adjudication/scoring artifact is published only after raw reviewer capture to prevent leakage."
-  },
-  "controlled_mutant": {
-    "status": "not_started",
-    "part_of_current_real_target_run": false
+    "status": "pending_judge_quorum",
+    "note": "Raw capture is complete. Final adjudicated Reference/Gold will be fixed after independent Judge quorum; coordinator pre-review snapshot is not Gold."
   },
   "judge_quorum": {
+    "status": "ready_not_started",
+    "prompt": "docs/benchmarks/fnd04-model-comparison/prompts/final-synthesis-judge.md",
+    "prompt_revision": "fnd04-final-judge-v1",
     "judge_a": "GPT-5.6 Sol / Codex",
     "judge_b": "Claude Opus 5 / Claude Code",
     "conditional_judge_c": "GPT-5.6 Pro / Browser",
     "judge_c_condition": "first two judges disagree on reference verdict, blocking root cause, or merge-ready judgement"
+  },
+  "controlled_mutant": {
+    "status": "not_started",
+    "part_of_current_real_target_run": false
   },
   "formal_agent_b": {
     "status": "not_started",
