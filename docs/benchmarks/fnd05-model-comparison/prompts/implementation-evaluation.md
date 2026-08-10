@@ -28,6 +28,7 @@ RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
 SCORING_REVISION: "fnd05-scoring-v2"
 DESIGN_REVISION: "fnd05-design-contract-v2"
 MUTATION_REVISION: "fnd05-mutations-v2"
+MUTATION_DETERMINISM_REVISION: "fnd05-mutation-determinism-v1"
 CANDIDATES:
   - SLOT: C1
     MODEL: GPT-5.6 Luna
@@ -63,6 +64,7 @@ Reference:
 - prohibited behavior / scope
 - required verification
 - D-02 image / D-03 secret / D-04 lifecycle / D-05 evidence contracts
+- D-06 failure injection + `mutation-determinism-contract.md`
 - evaluator probe classes
 - severity / scoring policy
 
@@ -103,9 +105,9 @@ PR本文ではなく、diff / runtime / tests / CIを優先する。
 
 ## 6. Evaluator probes
 
-`mandatory-mutations.md`のdefect classを使用する。
+`mandatory-mutations.md`のdefect classと`mutation-determinism-contract.md`のexecution contractを使用する。
 
-Candidateにはprotected contractは開示済みだが、exact injection recipeへの適合を採点しない。
+Candidateにはprotected contract / deterministic precondition property / barrier or fixture class / failure signature classは開示済みだが、exact injection recipeへの適合を採点しない。
 
 最低限検討:
 
@@ -117,6 +119,21 @@ Candidateにはprotected contractは開示済みだが、exact injection recipe�
 - M-06 volume replacement
 - M-07 pre-path failure
 - M-08 exit 0 without expected migration state
+
+Probeを有効なkillとして扱う前に、最低限次を確認する。
+
+```text
+PRECONDITION_RESULT: PASS
+CONTROLLED_BARRIER_OR_FIXTURE: established
+INJECTION_POINT_CLASS: matches locked D-06
+EXPECTED_FAILURE_SIGNATURE: locked
+OBSERVED_FAILURE_SIGNATURE: matches
+INVALID_FAILURE_MATCHED: NO
+RESTORE: GREEN
+RESIDUE: 0
+```
+
+preconditionが成立しない場合は`BLOCKED — PRECONDITION NOT ESTABLISHED`とし、KILLED / SURVIVEDへ数えない。自然raceや偶然timing、unrelated build / YAML / CLI failureをmutation sensitivityの証拠にしない。
 
 全candidateへ同じprobeを実行できない場合、公平性影響を記録する。
 
@@ -144,6 +161,7 @@ NIT:
 
 REFERENCE_REVIEW:
 TARGET_IDENTITY:
+MUTATION_DETERMINISM_ASSESSMENT:
 
 C1:
 C2:
@@ -168,7 +186,3 @@ STATUS: LOCKED / NOT_LOCKED
 ```
 
 `run.json.stage_artifacts.implementation_evaluation`へ同じidentityを記録する。
-
-## 9. Stop point
-
-Selection / Adjudicationのinput artifactを作成して停止する。Final Synthesisへ進まない。
