@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.4",
+  "schema_version": "1.5",
   "benchmark_id": "fnd04-final-synthesis-independent-review",
   "run_id": "fnd04-final-review-20260810",
-  "status": "major_fix_snapshot_locked_ready_for_targeted_re_review",
+  "status": "major_fix_cleared_formal_agent_b_ready",
   "repository": "kooiei-in4a/minimal-bank-system",
   "target_issue": 42,
   "target_pr": 140,
@@ -13,7 +13,9 @@
     "gold_review": "fnd04-final-gold-v1",
     "major_fix_prompt": "fnd04-final-major-fix-v1",
     "major_fix_snapshot": "fnd04-final-major-fix-snapshot-v1",
-    "major_fix_re_review_prompt": "fnd04-final-major-fix-rereview-v1"
+    "major_fix_re_review_prompt": "fnd04-final-major-fix-rereview-v1",
+    "major_fix_clearance": "fnd04-final-major-fix-clearance-v1",
+    "formal_agent_b_prompt": "fnd04-formal-agent-b-v1"
   },
   "pre_fix_target": {
     "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
@@ -77,37 +79,62 @@
     }
   },
   "targeted_re_review": {
-    "status": "ready_not_started",
+    "status": "complete_cleared",
     "prompt": "../prompts/final-synthesis-major-fix-re-review.md",
     "prompt_revision": "fnd04-final-major-fix-rereview-v1",
     "expected": "2_of_2",
-    "completed": "0_of_2",
+    "completed": "2_of_2",
     "reviewers": [
       {
         "slot": "T1",
-        "expected_model": "GPT-5.6 Sol",
+        "model": "GPT-5.6 Sol",
         "harness": "Codex",
         "effort": "xHigh",
-        "status": "not_started"
+        "status": "completed",
+        "verdict": "G01_FIXED",
+        "new_blocker": 0,
+        "new_major": 0,
+        "markdown": "re-reviews/t1-gpt-5.6-sol-codex.md",
+        "json": "re-reviews/t1-gpt-5.6-sol-codex.json"
       },
       {
         "slot": "T2",
-        "expected_model": "Cursor Auto",
+        "model": "NOT_EXPOSED",
         "harness": "Cursor",
         "effort": "Auto",
-        "status": "not_started",
-        "routed_model": "record_if_exposed_else_NOT_EXPOSED"
+        "status": "completed",
+        "verdict": "G01_FIXED",
+        "new_blocker": 0,
+        "new_major": 0,
+        "markdown": "re-reviews/t2-cursor-auto.md",
+        "json": "re-reviews/t2-cursor-auto.json"
       }
     ],
-    "clearance_condition": "both reviewers return G01_FIXED with no new Blocker/Major"
+    "clearance_condition": "both reviewers return G01_FIXED with no new Blocker/Major",
+    "clearance_result": "pass"
+  },
+  "major_fix_clearance": {
+    "status": "locked",
+    "revision": "fnd04-final-major-fix-clearance-v1",
+    "markdown": "major-fix-clearance.md",
+    "json": "major-fix-clearance.json",
+    "g01": "cleared",
+    "new_blocker_count": 0,
+    "new_major_count": 0
   },
   "formal_agent_b": {
-    "status": "blocked_until_targeted_re_review_clears_G01",
-    "role": "product_merge_gate"
+    "status": "ready_not_started",
+    "role": "product_merge_gate",
+    "prompt": "../prompts/final-synthesis-formal-agent-b.md",
+    "prompt_revision": "fnd04-formal-agent-b-v1",
+    "expected_model": "Claude Opus 5",
+    "expected_harness": "Claude Code",
+    "expected_effort": "xHigh",
+    "target_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6"
   },
   "merge_actions": {
-    "pr_ready": "prohibited",
-    "merge": "prohibited",
-    "issue_close": "prohibited"
+    "pr_ready": "prohibited_until_formal_agent_b_approves",
+    "merge": "prohibited_until_formal_agent_b_approves",
+    "issue_close": "prohibited_until_merge_and_close_evidence_complete"
   }
 }
