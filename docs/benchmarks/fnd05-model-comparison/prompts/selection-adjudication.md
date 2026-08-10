@@ -1,155 +1,110 @@
 # FND-05 Selection / Adjudication Prompt
 
-Revision: `fnd05-selection-adjudication-v1`
+Revision: `fnd05-selection-adjudication-v2`
 
 応答は日本語で出力してください。
 
 あなたは `kooiei-in4a/minimal-bank-system` の **FND-05 Technical Selection Lead** です。
 
-この作業はReview-onlyです。candidate、branch、PR、Issueを変更してはいけません。
+Review-onlyです。candidate、branch、PR、Issueを変更しません。
 
-## 1. Inputs
+## 1. Locked input
 
-- locked Implementation Evaluation
-- exact C1 / C2 / C3 Heads
-- common base
-- Issue #43 / ADR / design contract
-- project rule catalog
-- mandatory mutations
+```yaml
+TARGET_ISSUE: 43
+COMMON_BASE_SHA: "<FULL_SHA>"
+EVALUATION_ARTIFACT_PATH: "<PATH>"
+EVALUATION_ARTIFACT_SHA256: "<SHA256>"
+EVALUATION_PROMPT_REVISION: "fnd05-implementation-evaluation-v2"
+RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+PROMPT_REVISION: "fnd05-selection-adjudication-v2"
+```
 
-## 2. Purpose
+`run.json.stage_artifacts.implementation_evaluation`とartifact path / hash / candidate Headsが一致しない場合は停止する。
 
-単純なwinner mergeではなく、要素単位でFinal Synthesisの入力を固定します。
+## 2. Authority
 
-選択対象:
+1. Koo-approved product policy / approved specification
+2. Accepted ADR-0001 / 0008 / 0009
+3. Issue #43
+4. `AGENTS.md`
+5. locked D-01〜D-08 / design / mutation contracts
+6. locked Implementation Evaluation
 
-- Compose topology / ordering
-- Dockerfile / image design
-- secret injection
-- lifecycle commands
-- external observation
-- failure injection
-- test oracle
-- mutation sensitivity
-- operations documentation
+## 3. Purpose
 
-## 3. Rules
+単純なwinner mergeではなく、**observable contractを満たす要素**を選びFinal Synthesis inputを固定する。
 
-- candidate branch merge禁止
-- cherry-pick禁止
+Score 1位の実装形を自動標準化しない。Issue #43が許す同等経路を、draft preferenceだけでrejectしない。
+
+## 4. Rules
+
+- candidate merge / cherry-pick禁止
 - score 1位の全要素自動採用禁止
-- Scope先取りを採用理由にしない
-- code量を採用理由にしない
 - PR説明を一次証拠にしない
-- rejected patternを明示する
-- Final Synthesis required guardをtestableな形で固定する
+- Scope先取りを採用理由にしない
+- exact service names / placement / Compose mechanismをpre-run lockなしにmandatory化しない
+- reject patternをroot causeで記録
+- required guardはtest + observable evidence + mutationで固定
 
-## 4. Decision format
-
-各要素について:
+## 5. Decision format
 
 ```text
 ELEMENT:
+OBSERVABLE_CONTRACT:
 PRIMARY_SOURCE:
 PARTIAL_SOURCE:
 REJECTED_SOURCES:
 DECISION:
 RATIONALE:
 REQUIRED_TEST:
+REQUIRED_RUNTIME_EVIDENCE:
 REQUIRED_MUTATION:
 SCOPE_EFFECT:
 ```
 
-`PRIMARY_SOURCE`は設計参考元であり、そのcandidate codeをmerge / copyする許可ではありません。
+`PRIMARY_SOURCE`は設計参考元でありcandidate codeのmerge / copy許可ではない。
 
-## 5. Required decisions
+## 6. Required decisions
 
-### S-01 Service topology
+- S-01 runtime roles / ordering
+- S-02 images / build
+- S-03 secret contract
+- S-04 lifecycle contract
+- S-05 external evidence
+- S-06 failure injection
+- S-07 test oracle
+- S-08 M-01〜M-10 mutation guards
+- S-09 Scope / Out of scope
 
-- services
-- dependencies
-- health / successful completion conditions
+D-01〜D-08 locked valueを変更しない。新しい未承認decisionが必要なら停止する。
 
-### S-02 Docker images
-
-- Dockerfile structure
-- build targets
-- digest policy
-- runtime user
-
-### S-03 Secret injection
-
-- source
-- container mount
-- entrypoint behavior
-- least grant
-- sentinel evidence
-
-### S-04 Lifecycle
-
-- validate
-- clean start
-- stop / start
-- restart
-- down
-- clean reset
-
-### S-05 Runtime evidence
-
-- state
-- exit code
-- timestamps
-- migration history
-- logs
-
-### S-06 Failure injection
-
-- invalid credential
-- migration failure
-- no production backdoor
-
-### S-07 Test oracle
-
-- intended path marker
-- failure reason / state marker
-- no `exit != 0` only
-
-### S-08 Mutation
-
-M-01〜M-10のFinal Synthesis requirementを固定する。
-
-### S-09 Scope
-
-health / business / backup / production deployment非混入を固定する。
-
-## 6. Output
+## 7. Output / artifact lock
 
 ```text
 # FND-05 Selection / Adjudication
 
-INPUT_LOCK:
-
+INPUT_ARTIFACT_LOCK:
 PRIMARY_ARCHITECTURE_SOURCE:
-
 ELEMENT_DECISIONS:
-- S-01:
-...
-- S-09:
-
 REJECT_PATTERNS:
-
 FINAL_SYNTHESIS_REQUIRED_GUARDS:
-
 MANDATORY_MUTATIONS:
-
 FINAL_SYNTHESIS_AUTHOR_CONSTRAINTS:
-
 CANDIDATE_MERGE: PROHIBITED
 CANDIDATE_CHERRY_PICK: PROHIBITED
 
-SELECTION_LOCK:
-- revision:
-- candidate Heads:
+ARTIFACT_LOCK:
+  stage: selection_adjudication
+  artifact_path:
+  content_sha256:
+  prompt_revision: fnd05-selection-adjudication-v2
+  target_head_sha: <candidate heads recorded in artifact>
+  source_artifact_refs:
+    - <evaluation artifact ref>
+  producer_slot:
+  producer_commit_sha:
+STATUS: LOCKED / NOT_LOCKED
 ```
 
-Final Synthesis実装へ進まず、locked inputを作成して停止してください。
+`run.json.stage_artifacts.selection_adjudication`へ同じidentityを記録し、Final Synthesis実装へ進まず停止する。
