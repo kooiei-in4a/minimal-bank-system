@@ -1,6 +1,6 @@
 # FND-04 Final Synthesis Independent Review Benchmark
 
-Status: **READY FOR REVIEWER EXECUTION / RAW RESULTS NOT STARTED**
+Status: **RAW CAPTURE COMPLETE / READY FOR JUDGE QUORUM**
 
 ```yaml
 BENCHMARK_ID: fnd04-final-synthesis-independent-review
@@ -10,92 +10,132 @@ PROMPT_REVISION: fnd04-final-review-v1
 TARGET_PR: 140
 BASE_SHA: 38c07e210fe4e8689f1d8aeabbb07b92610d1826
 HEAD_SHA: 99cee4386ea049ad84e9c087c6fdf1e25cc20f3e
-RAW_CAPTURE: 0 / 5
+RAW_CAPTURE: 5 / 5
 ```
 
-このdirectoryは、FND-04 Final Synthesisのrole-diverse independent review raw artifactと後続adjudicationを管理する。
+このdirectoryはFND-04 Final Synthesisのrole-diverse independent review raw artifacts、finding normalization、Judge adjudicationを管理する。
 
-## Review target
+## Target identity
 
-- Real target only: PR #140 / Head `99cee4386ea049ad84e9c087c6fdf1e25cc20f3e`
-- Final Synthesis snapshot: `../results/final-synthesis-snapshot.md`
-- Common reviewer prompt: `../prompts/final-synthesis-independent-review.md`
+- PR #140 / Head `99cee4386ea049ad84e9c087c6fdf1e25cc20f3e`
+- Base `38c07e210fe4e8689f1d8aeabbb07b92610d1826`
+- PR merge-ref CI run `31350916189`: SUCCESS / checkout `d12de2ae07003a10d19d576808cf88ec7796da23`
+- direct-head push CI run `31350870902`: SUCCESS / checkout exact Head `99cee4386ea049ad84e9c087c6fdf1e25cc20f3e`
 
-Reviewerへsnapshot / evaluation / selection結果を答えとして見せない。reviewerはIssue #42、authority、実diff、test、CIから独立に結論を出す。
+Coordinator independently verified the direct-head run after raw reviewer results were received. It passed build with 0 warnings / 0 errors, pending-model, non-PostgreSQL tests (42), and real PostgreSQL tests (23).
 
-## Reviewer pool — Revision 2
+## Reviewer pool — Revision 2 / COMPLETE
 
-Reviewer execution開始前、raw capture 0件の時点でpoolを6枠から5枠へ改訂した。改訂理由と旧poolとの差分は`reviewer-pool-revision-2.md`を正本とする。
+| Slot | Model + Harness | Primary role | Verdict | Merge-ready |
+|---|---|---|---|---|
+| R1 | GPT-5.6 Sol / Codex | runtime / failure-path | APPROVE_WITH_FINDINGS | YES |
+| R2 | Claude Opus 5 / Claude Code | deep technical / test assurance | CHANGES_REQUIRED | **NO** |
+| R3 | GPT-5.6 Luna / Codex | specification / scope | APPROVE_WITH_FINDINGS | YES |
+| R4 | GPT-5.6 Sol / Browser | framework / official-source | APPROVE | YES |
+| R5 | Cursor Auto / Cursor | fast independent review | APPROVE_WITH_FINDINGS | YES |
 
-| Slot | Expected Model + Harness | Primary role | Effort |
-| --- | --- | --- | --- |
-| R1 | GPT-5.6 Sol / Codex | runtime / failure-path | reverify at execution |
-| R2 | Claude Opus 5 / Claude Code | deep technical / test assurance | reverify at execution |
-| R3 | GPT-5.6 Luna / Codex | specification / scope | reverify at execution |
-| R4 | ChatGPT Opus 5.6 Sol / Browser | framework / official-source cross-check | reverify at execution |
-| R5 | Cursor Auto / Cursor | fast independent review / practical broad scan | Auto |
+Raw capture is **5 / 5 complete**. Each reviewer has a Markdown + JSON pair under `reviews/`.
 
-方針:
+R3 raw structured output contains an abbreviated `target_verification.observed_base_sha`; this raw field is retained as received. Its top-level target Base SHA is the fixed full value and its target-verification verdict was PASS. Collector records this as an integrity note rather than silently correcting the raw result.
 
-- Claude Opus 5は高コストでもdeep technical / test assuranceへピンポイント投入する。
-- Claude Sonnet 5はreview poolでは使用しない。
-- Open Codeはこのreview phaseでは使用しない。
-- R3はGPT-5.6 Luna / Codexへ変更する。
-- R5はGrok 4.5固定ではなくCursor標準Auto modeを使用する。
-- 6枠維持のための冗長なreplacementは追加せず、5 reviewerで完了とする。
-
-product-visible identity / effortは各実行直前に確認し、実際の値をraw resultへ記録する。silent substitutionは禁止。
-
-Cursor Autoについては特定modelのreviewとして扱わない。routed modelがproduct上で明示される場合だけ追加記録し、表示されない場合は推測せず`NOT_EXPOSED`とする。
-
-## Independence rules
-
-- reviewerはcandidate ranking / scoreを読まない
-- Implementation Evaluation / Selection-Adjudicationを読まない
-- 他reviewerの結果を読まない
-- Gold / Judge結果を読まない
-- review中にrepositoryを変更しない
-- PRへ大量のbenchmark reviewを投稿しない
-
-## Raw capture
-
-各reviewerについて次をCollectorが保存する。
+## Raw artifacts
 
 ```text
-reviews/<reviewer-slug>.md
-reviews/<reviewer-slug>.json
+reviews/gpt-5.6-sol-codex.md
+reviews/gpt-5.6-sol-codex.json
+
+reviews/claude-opus-5-claude-code.md
+reviews/claude-opus-5-claude-code.json
+
+reviews/gpt-5.6-luna-codex-final-review.md
+reviews/gpt-5.6-luna-codex-final-review.json
+
+reviews/chatgpt-browser-framework-review.md
+reviews/chatgpt-browser-framework-review.json
+
+reviews/cursor-auto.md
+reviews/cursor-auto.json
 ```
 
-reviewer自身にはbenchmark control branchへのcommitを要求しない。
+Raw review semantics are not adjudicated by editing the raw files. Collector normalization is stored separately.
 
-再実行時は上書きせず`-attempt-2` suffixを使用する。
+## Review result summary
 
-Completion conditionは**5 / 5 raw pair captured**とする。
+```text
+APPROVE:                 1
+APPROVE_WITH_FINDINGS:   3
+CHANGES_REQUIRED:        1
 
-## CI identity note
+merge-ready YES:         4 / 5
+merge-ready NO:          1 / 5
 
-Known CI run `31350916189` is successful for the PR evaluation state. The checkout log uses PR merge ref `d12de2ae07003a10d19d576808cf88ec7796da23`, representing Head `99cee...` merged into exact Base `38c07...`.
+Blocker reported:        0 reviewers
+Major reported:          1 reviewer (R2)
+```
 
-Reviewers must not silently relabel this as a direct branch-Head checkout run. A separately resolved direct-head push run may be recorded if independently verified.
+The one blocking candidate is R2-F01, normalized as `NR-01`.
 
-## Gold isolation
+## Pre-Judge finding normalization
 
-Gold / Reference Review content is **not published in this reviewer-visible directory before raw capture**.
+Canonical Collector artifacts:
 
-The current coordinator Final Synthesis snapshot is only a target/gate record and is not reviewer Gold. Review scoring against normalized root causes is performed only after raw review artifacts are fixed.
+- `finding-normalization-prejudge.md`
+- `finding-normalization-prejudge.json`
 
-## Controlled Mutant
+Normalized candidates:
 
-Not started for this run. The current phase reviews the real Final Synthesis only.
+| ID | Topic | Pre-Judge status |
+|---|---|---|
+| NR-01 | C8-M01 regression test / false assurance | **valid candidate / Severity disputed / Judge required** |
+| NR-02 | 60s CommandTimeout vs CTS exit classification | disputed Minor candidate |
+| NR-03 | temporary model-drift negative evidence | independently reproduced by R1/R2; likely evidence limit only |
+| NR-04 | PR CI identity wording | Nit; direct-head evidence now independently verified |
+| NR-05 | failure exit-code taxonomy coverage | unique Minor candidate |
+| NR-06 | low-information assertions | Nit candidate |
 
-A Controlled Mutant, if later authorized, must use a separate target / run identity and must not contaminate product branch or this real-target raw capture.
+### NR-01 key distinction
 
-## Next steps
+Multiple reviewers agree current production behavior is fail-closed. The dispute is whether the committed `DesignTimeConnectionSafetyTests` provides sufficient regression assurance.
 
-1. Execute R1-R5 independently against exact Head.
-2. Capture each Markdown + JSON raw pair without semantic editing.
-3. Verify target identity and artifact integrity.
-4. Only after raw capture, establish/publish adjudicated Reference / Gold for scoring.
-5. Normalize TP / FP / FN and severity accuracy.
-6. Run Judge A / Judge B; add Judge C only if quorum conditions require it.
-7. Formal Agent B review remains the actual product merge gate.
+- R2: Major / blocking; mutation probes show the test stays green with an off-blocklist fabricated destination and when the EF factory cannot be reached.
+- R5: same basic weakness, Severity Minor.
+- R4: no finding, but states the blocklist-only assertion is weak when considered alone.
+
+Do not fix PR #140 solely by majority/minority vote. Severity and blocking status require Judge adjudication from primary evidence.
+
+## Judge quorum — NEXT
+
+Canonical Judge prompt:
+
+- `../prompts/final-synthesis-judge.md`
+- Revision: `fnd04-final-judge-v1`
+
+Expected independent Judges:
+
+- Judge A: GPT-5.6 Sol / Codex
+- Judge B: Claude Opus 5 / Claude Code
+- Conditional Judge C: GPT-5.6 Pro / Browser
+
+Judge C is used only when A/B disagree on Reference verdict, blocking root cause, or merge-ready judgement.
+
+Judge A/B must use fresh context and first establish an independent Phase-A Reference from Issue / ADR / exact source / tests / CI before reading raw reviewer findings. Reviewer identity or model reputation must not influence adjudication.
+
+## Gold / Reference status
+
+Raw capture is now complete. Final adjudicated Gold / Reference is **not yet locked**. It will be fixed after Judge quorum so the disputed blocking root cause is not decided by the Collector alone.
+
+## Product merge gate
+
+PR #140 remains Draft / unmerged. Role-diverse reviewer majority is not a merge gate. Current flow:
+
+```text
+5/5 raw review capture       COMPLETE
+  -> finding normalization   COMPLETE / PRE-JUDGE
+    -> Judge A + Judge B     NEXT
+      -> Judge C if required
+        -> adjudicated Gold / Reference
+          -> targeted fix if blocking finding confirmed
+            -> Formal Agent B product merge review
+```
+
+No Ready, merge, or Issue #42 close action is authorized by this benchmark state.
