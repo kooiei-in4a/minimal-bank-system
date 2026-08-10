@@ -1,6 +1,6 @@
 # FND-05 Light Review L2 — ADR / Issue / AC Contract Conformance
 
-Revision: `fnd05-light-contract-v1`
+Revision: `fnd05-light-contract-v2`
 
 応答は日本語で出力してください。
 
@@ -13,21 +13,26 @@ EFFORT: "<EXACT_LABEL_AT_RUN>"
 ROLE: "adr_issue_ac_contract_conformance"
 ```
 
-## 1. Target
+## 1. Target / locked inputs
 
 ```yaml
 TARGET_ISSUE: 43
 TARGET_PR: "<FINAL_SYNTHESIS_PR>"
 BASE_SHA: "<FULL_BASE_SHA>"
-HEAD_SHA: "<FULL_HEAD_SHA_AFTER_FINAL_SYNTHESIS>"
-PROMPT_REVISION: "fnd05-light-contract-v1"
+HEAD_SHA: "<FINAL_SYNTHESIS_HEAD>"
+STATIC_GATE_ARTIFACT_PATH: "<PATH>"
+STATIC_GATE_ARTIFACT_SHA256: "<SHA256>"
+L1_ARTIFACT_PATH: "<PATH>"
+L1_ARTIFACT_SHA256: "<SHA256>"
+RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+PROMPT_REVISION: "fnd05-light-contract-v2"
 ```
 
-Review-onlyです。コード、test、branch、PR、Issueを変更しないでください。
+Review-only。コード、test、branch、PR、Issueを変更しない。
 
 ## 2. Purpose
 
-次のtraceabilityを全件確認します。
+次のtraceabilityを全Acceptance Criteriaについて確認する。
 
 ```text
 ADR / Issue requirement
@@ -36,37 +41,37 @@ ADR / Issue requirement
   → actual runtime evidence
 ```
 
-新しい設計案を考えるのではなく、決定済みcontractの欠落を探します。
+新しい設計案を考えず、決定済みcontractの欠落を探す。
 
 ## 3. Authority
 
-1. Parent Issue #3
-2. WP-1 Issue #33
+### Product authority
+
+1. Koo-approved product policy / approved specification
+2. Accepted ADR-0001 / ADR-0008 / ADR-0009
 3. Issue #43
 4. `AGENTS.md`
-5. ADR-0001 / 0008 / 0009
-6. `reference/assumption-ledger.md`
-7. `reference/implementation-and-test-design-contract.md`
-8. `reference/project-rule-catalog.md`
-9. `reference/mandatory-mutations.md`
-10. `scoring.md`
+5. locked FND-05 contracts
+
+`scoring.md`は評価rubricでありProduct authorityではない。
+
+### Gate evidence
+
+Parent #3、WP-1 #33、dependency #42、Issue Ready、Koo start authorizationをcurrent-state evidenceとして確認する。
 
 ## 4. Required target verification
 
-- repository / PR
 - exact Base / Head
-- changed files
 - direct-head CI SHA
-- final synthesis identity
-- Light L1 target Headとの一致
+- Final Synthesis identity
+- Static Gate artifact identity
+- L1 target Head / artifact identity
 
-不一致はBlockerです。
+不一致はBlocker。
 
 ## 5. Traceability matrix
 
-Issue #43の全Acceptance Criteriaについて次を作成してください。
-
-| AC / Requirement | Implementation path | Test / validator | Runtime evidence | Result | Gap |
+| AC / Requirement | Implementation | Test / validator | Runtime evidence | Result | Gap |
 | --- | --- | --- | --- | --- | --- |
 
 Result:
@@ -76,98 +81,46 @@ Result:
 - FAIL
 - UNVERIFIED
 
-PR本文の自己申告だけをruntime evidenceにしないでください。
+PR本文の自己申告だけをruntime evidenceにしない。
 
 ## 6. Required conformance checks
 
-### 6.1 Authority / gate
-
-- Parent / WP / target Issue追跡
-- dependency #42
-- Issue Ready / implementation permission
-- scope / out of scope
-
-### 6.2 Platform
-
-- Docker Compose v2 / current Compose Specification
-- PostgreSQL 18
-- .NET 10
-- no new external service
-
-### 6.3 Ordering
-
-- PostgreSQL ready condition
-- Migrator one-shot
-- API waits for Migrator success
-- migration failure API non-start
-- external state / timestamp evidence
-
-### 6.4 Migration boundary
-
-- FND-04 Migrator reuse
+- Issue #43 Scope / Out of scope
+- required runtime roles / observable ordering
+- PostgreSQL usable → Migrator → API
+- Migrator failure API never-start
 - API no-auto-migration
-- migration history
-- existing-volume rerun
-
-### 6.5 Image / volume / secret
-
-- exact pinning
+- D-02 image identities
 - named volume
-- external injection
-- argv non-disclosure
-- least grant
+- D-03 secret contract
+- D-04 lifecycle contract
+- D-05 external state evidence
+- D-06 failure injection contract
+- D-07 cross-platform contract
+- required verification / unverified items
+- exact Head / direct-head vs merge-ref identity
 
-### 6.6 Lifecycle
+Exact service name / file placement / Compose conditionを、pre-run lockなしに独立ACとして要求しない。
 
-- validate
-- clean start
-- stop
-- start after stop
-- restart
-- down retain data
-- clean reset
+## 7. Consume, do not duplicate
 
-### 6.7 Verification
+- Static-owned mechanical ruleはStatic artifactをconsumeする。
+- Composer-owned quality ruleはL1 artifactをconsumeする。
+- Lunaはcontract traceabilityだけを完全判定する。
 
-- actual Compose production path
-- success / failure
-- API state
-- secret sentinel
-- scope boundary
-- applicable mutation readiness
+他owner領域のBlocker / Major候補を発見した場合は`ESCALATION`として記録する。
 
-### 6.8 Evidence / CI
-
-- exact candidate / final Head
-- direct-head vs merge-ref distinction
-- commands / output / unverified
-
-## 7. Explicit non-goals
-
-次を行わないでください。
+## 8. Explicit non-goals
 
 - naming / formatter / style review
-- ordinary DRY review
-- broad code cleanup
+- ordinary DRY / broad cleanup
 - alternative architecture proposal
-- rare race / lifecycleの自由探索
-- mutationを実行したdeep adversarial proof
-- Opus Heavy Reviewの代替
-- Sol Heavy Reviewのarchitecture judgement
+- rare race / lifecycle自由探索
+- mutation deep probe
+- Sol / Opus Heavy Reviewの代替
 - merge可否の最終判断
 
-## 8. Findings
-
-Findingは次のgapへ限定します。
-
-- missing implementation
-- missing test
-- missing runtime evidence
-- scope drift
-- wrong authority / target / CI identity
-- contract contradiction
-
-形式:
+## 9. Findings
 
 ```text
 ID:
@@ -181,34 +134,22 @@ MINIMAL_FIX:
 HEAVY_ESCALATION_REQUIRED: YES / NO
 ```
 
-## 9. Output
+## 10. Output / artifact lock
 
 ```text
 # FND-05 Light Contract Review
 
 TARGET_VERIFICATION:
 VERDICT: PASS / FIX_REQUIRED
-
 TRACEABILITY_MATRIX:
-
 MISSING_IMPLEMENTATION:
-
 MISSING_TEST:
-
 MISSING_RUNTIME_EVIDENCE:
-
 SCOPE_DRIFT:
-
 IDENTITY_GAPS:
-
-ESCALATED_MAJOR_CANDIDATES:
-
+ESCALATIONS:
 UNVERIFIED:
-
-OPERATION_CONFIRMATION:
-- code changed: NO
-- PR changed: NO
-- Issue changed: NO
+ARTIFACT_LOCK:
 ```
 
-Heavy Reviewへ進む前に、PARTIAL / FAIL / UNVERIFIEDをAuthorがdispositionします。
+`ARTIFACT_LOCK`を`run.json.stage_artifacts.light_l2`へ記録する。
