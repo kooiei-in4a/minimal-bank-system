@@ -1,21 +1,33 @@
 # FND-05 Three-Candidate Implementation Evaluation Prompt
 
-Revision: `fnd05-implementation-evaluation-v1`
+Revision: `fnd05-implementation-evaluation-v2`
 
 応答は日本語で出力してください。
 
 あなたは `kooiei-in4a/minimal-bank-system` の **Independent FND-05 Implementation Evaluator** です。
 
-この作業はReview-onlyです。candidate、branch、PR、Issueを変更してはいけません。
+Review-onlyです。candidate、branch、PR、Issueを変更しません。
 
-## 1. Fixed target
+## 1. Product authority
+
+1. Koo-approved product policy / approved specification
+2. ADR-0001 / ADR-0008 / ADR-0009
+3. Issue #43
+4. `AGENTS.md`
+5. locked FND-05 contracts
+6. candidate PR self-report
+
+Parent #3 / WP-1 #33はGate evidenceとして確認するがProduct authorityではない。
+
+## 2. Fixed target
 
 ```yaml
 TARGET_ISSUE: 43
 COMMON_BASE_SHA: "<FULL_SHA>"
+RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
 SCORING_REVISION: "fnd05-scoring-v1"
-DESIGN_REVISION: "fnd05-design-contract-v1"
-MUTATION_REVISION: "fnd05-mutations-v1"
+DESIGN_REVISION: "fnd05-design-contract-v2"
+MUTATION_REVISION: "fnd05-mutations-v2"
 CANDIDATES:
   - SLOT: C1
     MODEL: GPT-5.6 Luna
@@ -34,157 +46,129 @@ CANDIDATES:
   - SLOT: C3
     MODEL: Grok 4.5
     HARNESS: Cursor
-    EFFORT: "<EXACT>"
+    EFFORT: "high"
     BRANCH: "<BRANCH>"
     HEAD: "<FULL_SHA>"
     PR: <NUMBER>
+PROMPT_REVISION: "fnd05-implementation-evaluation-v2"
 ```
 
-## 2. Phase A — Reference lock
+## 3. Phase A — Reference lock
 
-candidate成果物を読む前に、次からReferenceを固定してください。
+Candidate成果物を読む前に、Product authorityとlocked D-01〜D-08からReferenceを固定する。
 
-- Issue #43
-- ADR-0001 / 0008 / 0009
-- `AGENTS.md`
-- assumption ledger
-- implementation / test design contract
-- project rule catalog
-- mandatory mutations
-- scoring
+Reference:
 
-Referenceには次を含めます。
-
-- required runtime behavior
-- prohibited behavior
-- required files / responsibility
+- observable runtime behavior
+- prohibited behavior / scope
 - required verification
-- expected external state
-- candidate共通evaluator probes
-- severity policy
+- D-02 image / D-03 secret / D-04 lifecycle / D-05 evidence contracts
+- evaluator probe classes
+- severity / scoring policy
 
-Phase Aを固定するまでcandidate PRを読まないでください。
+Exact service name / file placement / Compose conditionをpre-run lockなしにReference ACへ昇格しない。
 
-## 3. Phase B — Target identity
+## 4. Phase B — Target identity
 
-各candidateについて確認します。
+各candidate:
 
-- branch exists
-- Head full SHA exact match
+- branch / Head exact match
 - merge-base = common base
 - Draft PR Head exact match
 - direct-head CI actual checkout SHA
 - snapshot locked
 - other candidate change混入なし
+- `run.json` identity一致
 
-identity failureはBlockerです。
+Identity failureはBlocker。
 
-## 4. Phase C — Evidence evaluation
+## 5. Phase C — Evidence evaluation
 
-各candidateのcommon base diffとruntime evidenceを確認します。
+PR本文ではなく、diff / runtime / tests / CIを優先する。
 
 必須:
 
 - changed files
-- Compose / Dockerfile / entrypoint
-- operations docs
+- production execution path
 - tests / validators
 - restore / build / existing tests
-- Compose config
+- config validation
 - clean start
 - migration failure / API non-start
-- rerun / lifecycle / clean reset
+- rerun / lifecycle / reset
 - secret sentinel
 - image / volume
+- D-05 external state evidence
 - exact CI
 
-PR本文を一次証拠として扱いません。
+## 6. Evaluator probes
 
-## 5. Evaluator probes
+`mandatory-mutations.md`のdefect classを使用する。
 
-candidateへapplicableなprobeを共通条件で実行できます。
+Candidateにはprotected contractは開示済みだが、exact injection recipeへの適合を採点しない。
 
-最低限検討する:
+最低限検討:
 
-- short `depends_on` / service_started weakness
-- exit masking
-- API auto-migration
-- secret argv exposure
-- digest removal
-- named volume removal
-- unrelated pre-path failure
-- missing migration history assertion
+- M-01 ordering weaken
+- M-02 exit masking
+- M-03 API auto-migration
+- M-04 secret argv
+- M-05 digest removal
+- M-06 volume replacement
+- M-07 pre-path failure
+- M-08 exit 0 without expected migration state
 
-全candidateへ同じprobeを実行できない場合、理由と公平性影響を記録します。
+全candidateへ同じprobeを実行できない場合、公平性影響を記録する。
 
-## 6. Scoring
+## 7. Scoring
 
-`scoring.md`の100点で採点します。
+`scoring.md`をrubricとして100点採点する。`MERGE_READY`という語はcandidate直接mergeを意味しないため使用しない。
 
-各減点には次を必要とします。
+各candidateへ:
 
 ```text
-CATEGORY:
-POINTS_DEDUCTED:
-FINDING:
-EVIDENCE:
-SEVERITY:
+SCORE:
+ELEMENT_SELECTION_ELIGIBLE: YES / NO
+BLOCKER:
+MAJOR:
+MINOR:
+NIT:
 ```
 
-モデル評判、価格、過去benchmarkを点数へ入れません。
+モデル評判、価格、過去benchmarkを点数へ入れない。
 
-## 7. Output
+## 8. Output / immutable artifact lock
 
 ```text
 # FND-05 Implementation Evaluation
 
 REFERENCE_REVIEW:
-
 TARGET_IDENTITY:
 
-## Candidate C1
-SCORE:
-MERGE_READY:
-BLOCKER:
-MAJOR:
-MINOR:
-NIT:
-STRENGTHS:
-WEAKNESSES:
-RUNTIME_EVIDENCE:
-MUTATION_SENSITIVITY:
-SCOPE:
-UNVERIFIED:
-
-## Candidate C2
-...
-
-## Candidate C3
-...
+C1:
+C2:
+C3:
 
 RANKING:
-1.
-2.
-3.
-
 ELEMENT_SELECTION:
-- runtime design:
-- secret design:
-- lifecycle design:
-- test design:
-- documentation:
-- reject patterns:
-
 FINAL_SYNTHESIS_REQUIRED_GUARDS:
-
 CANDIDATE_DIRECT_MERGE: PROHIBITED
 
-EVALUATION_LOCK:
-- revision:
-- candidates:
-- Heads:
+ARTIFACT_LOCK:
+  stage: implementation_evaluation
+  artifact_path:
+  content_sha256:
+  prompt_revision: fnd05-implementation-evaluation-v2
+  target_head_sha: <not-single-head; candidate heads recorded below>
+  candidate_head_shas:
+  source_artifact_refs:
+  producer_slot:
+  producer_commit_sha:
+STATUS: LOCKED / NOT_LOCKED
 ```
 
-## 8. Stop point
+`run.json.stage_artifacts.implementation_evaluation`へ同じidentityを記録する。
 
-Selection / Adjudicationの入力を作成して停止します。Final Synthesis実装へ進まないでください。
+## 9. Stop point
+
+Selection / Adjudicationのinput artifactを作成して停止する。Final Synthesisへ進まない。
