@@ -2,7 +2,7 @@
 
 Target Issue: #42 `[FND-04] EF Core・明示的migration実行基盤を確立する`
 
-Status: **PRODUCT COMPLETE / BENCHMARK ARCHIVE PENDING TAG OPERATOR**
+Status: **PRODUCT COMPLETE / BENCHMARK ARCHIVE COMPLETE**
 
 ## 1. Final outcome
 
@@ -82,18 +82,18 @@ Final Synthesisへcandidate branchをmerge / cherry-pickしていない。curren
 
 ## 4. Candidate archive manifest
 
-Archive conventionに従い、最終H1 snapshotへannotated tagを付与してからworking branchを削除する。
+Archive conventionに従い、最終H1 snapshotへannotated tagを付与し、remoteでdereferenceを確認した後、candidate PRを未mergeでCloseしてworking branchを削除した。
 
 | PR | Candidate | H0 Head | H1 / archive Head | Planned tag | Selected | Current disposition |
 | ---: | --- | --- | --- | --- | --- | --- |
-| #131 | `gpt-5.6-luna-opencode` | `27c8d2e16647f1e9710f93880841d7c20d603c5a` | `207f80eecd4b659e86267b6b143bf934e26ae5ea` | `benchmark/fnd04/gpt-5.6-luna-opencode` | No | TAG PENDING / PR OPEN / BRANCH PRESERVED |
-| #132 | `grok-4.5-cursor` | `bf3de0da179975fc8d0ec7ad51d9a13153fe876e` | `bf3de0da179975fc8d0ec7ad51d9a13153fe876e` | `benchmark/fnd04/grok-4.5-cursor` | No | TAG PENDING / PR OPEN / BRANCH PRESERVED |
-| #133 | `gpt-5.6-sol-codex` | `7025c256b8b1ec1f0f4b9904f71a1047faac4cca` | `7025c256b8b1ec1f0f4b9904f71a1047faac4cca` | `benchmark/fnd04/gpt-5.6-sol-codex` | Partial | TAG PENDING / PR OPEN / BRANCH PRESERVED |
-| #134 | `claude-opus-5-claude-code` | `14160b99375113ee4dae07c5d7f8b2f29225e7ec` | `3a788cc31b3f65177d60dd3995842231dd505187` | `benchmark/fnd04/claude-opus-5-claude-code` | Primary | TAG PENDING / PR OPEN / BRANCH PRESERVED |
-| #135 | `deepseek-v4-flash-opencode` | `a2c5bd4e7aa1e5a3f0aded4ec3e5d3aeddd2ea90` | `8af19e033b79d42ab8a03b32521ec809fd0a8588` | `benchmark/fnd04/deepseek-v4-flash-opencode` | No | TAG PENDING / PR OPEN / BRANCH PRESERVED |
-| #136 | `gpt-5.6-terra-codex` | `427cba0527dd467b7c4eddefad885b1563a7880f` | `427cba0527dd467b7c4eddefad885b1563a7880f` | `benchmark/fnd04/gpt-5.6-terra-codex` | No | TAG PENDING / PR OPEN / BRANCH PRESERVED |
-| #137 | `claude-sonnet-5-claude-code` | `200281152e02cb72b09b556dd5f7dc263ffbdc84` | `af7bdc27f8daaae682a602946b04b122b50dee38` | `benchmark/fnd04/claude-sonnet-5-claude-code` | Learning only | TAG PENDING / PR OPEN / BRANCH PRESERVED |
-| #138 | `gpt-5.6-luna-codex` | `006319444f1e18172beb5664b045b5bccb2bcdf8` | `006319444f1e18172beb5664b045b5bccb2bcdf8` | `benchmark/fnd04/gpt-5.6-luna-codex` | No | TAG PENDING / PR OPEN / BRANCH PRESERVED |
+| #131 | `gpt-5.6-luna-opencode` | `27c8d2e16647f1e9710f93880841d7c20d603c5a` | `207f80eecd4b659e86267b6b143bf934e26ae5ea` | `benchmark/fnd04/gpt-5.6-luna-opencode` | No | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
+| #132 | `grok-4.5-cursor` | `bf3de0da179975fc8d0ec7ad51d9a13153fe876e` | `bf3de0da179975fc8d0ec7ad51d9a13153fe876e` | `benchmark/fnd04/grok-4.5-cursor` | No | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
+| #133 | `gpt-5.6-sol-codex` | `7025c256b8b1ec1f0f4b9904f71a1047faac4cca` | `7025c256b8b1ec1f0f4b9904f71a1047faac4cca` | `benchmark/fnd04/gpt-5.6-sol-codex` | Partial | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
+| #134 | `claude-opus-5-claude-code` | `14160b99375113ee4dae07c5d7f8b2f29225e7ec` | `3a788cc31b3f65177d60dd3995842231dd505187` | `benchmark/fnd04/claude-opus-5-claude-code` | Primary | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
+| #135 | `deepseek-v4-flash-opencode` | `a2c5bd4e7aa1e5a3f0aded4ec3e5d3aeddd2ea90` | `8af19e033b79d42ab8a03b32521ec809fd0a8588` | `benchmark/fnd04/deepseek-v4-flash-opencode` | No | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
+| #136 | `gpt-5.6-terra-codex` | `427cba0527dd467b7c4eddefad885b1563a7880f` | `427cba0527dd467b7c4eddefad885b1563a7880f` | `benchmark/fnd04/gpt-5.6-terra-codex` | No | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
+| #137 | `claude-sonnet-5-claude-code` | `200281152e02cb72b09b556dd5f7dc263ffbdc84` | `af7bdc27f8daaae682a602946b04b122b50dee38` | `benchmark/fnd04/claude-sonnet-5-claude-code` | Learning only | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
+| #138 | `gpt-5.6-luna-codex` | `006319444f1e18172beb5664b045b5bccb2bcdf8` | `006319444f1e18172beb5664b045b5bccb2bcdf8` | `benchmark/fnd04/gpt-5.6-luna-codex` | No | TAG VERIFIED / PR CLOSED UNMERGED / BRANCH DELETED |
 
 All eight planned tag names were checked before archive work and no existing ref was found.
 
@@ -139,12 +139,13 @@ Do not clean as candidate artifacts:
 
 ```yaml
 EXPECTED_CANDIDATE_TAGS: 8
-VERIFIED_CANDIDATE_TAGS: 0
+VERIFIED_CANDIDATE_TAGS: 8
 EXPECTED_CANDIDATE_PRS_CLOSED_UNMERGED: 8
-CANDIDATE_PRS_CLOSED_UNMERGED: 0
+CANDIDATE_PRS_CLOSED_UNMERGED: 8
 EXPECTED_CANDIDATE_BRANCHES_DELETED: 8
-CANDIDATE_BRANCHES_DELETED: 0
-ARCHIVE_STATUS: pending_external_tag_and_ref_cleanup_operator
+CANDIDATE_BRANCHES_DELETED: 8
+REMOTE_TAG_VERIFICATION: 8 / 8 PASS
+ARCHIVE_STATUS: complete_archived
 ```
 
-The connected GitHub app used during this cleanup does not expose annotated-tag creation or branch-ref deletion. Therefore the archive remains fail-closed until those two operations are performed by a Git-capable operator and remotely verified.
+各candidateのremote tagはannotated tag objectとして存在し、`^{}` dereferenceは指定H1 Headと一致する。8件すべてのcandidate PRは未mergeのままCloseし、working branchもremoteから削除した。PR #140、final-code branch、benchmark-control branch、Issue #42およびFND-05関連成果物は変更していない。

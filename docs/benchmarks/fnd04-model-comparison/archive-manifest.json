@@ -4,22 +4,22 @@
   "target_issue": 42,
   "archive_branch": "agent/fnd04-benchmark-archive",
   "archive_pr": 149,
-  "archive_status": "pending_external_tag_and_ref_cleanup_operator",
-  "snapshot_status": "identity_verified_tags_not_created",
+  "archive_status": "complete_archived",
+  "snapshot_status": "verified",
   "snapshot_tag_count_expected": 8,
-  "snapshot_tag_count_verified": 0,
+  "snapshot_tag_count_verified": 8,
   "raw_artifact_modifications": "none",
   "common_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
   "archive_operation": {
     "candidate_identity": {"expected": 8, "verified": 8},
-    "candidate_tags": {"expected": 8, "verified": 0, "type": "annotated"},
-    "candidate_prs": {"expected": 8, "closed_unmerged": 0},
-    "candidate_branches": {"expected": 8, "deleted": 0},
+    "candidate_tags": {"expected": 8, "verified": 8, "type": "annotated"},
+    "candidate_prs": {"expected": 8, "closed_unmerged": 8},
+    "candidate_branches": {"expected": 8, "deleted": 8},
     "tag_name_collisions": 0,
     "final_code_branch": "preserved",
     "benchmark_control_branch": "preserved",
     "issue_42_changed_by_cleanup": false,
-    "operator_blocker": "connected GitHub app has no annotated-tag creation or branch-ref deletion action"
+    "operator_blocker": null
   },
   "implementation_benchmark": {
     "status": "complete_locked",
@@ -46,11 +46,11 @@
       "score": 99,
       "rank": 1,
       "snapshot_tag": "benchmark/fnd04/claude-opus-5-claude-code",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": true,
       "selected_role": "primary architecture and verification reference for curated Final Synthesis",
       "merge_ready": true,
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-sol-codex",
@@ -65,11 +65,11 @@
       "score": 98,
       "rank": 2,
       "snapshot_tag": "benchmark/fnd04/gpt-5.6-sol-codex",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": true,
       "selected_role": "partial adopt: failed-process secret non-disclosure regression",
       "merge_ready": true,
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "claude-sonnet-5-claude-code",
@@ -84,11 +84,11 @@
       "score": 98,
       "rank": 3,
       "snapshot_tag": "benchmark/fnd04/claude-sonnet-5-claude-code",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": false,
       "selected_role": "learning only: strongest Formal Self-Review gain",
       "merge_ready": true,
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "grok-4.5-cursor",
@@ -103,10 +103,10 @@
       "score": 93,
       "rank": 4,
       "snapshot_tag": "benchmark/fnd04/grok-4.5-cursor",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-terra-codex",
@@ -121,10 +121,10 @@
       "score": 92,
       "rank": 5,
       "snapshot_tag": "benchmark/fnd04/gpt-5.6-terra-codex",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-luna-opencode",
@@ -139,10 +139,10 @@
       "score": 91,
       "rank": 6,
       "snapshot_tag": "benchmark/fnd04/gpt-5.6-luna-opencode",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "gpt-5.6-luna-codex",
@@ -157,10 +157,10 @@
       "score": 90,
       "rank": 7,
       "snapshot_tag": "benchmark/fnd04/gpt-5.6-luna-codex",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": false,
       "merge_ready": true,
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     },
     {
       "slug": "deepseek-v4-flash-opencode",
@@ -175,11 +175,11 @@
       "score": 80,
       "rank": 8,
       "snapshot_tag": "benchmark/fnd04/deepseek-v4-flash-opencode",
-      "snapshot_status": "pending",
+      "snapshot_status": "verified",
       "selected": false,
       "merge_ready": false,
       "blocking_finding": "C8-M01",
-      "final_disposition": "pending_tag_then_close_unmerged_branch_delete"
+      "final_disposition": "closed_unmerged_branch_deleted"
     }
   ],
   "auxiliary_cleanup": {
