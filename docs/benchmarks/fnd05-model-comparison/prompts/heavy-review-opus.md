@@ -27,6 +27,7 @@ LIGHT_FIX_ARTIFACT_SHA256: "<SHA256>"
 MUTATION_REPORT_ARTIFACT_PATH: "<PATH>"
 MUTATION_REPORT_SHA256: "<SHA256>"
 RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
+MUTATION_DETERMINISM_REVISION: "fnd05-mutation-determinism-v1"
 PROMPT_REVISION: "fnd05-heavy-opus-v2"
 ```
 
@@ -40,6 +41,7 @@ Review-onlyです。targetを変更しません。
 - direct-head CI SUCCESS
 - Final Head locked
 - mandatory mutation baseline / report available
+- D-06 mutation determinism lock = true
 - artifact ref / hash / target Head一致
 
 不一致はBlockerです。
@@ -101,8 +103,14 @@ happy pathと通常rule checkでは見えないBlocker / Majorを探す。
 - `exit != 0`だけでPASSしないか
 - expected path marker + failure reason/state marker
 - source scanだけでruntimeを証明しないか
-- M-01〜M-10 baseline GREEN → RED → restore GREEN → residue 0
+- M-01〜M-10 baseline GREEN → deterministic precondition PASS → expected RED → restore GREEN → residue 0
+- mutationごとにcontrolled barrier / fixture、injection point class、expected / observed failure signatureがD-06 lockと一致するか
+- precondition未成立をKILLED / SURVIVEDとして数えていないか
+- invalid failure signatureをkillへ数えていないか
+- M-01は自然raceではなくMigrator incompleteをcontrolledに保持してordering defectを発火させているか
+- M-03はauto-migrationが存在すれば必ずobservable migration-state deltaが出るDB preconditionを使っているか
 - **M-08はoracleを変更せず、exit 0のままmigration未適用runtime defectを検出しているか**
+- M-10はclean reset前にmutation対象resourceの実在を確認しているか
 - M-07はoracle-quality meta mutationとして正しく扱われているか
 
 既存mutation reportが十分なら全mutationを無意味に再実行しない。証拠gapのあるroot causeだけprobeする。
@@ -139,8 +147,10 @@ happy pathと通常rule checkでは見えないBlocker / Majorを探す。
 - isolated temporary mutation / external overrideのみ
 - production branchへprobeをcommitしない
 - 一度に1 mutation
+- deterministic preconditionを先に確認
 - actual stateを確認
-- expected failure reasonを確認
+- expected failure signatureを確認
+- invalid failure signatureではないことを確認
 - residue 0
 
 ## 9. Finding policy
@@ -155,6 +165,8 @@ FAILURE_SCENARIO:
 EXPECTED:
 OBSERVED:
 PROBE / MUTATION:
+PRECONDITION:
+FAILURE_SIGNATURE:
 IMPACT:
 REQUIRED_FIX:
 WHY_HEAVY_SCOPE:
@@ -182,6 +194,7 @@ SECRET_PATH_ASSESSMENT:
 HIDDEN_DEPENDENCIES:
 TEST_ORACLE_ASSESSMENT:
 MUTATION_ASSESSMENT:
+MUTATION_DETERMINISM_ASSESSMENT:
 FALSE_ASSURANCE:
 REJECTED_UNRESOLVED_LIGHT_RECHECK:
 MERGE_READY: YES / NO
