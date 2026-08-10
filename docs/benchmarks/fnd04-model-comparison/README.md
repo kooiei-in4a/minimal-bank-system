@@ -2,13 +2,13 @@
 
 Target Issue: #42 `[FND-04] EF Core・明示的migration実行基盤を確立する`
 
-Status: **IMPLEMENTATION EVALUATION LOCKED / READY FOR FINAL SYNTHESIS**
+Status: **SELECTION / ADJUDICATION LOCKED / READY FOR FINAL SYNTHESIS**
 
-このdirectoryはFND-04 benchmarkの実行条件、locked snapshots、evaluation結果を管理するbenchmark control正本である。
+このdirectoryはFND-04 benchmarkの実行条件、locked snapshots、evaluation、selection / adjudicationを管理するbenchmark control正本である。
 
-現在までに、H0 implementation 8/8、Formal Self-Review 8/8、H1 Self-Review Fix 8/8、Implementation Evaluationを完了・LOCKした。candidate branchはH1 LOCK後に変更していない。
+candidate branchはH1 LOCK後に変更していない。Final Synthesisはcandidate rankingとは別のcurated implementationとして扱う。
 
-## Current result
+## Current state
 
 ```text
 H0 implementation snapshot       8/8 LOCKED
@@ -16,65 +16,106 @@ Formal Self-Review               8/8 LOCKED
 H1 self-review fix snapshot      8/8 LOCKED
 H1 exact-head CI                 8/8 SUCCESS
 Implementation Evaluation        COMPLETE / LOCKED
+Selection / Adjudication         COMPLETE / LOCKED
 Final Synthesis                  READY / NOT STARTED
 ```
 
-Implementation Evaluation canonical result:
+## Locked implementation result
 
 - H1 winner: `claude-opus-5-claude-code` — 99
 - H0 winner: `gpt-5.6-sol-codex` — 98
 - Maximum Self-Review Gain: `claude-sonnet-5-claude-code` — +3
-- Merge-ready: 7 / 8
+- Merge-ready candidate: 7 / 8
 - Non-merge-ready: `deepseek-v4-flash-opencode`
 - Blocking finding: `C8-M01`
 
 DurationはH0 / SR / H1を全candidate一貫して収集できなかったためN/A。Speed Score / Quality-Time Index / Practical Score speed componentは計算しない。
+
+## Locked Final Synthesis selection
+
+Primary:
+
+- C5 `claude-opus-5-claude-code`
+- H1 Head: `3a788cc31b3f65177d60dd3995842231dd505187`
+- Role: architecture / production-path verification base
+
+Additional adoption:
+
+- C1: failed Migrator outputへcredential / passwordが漏れないことを確認するregression test
+- C8-M01: missing `ConnectionStrings__Database`時のconnection-required design-time operationをfail-closedにするmandatory regression
+
+Explicit non-selection:
+
+- C6 `TimeProvider` seamは初期Final Synthesisへ追加しない。C5のreal PostgreSQL lockによるproduction 60-second timeout証拠を優先する。
+- C8のfabricated `Host=127.0.0.1;...Database=design_time` fallback patternは採用禁止。
+- C2 / C3 / C4 / C7から、C5を置換する独自要素は採用しない。
+
+Canonical selection files:
+
+- `results/selection-adjudication.md`
+- `results/selection-adjudication.json`
+
+## Final Synthesis construction boundary
+
+```text
+Branch:        agent/issue-42-fnd-04-final-code
+Base branch:   main
+Expected base: 38c07e210fe4e8689f1d8aeabbb07b92610d1826
+```
+
+- candidate branch merge: prohibited
+- candidate commit cherry-pick: prohibited
+- benchmark candidate artifacts modification: prohibited
+- current mainがExpected baseから動いていた場合は開始せず再確認する
+
+Final SynthesisはC5を主軸に、selection / adjudicationで明示された追加要素だけをcurateする。候補機能の全部盛りは行わない。
+
+## Required Final Synthesis evidence
+
+- exact package / local tool pinning
+- clean PostgreSQL `0 -> InitialFoundation`
+- explicit Migrator rerun
+- missing / unreachable / rejected credential failure
+- real PostgreSQL blockingによるactual 60-second timeout
+- failed Migrator output secret non-disclosure
+- API startup no migration / no `EnsureCreated`
+- API `BankDbContext` resolve時もschema mutationなし
+- actual EF pending-model positive check
+- evaluator-only temporary model drift negative probe + clean recovery
+- idempotent migration SQL generation
+- C8-M01 missing design-time connection fail-closed regression
+- business schemaなし
+- `git diff --check`
+- exact Head CI success
+
+## Duration experiment for Final Synthesis
+
+candidate benchmarkのDuration=N/Aは変更しない。
+
+Final Synthesisだけ、実装Agentが次を分単位で明示記録する。
+
+```text
+STARTED_AT_LOCAL: YYYY-MM-DD HH:MM
+FINISHED_AT_LOCAL: YYYY-MM-DD HH:MM
+DURATION_MINUTES: integer
+```
+
+GitHub timestampから処理時間を推定しない。この値をcandidateのSpeed rankingへ遡及適用しない。
 
 ## Experiment shape
 
 ```text
 8 candidates
   H0 implementation snapshot
-    -> Formal Self-Review (fresh context, review-only)
+    -> Formal Self-Review
       -> H1 self-review fix snapshot
         -> implementation evaluation        [COMPLETE / LOCKED]
-          -> curated Final Synthesis         [NEXT]
-            -> role-diverse independent review
-              -> 2 Judges (+ 1 conditional tie-breaker)
-                -> Formal Agent B review
+          -> selection / adjudication        [COMPLETE / LOCKED]
+            -> curated Final Synthesis       [NEXT]
+              -> role-diverse independent review
+                -> 2 Judges (+ 1 conditional tie-breaker)
+                  -> Formal Agent B review
 ```
-
-Majorが確定した場合のtargeted fix roundは原則最大4候補とし、14候補全再実行を標準にしない。
-
-## Implementation candidate pool
-
-### Active core — 6
-
-1. GPT-5.6 Sol / Codex
-2. GPT-5.6 Terra / Codex
-3. GPT-5.6 Luna / Codex
-4. GPT-5.6 Luna / Open Code
-5. Claude Opus 5 / Claude Code
-6. Claude Sonnet 5 / Claude Code
-
-### Challengers — 2
-
-7. Grok 4.5 / Cursor — speed / alternative execution profile
-8. DeepSeek V4 Flash / Open Code — Open Code challenger / alternative failure-proof style
-
-### Reserve
-
-- Qwen3.7 Plus / Open Code
-- Composer 2.5 / Cursor
-- DeepSeek V4 Pro / Open Code
-
-### Suspended for this run
-
-- MiniMax M3 / Open Code
-- MiMo-V2.5 / Open Code
-- MiMo-V2.5-Pro / Open Code
-
-Suspension is not permanent exclusion. See the parent methodology for re-entry rules.
 
 ## Reviewer pool — 6 roles
 
@@ -87,7 +128,7 @@ Suspension is not permanent exclusion. See the parent methodology for re-entry r
 | R5 | GPT-5.6 Luna / Open Code | tool-driven independent review |
 | R6 | Grok 4.5 / Cursor | fast independent review |
 
-Exact product-visible model identity and effort are re-verified immediately before reviewer execution and recorded in `run.json`; a changed/unavailable product label is not silently substituted.
+Exact product-visible model identity and effortはreviewer execution直前に再確認する。
 
 ## Judge quorum
 
@@ -95,12 +136,7 @@ Exact product-visible model identity and effort are re-verified immediately befo
 - Judge B: Claude Opus 5 / Claude Code
 - Conditional Judge C: GPT-5.6 Pro / Browser
 
-Judge C is used only if the first two Judges disagree on reference verdict, blocking root cause, or merge-ready candidate.
-
-## Review targets
-
-- Real target: actual FND-04 Final Synthesis
-- Controlled Mutant: optional reviewer-capability target with pre-locked Gold; mutation details remain collector-private until raw reviews are fixed
+Judge Cはfirst two Judgesがreference verdict、blocking root cause、merge-ready判断で不一致の場合のみ使用する。
 
 ## Locked revisions
 
@@ -113,42 +149,25 @@ Implementation scoring:         fnd04-implementation-v1
 Evaluator probes:               fnd04-evaluator-probes-v1
 Assumption ledger:              fnd04-assumptions-v1
 Implementation result:          fnd04-implementation-evaluation-v1
+Selection / adjudication:       fnd04-selection-adjudication-v1
 ```
-
-## Benchmark gates
-
-- [x] Issue #42 Issue Ready = PASS
-- [x] common base full SHA fixed: `38c07e210fe4e8689f1d8aeabbb07b92610d1826`
-- [x] all 8 candidate branches created from common base
-- [x] package/version contract fixed
-- [x] `reference/assumption-ledger.md` locked
-- [x] H0 candidate prompt revision fixed
-- [x] Formal Self-Review / H1 prompt revisions fixed
-- [x] scoring rubric fixed
-- [x] evaluator-only probe plan fixed
-- [x] H0 8/8 locked
-- [x] Formal Self-Review 8/8 locked
-- [x] H1 8/8 locked
-- [x] H1 exact-head CI 8/8 success
-- [x] Implementation Evaluation complete / locked
-- [ ] Final Synthesis started
 
 ## Files
 
-- `run.json`: machine-readable benchmark identity / phase state / candidate snapshots / evaluation summary
-- `scoring.md`: H0/H1共通implementation scoring rubric
-- `reference/assumption-ledger.md`: external-library and project assumptions locked before candidate outputs
-- `reference/evaluator-probes.md`: candidate共通のadversarial verification plan
+- `run.json`: machine-readable benchmark identity / phase state / candidate snapshots / locked decisions
+- `scoring.md`: H0/H1 common scoring rubric
+- `reference/assumption-ledger.md`: pre-locked external assumptions
+- `reference/evaluator-probes.md`: evaluator-only adversarial probes
 - `prompts/implementation-h0.md`: H0 implementation prompt
-- `prompts/formal-self-review.md`: fresh-context review-only prompt
-- `prompts/self-review-fix-h1.md`: SR Finding disposition / H1 fix prompt
-- `results/implementation-evaluation.md`: canonical human-readable Implementation Evaluation
-- `results/implementation-evaluation.json`: machine-readable Implementation Evaluation result
+- `prompts/formal-self-review.md`: Formal Self-Review prompt
+- `prompts/self-review-fix-h1.md`: H1 fix prompt
+- `results/implementation-evaluation.md`: human-readable Implementation Evaluation
+- `results/implementation-evaluation.json`: machine-readable Implementation Evaluation
+- `results/selection-adjudication.md`: human-readable Final Synthesis selection / adjudication
+- `results/selection-adjudication.json`: machine-readable selection / adjudication
 
-## Implementation Evaluation lock boundary
+## Gate boundary
 
-Implementation EvaluationはH1 lock commit `93d46a3822a8fddc342781cf5cd981cbac268cdd`を入力snapshotとして実施した。
+Selection / Adjudicationまでcomplete / locked。
 
-Evaluation完了後もcandidate branch / PRは変更しない。Evaluation resultの固定はbenchmark control branchのみで行う。
-
-次工程はcurated Final Synthesisであり、このREADME更新自体はFinal Synthesis implementation、candidate fix、merge、Issue closeを許可するものではない。
+次工程はlocal AgentによるFinal Synthesis implementationである。このREADME更新自体はFinal Synthesis completion、Ready化、merge、Issue #42 closeを許可しない。Draft PR / exact Head CI取得後に独立レビュー工程へ進む。
