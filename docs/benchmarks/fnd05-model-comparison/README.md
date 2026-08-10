@@ -18,7 +18,7 @@ ADR / Issue / Implementation Design / Test Design lock
   - Claude Sonnet 5 / Claude Code
   - Grok 4.5 / Cursor
   ↓
-common evaluation / Selection / Adjudication
+common evaluation / element-level Selection
   ↓
 curated Final Synthesis
   ↓
@@ -53,11 +53,11 @@ Agent Aの基本的なdiff確認・検証は、`prompts/implementation.md`へ事
 
 ## Implementation candidates — 3
 
-| Slot | Model + Harness | Purpose |
-| --- | --- | --- |
-| C1 | GPT-5.6 Luna / Codex | ADR・Issueへ忠実な基準実装 |
-| C2 | Claude Sonnet 5 / Claude Code | 別系列の設計・実装解釈 |
-| C3 | Grok 4.5 / Cursor | 別Harness・Compose運用経路の異質性 |
+| Slot | Model + Harness | Effort target | Purpose |
+| --- | --- | --- | --- |
+| C1 | GPT-5.6 Luna / Codex | xHigh相当、実行前にexact label確認 | ADR・Issueへ忠実な基準実装 |
+| C2 | Claude Sonnet 5 / Claude Code | xHigh相当、実行前にexact label確認 | 別系列の設計・実装解釈 |
+| C3 | Grok 4.5 / Cursor | high。high fastは使用しない | 別Harness・Compose運用経路の異質性 |
 
 実行直前にproduct-visible model labelとeffortを再確認し、`run.json`へ固定する。変更・利用不能なlabelを黙って代替しない。
 
@@ -77,7 +77,7 @@ Light Reviewはmerge可否の最終判断ではない。Heavy reviewerへ明白�
 | H1 | GPT-5.6 Sol / Codex | architecture、ADR、責務境界、Issue本質 | 1 |
 | H2 | Claude Opus 5 / Claude Code | failure、lifecycle、ordering、secret、false assurance | 1 |
 
-Heavy promptには、確認する項目と**原則確認しない項目**を明記する。style、軽微な命名、formatter、README typo、単純な配置・version照合等はLight Gateの責任とする。
+Heavy promptには、確認する項目と**原則確認しない項目**を同じ強さで明記する。style、軽微な命名、formatter、README typo、単純な配置・version照合等はLight Gateの責任とする。
 
 ## Conditional Judge
 
@@ -92,18 +92,21 @@ Judgeのexact identityはtrigger時にfresh context・非author・非reviewer優
 
 ## Pre-run gates
 
-- [ ] FND-04 final retrospective PRがreview済み
+- [ ] FND-04 final retrospective PR #144がreview済み
 - [ ] Issue #43のdependency #42 COMPLETE / MERGEDを再確認
 - [ ] Issue #43のGate statusを現在状態へ更新
+- [ ] `reference/assumption-ledger.md`の`TO_LOCK`が0
 - [ ] `reference/implementation-and-test-design-contract.md` locked
 - [ ] `reference/project-rule-catalog.md` locked
 - [ ] `reference/review-perspective-matrix.md` locked
 - [ ] `reference/mandatory-mutations.md` locked
 - [ ] `scoring.md` locked
-- [ ] implementation / light / heavy prompt revision locked
+- [ ] implementation / evaluation / selection / final synthesis prompt revisions locked
+- [ ] light / heavy / fix / re-review prompt revisions locked
 - [ ] exact common base full SHA fixed
 - [ ] 3 candidate branches created from exact common base
 - [ ] 3 / 3 branch Head identity verified
+- [ ] 3 Draft PR事前作成
 - [ ] exact model / harness / effort fixed
 - [ ] candidate output 0件を確認
 - [ ] Issue #43 Issue Ready = PASS
@@ -113,17 +116,44 @@ Judgeのexact identityはtrigger時にfresh context・非author・非reviewer優
 
 ## Files
 
-- `run.json`: machine-readable state
+### State / scoring
+
+- `run.json`: machine-readable pre-run state
+- `pre-run-checklist.md`: human-readable completion checklist
 - `scoring.md`: 3 candidate共通の評価基準
+
+### Reference
+
+- `reference/assumption-ledger.md`: Docker / project assumptions and open decisions
 - `reference/implementation-and-test-design-contract.md`: ADR起点の実装・test設計
 - `reference/project-rule-catalog.md`: MUST / MUST NOT / placement rule
 - `reference/review-perspective-matrix.md`: review責任分担と非対象
 - `reference/mandatory-mutations.md`: Final Synthesisで必ず検証するmutation
+
+### Implementation / synthesis
+
 - `prompts/implementation.md`: 3 candidate共通実装prompt
+- `prompts/implementation-evaluation.md`: 3 candidate比較
+- `prompts/selection-adjudication.md`: element-level selection
+- `prompts/final-synthesis.md`: current mainからのcurated実装
+
+### Light gate
+
 - `prompts/light-review-project-quality.md`: Composer用
 - `prompts/light-review-contract-conformance.md`: Luna用
-- `prompts/heavy-review-sol.md`: Sol final gate
-- `prompts/heavy-review-opus.md`: Opus final gate
+- `prompts/light-findings-fix.md`: Light finding disposition / fix
+
+### Heavy gate / conditional path
+
+- `prompts/heavy-review-sol.md`: Sol architecture final gate
+- `prompts/heavy-review-opus.md`: Opus adversarial final gate
+- `prompts/conditional-judge.md`: Heavy disagreement時のみ
+- `prompts/targeted-fix.md`: locked Blocker / Majorの最小修正
+- `prompts/targeted-re-review.md`: finding-owned re-review
+
+### Gate
+
+- `prompts/issue-ready-review.md`: candidate開始前のfresh gate review
 
 ## External behavior assumptions
 
@@ -137,6 +167,6 @@ Docker公式文書により、Composeはshort syntaxの`depends_on`だけではd
 
 ## Start boundary
 
-このpreparationがreview・mergeされ、そのmerge commitをcommon baseとして固定した後に、3 candidate branchを事前作成する。
+このpreparationがreview・mergeされ、そのmerge commitをcommon baseとして固定した後に、3 candidate branchとDraft PRを事前作成する。
 
-branch作成後もcandidate executionは開始しない。Issue #43 Issue Ready PASSとKooの明示的開始指示をもって開始する。
+branch / PR作成後もcandidate executionは開始しない。Issue #43 Issue Ready PASSとKooの明示的開始指示をもって開始する。
