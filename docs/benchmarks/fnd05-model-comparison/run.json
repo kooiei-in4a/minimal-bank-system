@@ -1,0 +1,146 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd05-compose-model-comparison",
+  "status": "preparation_draft",
+  "implementation_permitted": false,
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "parent_issue": 3,
+    "work_package_issue": 33,
+    "target_issue": 43,
+    "predecessor_issue": 42,
+    "base_branch": "main",
+    "common_base_sha": null
+  },
+  "policy": {
+    "open_code_allowed": false,
+    "separate_formal_self_review": false,
+    "implementation_prompt_embeds_completion_checks": true,
+    "candidate_merge_or_cherry_pick_into_final": false,
+    "heavy_review_after_light_gate_only": true,
+    "heavy_review_default_full_invocations": 2,
+    "judge_default": false
+  },
+  "implementation_candidates": [
+    {
+      "slot": "C1",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "effort": null,
+      "candidate_slug": "gpt-5.6-luna-codex",
+      "branch": null,
+      "head_sha": null,
+      "state": "planned"
+    },
+    {
+      "slot": "C2",
+      "model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "effort": null,
+      "candidate_slug": "claude-sonnet-5-claude-code",
+      "branch": null,
+      "head_sha": null,
+      "state": "planned"
+    },
+    {
+      "slot": "C3",
+      "model": "Grok 4.5",
+      "harness": "Cursor",
+      "effort": null,
+      "candidate_slug": "grok-4.5-cursor",
+      "branch": null,
+      "head_sha": null,
+      "state": "planned"
+    }
+  ],
+  "light_reviews": [
+    {
+      "slot": "L1",
+      "model": "Composer 2.5",
+      "harness": "Cursor",
+      "role": "project_quality_and_rule_conformance",
+      "state": "planned"
+    },
+    {
+      "slot": "L2",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "role": "adr_issue_ac_contract_conformance",
+      "state": "planned"
+    }
+  ],
+  "heavy_reviews": [
+    {
+      "slot": "H1",
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "role": "architecture_and_contract_final_gate",
+      "full_review_budget": 1,
+      "state": "planned"
+    },
+    {
+      "slot": "H2",
+      "model": "Claude Opus 5",
+      "harness": "Claude Code",
+      "role": "adversarial_failure_and_false_assurance_final_gate",
+      "full_review_budget": 1,
+      "state": "planned"
+    }
+  ],
+  "conditional_judge": {
+    "enabled_by_default": false,
+    "model": null,
+    "harness": null,
+    "trigger_on": [
+      "blocker_or_major_disagreement",
+      "root_cause_disagreement",
+      "required_fix_direction_disagreement",
+      "merge_readiness_disagreement",
+      "common_unverified_assumption"
+    ]
+  },
+  "revisions": {
+    "process": "fnd05-review-funnel-v1",
+    "implementation_and_test_design": "fnd05-design-contract-v1",
+    "project_rules": "fnd05-project-rules-v1",
+    "review_matrix": "fnd05-review-matrix-v1",
+    "mandatory_mutations": "fnd05-mutations-v1",
+    "scoring": "fnd05-scoring-v1",
+    "implementation_prompt": "fnd05-implementation-v1",
+    "light_project_review_prompt": "fnd05-light-project-v1",
+    "light_contract_review_prompt": "fnd05-light-contract-v1",
+    "heavy_sol_prompt": "fnd05-heavy-sol-v1",
+    "heavy_opus_prompt": "fnd05-heavy-opus-v1"
+  },
+  "gates": {
+    "final_retrospective_reviewed": false,
+    "dependency_42_complete_merged_reverified": false,
+    "issue_43_contract_current": false,
+    "implementation_test_design_locked": false,
+    "project_rules_locked": false,
+    "review_matrix_locked": false,
+    "mutations_locked": false,
+    "scoring_locked": false,
+    "prompts_locked": false,
+    "common_base_locked": false,
+    "candidate_branches_created": false,
+    "candidate_branch_identity_verified": false,
+    "exact_model_harness_effort_locked": false,
+    "candidate_output_zero_confirmed": false,
+    "issue_ready_pass": false,
+    "koo_start_authorized": false
+  },
+  "metric_targets": {
+    "candidate_count": 3,
+    "separate_formal_self_review_count": 0,
+    "h1_phase_count": 0,
+    "open_code_execution_count": 0,
+    "light_review_count": 2,
+    "heavy_full_review_count": 2,
+    "default_heavy_re_review_count": 0,
+    "heavy_obvious_finding_count": 0,
+    "mandatory_mutation_definition_coverage": 1.0,
+    "final_mutation_kill_rate": 1.0,
+    "mutation_residue_count": 0
+  }
+}
