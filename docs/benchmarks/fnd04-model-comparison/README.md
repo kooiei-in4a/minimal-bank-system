@@ -17,6 +17,7 @@ H1 self-review fix snapshot      8/8 LOCKED
 H1 exact-head CI                 8/8 SUCCESS
 Implementation Evaluation        COMPLETE / LOCKED
 Selection / Adjudication         COMPLETE / LOCKED
+Final Synthesis prompt           LOCKED
 Final Synthesis                  READY / NOT STARTED
 ```
 
@@ -61,6 +62,7 @@ Canonical selection files:
 Branch:        agent/issue-42-fnd-04-final-code
 Base branch:   main
 Expected base: 38c07e210fe4e8689f1d8aeabbb07b92610d1826
+Prompt:        fnd04-final-synthesis-v1
 ```
 
 - candidate branch merge: prohibited
@@ -150,6 +152,7 @@ Evaluator probes:               fnd04-evaluator-probes-v1
 Assumption ledger:              fnd04-assumptions-v1
 Implementation result:          fnd04-implementation-evaluation-v1
 Selection / adjudication:       fnd04-selection-adjudication-v1
+Final Synthesis prompt:         fnd04-final-synthesis-v1
 ```
 
 ## Files
@@ -161,6 +164,7 @@ Selection / adjudication:       fnd04-selection-adjudication-v1
 - `prompts/implementation-h0.md`: H0 implementation prompt
 - `prompts/formal-self-review.md`: Formal Self-Review prompt
 - `prompts/self-review-fix-h1.md`: H1 fix prompt
+- `prompts/final-synthesis.md`: locked local-Agent Final Synthesis implementation prompt
 - `results/implementation-evaluation.md`: human-readable Implementation Evaluation
 - `results/implementation-evaluation.json`: machine-readable Implementation Evaluation
 - `results/selection-adjudication.md`: human-readable Final Synthesis selection / adjudication
@@ -168,6 +172,6 @@ Selection / adjudication:       fnd04-selection-adjudication-v1
 
 ## Gate boundary
 
-Selection / Adjudicationまでcomplete / locked。
+Selection / Adjudicationまでcomplete / locked。Final Synthesis promptもlocked。
 
 次工程はlocal AgentによるFinal Synthesis implementationである。このREADME更新自体はFinal Synthesis completion、Ready化、merge、Issue #42 closeを許可しない。Draft PR / exact Head CI取得後に独立レビュー工程へ進む。
