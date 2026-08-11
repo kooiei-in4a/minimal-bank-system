@@ -1,0 +1,35 @@
+# FND-05 S0 Static Gate Result
+
+TARGET_HEAD:
+  be45366af18e55a5f8dd8af932518b690c7a36c0
+
+BASE_SHA:
+  ee8abbb15758c1a2cfb624791482b755be578da2
+
+COMMAND:
+  bash tests/fnd05/static-gate.sh
+
+LOCAL_RESULT:
+  PASS
+
+DIRECT_HEAD_CI:
+  RUN: 31491089797
+  ACTUAL_CHECKOUT_SHA:
+    be45366af18e55a5f8dd8af932518b690c7a36c0
+  STATIC_GATE:
+    PASS
+
+ISOLATED_REPRODUCTION:
+  STATIC_GATE:
+    PASS
+  CAUSED_DIRTY:
+    NO
+
+FINAL_SYNTHESIS_ARTIFACT:
+  PATH:
+    docs/benchmarks/fnd05-model-comparison/final-synthesis/initial-result.md
+  SHA256:
+    87cc9fef65bf88c02be0405303f40e0cc9bf00762965c48b633cf9f05723cc42
+
+RESULT:
+  PASS
