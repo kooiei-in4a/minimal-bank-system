@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "prompt_revision": "fnd04-final-review-v1",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"
+  },
+  "reviewer": {
+    "slot": "R2",
+    "model": "Claude Opus 5",
+    "harness": "Claude Code",
+    "effort": "xHigh",
+    "slug": "claude-opus-5-claude-code",
+    "primary_role": "deep_technical_test_assurance",
+    "attempt": 1
+  },
+  "outcome": "completed",
+  "target_verification": {
+    "result": "pass",
+    "observed_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "observed_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "pr_state": "open_draft_unmerged_mergeable"
+  },
+  "verdict": "CHANGES_REQUIRED",
+  "merge_ready": false,
+  "severity_counts": {"blocker":0,"major":1,"minor":1,"nit":2},
+  "findings": [
+    {
+      "id": "R2-F01",
+      "severity": "Major",
+      "blocking": true,
+      "title": "C8-M01 design-time regression test is false assurance and cannot detect the defect class it guards",
+      "description": "DesignTimeConnectionSafetyTests asserts only 'process.ExitCode != 0' plus the absence of a fixed six-literal blocklist (127.0.0.1 / localhost / design_time / 'Data Source=' / Sqlite / InMemory). It contains no positive assertion that design-time context creation was reached, that the Npgsql provider was used, or that no destination was configured. Two independent mutation probes on an isolated clone proved the test passes while the guarded regression is present. (1) Mutating UseBankPostgreSqlModelOnly to fabricate an off-blocklist ambient destination (Host=db;Database=ambient_fallback;Username=postgres) made the design-time command actually attempt a connection to tcp://db:5432, yet the committed test still passed. (2) Removing the Migrator build output entirely, so that the --no-build design-time command can never load the startup project or reach the factory, also still passed. Production behavior itself is correct and was verified separately: the real BankDbContextFactory is traversed, the provider is Npgsql, the destination is empty, the failure is 'The ConnectionString property has not been initialized.' and exit code is 1. This is therefore an assurance defect, not a production defect, but it is the sole committed guard for Issue #42 section 8.4 and the Final Synthesis presents C8-M01 as an explicitly adopted differentiator.",
+      "affected_path": "tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs",
+      "evidence": ["Probe A (unmutated HEAD): dotnet tool run dotnet-ef database update --no-build --project src/MinimalBankSystem.Infrastructure --startup-project src/MinimalBankSystem.Migrator => EXITCODE=1, output: connection to database '' on server '', ConnectionString property has not been initialized, with NpgsqlHistoryRepository/NpgsqlMigrator frames.","Probe C mutation: UseBankPostgreSqlModelOnly changed to an off-blocklist ambient destination Host=db;Database=ambient_fallback;Username=postgres; raw command attempted tcp://db:5432, yet committed test passed.","Probe J structural: Migrator build output moved aside so --no-build command cannot reach factory; committed test still passed.","Claim surface: tests README, PR #140 C8-M01 section, and test XML doc state that the regression verifies fail-closed behavior without fabricated/fake/ambient destination."],
+      "root_cause_key": null,
+      "required_fix": "Replace the blocklist-absence heuristic with positive assertions that pin the actual failure origin: require evidence that the connection-required design-time path was reached with an unconfigured destination and Npgsql/EF operation frames; ensure build/tooling failures cannot satisfy the test. Keep blocklist only as supplementary. Consider dropping --no-build or asserting build freshness."
+    },
+    {
+      "id": "R2-F02",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Migrator exit-code taxonomy (1 = Failure vs 2 = Timeout) is never pinned by the negative tests",
+      "description": "All four migrator failure tests assert only non-success. No test asserts Failure=1; only timeout pins a specific code. Issue #42 only mandates non-zero, so this is not an AC violation, but README publishes the 0/1/2 taxonomy as a deployment-facing contract.",
+      "affected_path": "tests/MinimalBankSystem.IntegrationTests/PostgreSql/MigrationBaselineTests.cs",
+      "evidence": ["Missing/unreachable/rejected credentials/malformed history tests all use Assert.NotEqual(Success, run.ExitCode)","Migrator README publishes exit 0/1/2 contract","MigratorExitCode.cs defines Success=0, Failure=1, Timeout=2"],
+      "root_cause_key": null,
+      "required_fix": null
+    },
+    {
+      "id": "R2-F03",
+      "severity": "Nit",
+      "blocking": false,
+      "title": "Constant-versus-constant assertion and other no-information test code",
+      "description": "MigrationModelTests.TheMigrationBudgetIsSixtySeconds compares literal 60 to the same production constant-derived value, adding no behavioral evidence. Effective 60-second behavior is covered elsewhere, so this is Nit.",
+      "affected_path": "tests/MinimalBankSystem.IntegrationTests/Persistence/MigrationModelTests.cs",
+      "evidence": ["TheMigrationBudgetIsSixtySeconds","Assert.NotNull(response) cases","ReadMigrationHistoryIdsFromMalformedTableAsync pass-through alias"],
+      "root_cause_key": null,
+      "required_fix": null
+    },
+    {
+      "id": "R2-F04",
+      "severity": "Nit",
+      "blocking": false,
+      "title": "PR body labels the merge-ref CI run as 'Exact Head CI'",
+      "description": "PR #140 cites run 31350916189 as Exact Head CI, but it checks out the PR merge ref. Direct-head push run 31350870902 exists and succeeds, so there is no evidence gap, only citation inaccuracy.",
+      "affected_path": "PR #140 body",
+      "evidence": ["Run 31350916189 checkout d12de2ae... merge ref","Run 31350870902 checkout direct 99cee438... and success"],
+      "root_cause_key": null,
+      "required_fix": null
+    }
+  ],
+  "probe_results": {"P01":"pass","P02":"pass","P03":"pass","P04":"pass","P05":"pass","P06":"pass","P07":"pass","P08":"pass","P09":"pass","P10":"partial","P11":"pass","P12":"pass","P13":"pass","P14":"pass","P15":"pass"},
+  "ci_verification": {"verified":true,"run_id":31350916189,"conclusion":"success","checkout_identity":"pr_merge_ref","observed_checkout_sha":"d12de2ae07003a10d19d576808cf88ec7796da23","additional_runs":[{"run_id":31350870902,"event":"push","conclusion":"success","checkout_identity":"direct_head","observed_checkout_sha":"99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"}]},
+  "local_verification": {"performed":true,"summary":"Isolated clone of head SHA 99cee43. Restore/tool restore/build clean; full real PostgreSQL 23/23; version inspection; idempotent SQL; independent P08 drift probe; P14 logging probe; P05 mutation probe; R2-F01 mutation probes; all mutations reverted and clone clean."},
+  "evidence_limits": ["Password sentinel guard covers rejected-credential path only; other failures do not assert fixture password absence.","Migrator logging goes to stdout so StandardError sentinel assertion is effectively vacuous.","Elevated logging configurations were not exercised.","60-second timeout test repetition count is small for statistical flakiness judgement.","Concurrent-migrator behavior is outside scope.","A genuinely failing migration Up() cannot be constructed because InitialFoundation is empty; malformed history is used as proxy.","Tests depend on git worktree and bin/<Configuration>/net10.0 layout.","No results/evaluation/selection/ranking/gold/judge/other reviewer artifacts were consulted."],
+  "completed_at": "2026-08-10T04:08:19Z"
+}

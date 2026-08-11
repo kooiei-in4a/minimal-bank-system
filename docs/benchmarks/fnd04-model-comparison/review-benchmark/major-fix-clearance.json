@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "clearance_revision": "fnd04-final-major-fix-clearance-v1",
+  "target": {
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "old_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "new_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+    "pr_merge_ref_sha": "2e69049bd8b38e57cd4fee2c42e17edaeaf23df1"
+  },
+  "gold": {
+    "revision": "fnd04-final-gold-v1",
+    "blocking_finding": "G-01",
+    "normalized_root_cause": "NR-01",
+    "old_head_verdict": "CHANGES_REQUIRED"
+  },
+  "targeted_re_review": {
+    "prompt_revision": "fnd04-final-major-fix-rereview-v1",
+    "completed": "2_of_2",
+    "t1": {
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "effort": "xHigh",
+      "verdict": "G01_FIXED",
+      "new_blocker": 0,
+      "new_major": 0
+    },
+    "t2": {
+      "model": "NOT_EXPOSED",
+      "harness": "Cursor",
+      "effort": "Auto",
+      "verdict": "G01_FIXED",
+      "new_blocker": 0,
+      "new_major": 0
+    }
+  },
+  "mutation_sensitivity": {
+    "baseline": "pass_2_of_2",
+    "M1": "failed_as_expected_2_of_2",
+    "M2": "failed_as_expected_2_of_2",
+    "recovery": "pass_2_of_2",
+    "residue": "none_2_of_2"
+  },
+  "ci": {
+    "direct_head_run": 31360093004,
+    "direct_head_checkout_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6",
+    "direct_head_conclusion": "success",
+    "merge_ref_run": 31360094852,
+    "merge_ref_checkout_sha": "2e69049bd8b38e57cd4fee2c42e17edaeaf23df1",
+    "merge_ref_conclusion": "success"
+  },
+  "clearance": {
+    "g01": "cleared",
+    "new_blocker_count": 0,
+    "new_major_count": 0,
+    "formal_agent_b": "ready"
+  },
+  "cleared_at": "2026-08-10T15:55:00+09:00"
+}

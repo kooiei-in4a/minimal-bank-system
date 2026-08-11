@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "prompt_revision": "fnd04-final-review-v1",
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "issue": 42,
+    "pr": 140,
+    "base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e"
+  },
+  "reviewer": {
+    "slot": "R5",
+    "model": "Cursor Auto",
+    "harness": "Cursor",
+    "effort": "Auto",
+    "slug": "cursor-auto",
+    "primary_role": "fast_independent_review",
+    "attempt": 1,
+    "routing_mode": "Auto",
+    "routed_model": "NOT_EXPOSED"
+  },
+  "outcome": "completed",
+  "target_verification": {
+    "result": "pass",
+    "observed_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
+    "observed_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "pr_state": "open_draft"
+  },
+  "verdict": "APPROVE_WITH_FINDINGS",
+  "merge_ready": true,
+  "severity_counts": {"blocker":0,"major":0,"minor":2,"nit":0},
+  "findings": [
+    {
+      "id": "R5-F01",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Design-time safety test asserts output substrings only",
+      "description": "C8-M01 regression checks absence of forbidden destination strings in ef command output, not the configured connection/destination. Local repro showed fail-closed with uninitialized ConnectionString and empty server, so production path looks correct; the regression guard remains weaker than a positive destination assertion.",
+      "affected_path": "tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs",
+      "evidence": ["Assert.DoesNotContain on localhost/design_time/Sqlite/InMemory only","Local: dotnet-ef database update without ConnectionStrings__Database -> exit 1, 'ConnectionString property has not been initialized', database '' on server ''"],
+      "root_cause_key": null,
+      "required_fix": "Optionally assert positive fail-closed signals (uninitialized connection / empty server) or inspect design-time options destination."
+    },
+    {
+      "id": "R5-F02",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "Timeout vs command-timeout exit classification race",
+      "description": "Migrator sets both Npgsql CommandTimeout and a 60s CTS. The lock-based test requires exact Timeout exit code 2, which can race with command-timeout classified as Failure 1, despite still being bounded and non-zero.",
+      "affected_path": "src/MinimalBankSystem.Migrator/Program.cs; tests/MinimalBankSystem.IntegrationTests/PostgreSql/MigrationBaselineTests.cs",
+      "evidence": ["BankPersistence.MigrationTimeoutSeconds=60 applied as CommandTimeout","CancellationTokenSource(BankPersistence.MigrationTimeout) around MigrateAsync","Test asserts ExitCode == MigratorExitCode.Timeout and Duration in [50s, 120s]"],
+      "root_cause_key": null,
+      "required_fix": "Optionally assert non-zero within budget, or separate CTS budget from command timeout to make Timeout classification deterministic."
+    }
+  ],
+  "probe_results": {"P01":"pass","P02":"pass","P03":"pass","P04":"pass","P05":"pass","P06":"pass","P07":"pass","P08":"partial","P09":"pass","P10":"pass","P11":"pass","P12":"pass","P13":"pass","P14":"pass","P15":"pass"},
+  "ci_verification": {"verified":true,"run_id":31350916189,"conclusion":"success","checkout_identity":"pr_merge_ref_or_direct_head_or_unresolved","observed_checkout_sha":"d12de2ae07003a10d19d576808cf88ec7796da23","notes":"PR run 31350916189 checks out merge ref d12de2a. Separate push run 31350870902 checks out exact direct head 99cee43 and also succeeded."},
+  "local_verification": {"performed":true,"summary":"Checked out head 99cee43. Build 0 warnings/errors. Non-PostgreSQL tests 4+38 passed. Pending-model check exit 0. Design-time database update without connection exit 1 with uninitialized ConnectionString. Real PostgreSQL suite not re-run locally; relied on CI."},
+  "evidence_limits": ["Real PostgreSQL integration suite not re-executed locally","Evaluator-only temporary model-drift negative probe not reproduced on this Head","Cursor Auto routed model name not exposed in UI"],
+  "completed_at": "2026-08-10T03:50:00+09:00"
+}

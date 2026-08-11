@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd04-final-synthesis-independent-review",
+  "run_id": "fnd04-final-review-20260810",
+  "prompt_revision": "fnd04-final-major-fix-rereview-v1",
+  "reviewer": {
+    "slot": "T2",
+    "model": "NOT_EXPOSED",
+    "harness": "Cursor",
+    "effort": "Auto",
+    "attempt": 1
+  },
+  "target": {
+    "old_head_sha": "99cee4386ea049ad84e9c087c6fdf1e25cc20f3e",
+    "new_head_sha": "3511688401533f60bb77c7dcc647c4c2c4aa84c6"
+  },
+  "target_verification": "pass",
+  "delta": {
+    "commits": 1,
+    "files": ["tests/MinimalBankSystem.IntegrationTests/Persistence/DesignTimeConnectionSafetyTests.cs"],
+    "production_code_changed": false
+  },
+  "g01_verdict": "G01_FIXED",
+  "mutation_sensitivity": {
+    "baseline": "pass",
+    "M1": "failed_as_expected",
+    "M2": "failed_as_expected",
+    "recovery": "pass",
+    "residue": "none"
+  },
+  "ci": {
+    "direct_head_run": 31360093004,
+    "direct_head": "success",
+    "merge_ref_run": 31360094852,
+    "merge_ref": "success"
+  },
+  "new_blocker_count": 0,
+  "new_major_count": 0,
+  "evidence_limits": []
+}
