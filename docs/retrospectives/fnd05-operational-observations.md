@@ -290,3 +290,179 @@ FND-05 current runではProduct codeやmutation結果を変更せず、Final Syn
 ### Candidate future rule
 
 > Stage artifactは原則としてartifact production commitとregistry lock commitを分離し、`producer_commit_sha`はartifact blobを実際に含むcommitを指す。`target_head_sha`はreview対象のexact Headとして別に管理する。
+
+---
+
+## O-06 — FND-06以降でJust-in-Time SpecとCI Rule Checkを段階的に試す
+
+### Status
+
+`OBSERVED / FND-06+ EXPERIMENT CANDIDATE`
+
+これはFND-05で得た**改善仮説**であり、確定済みの恒久ルールではない。FND-05の現在のcontract、prompt、candidate、evaluation、Selection、Final Synthesis、review flowには追加しない。
+
+### Observation — Just-in-Time Spec
+
+AI主体でIssueを進める場合、すべての詳細Specを長期間保守するより、**そのIssueに必要な詳細だけを開始時点で作り、Issue完了後に残す価値がある部分だけを恒久的な正本へ昇格する**方が合う可能性がある。
+
+候補となる流れは次のとおり。
+
+```text
+Issue開始
+  ↓
+そのIssueに必要な範囲だけ軽量Specを作る
+  ↓
+ADR / 承認済み仕様 / 既存ルールと照合
+  ↓
+AIが実装
+  ↓
+test / CI / reviewで検証
+  ↓
+Issue完了
+  ↓
+残す価値がある内容だけ適切な正本へ昇格
+```
+
+FND-05で使った次の要素は、このJust-in-Time Specに近いものとして後で評価する。
+
+- Implementation and Test Design Contract
+- Acceptance Criteria
+- Project Rule Catalog
+- prohibited patterns
+- required evidence
+- mandatory mutations
+
+Issue固有の細かな説明を永久に保守することは前提にしない。
+
+### Observation — AI ReviewからCI / automated testへ移せるルールがある
+
+AI Reviewerが毎回確認している項目の中には、判断力よりも**機械的なYES / NO判定**に向くものがある。
+
+例えば次のような項目は、FND-06以降で少数からCI / automated testへ移す候補とする。
+
+```text
+secret / credentialがrepositoryへ混入していない
+container imageがdigest固定されている
+package versionが固定されている
+禁止されたproject dependencyがない
+Docker Compose configurationが妥当
+API startupがmigrationを勝手に実行していない
+禁止されたpath / patternが存在しない
+必須testが存在する
+必須runtime evidenceを取得できる
+```
+
+目的はCIを増やすことではない。
+
+> AIに毎回「忘れず守ってください」と指示しなくてもよい項目を増やす。
+
+ことが目的である。
+
+一方、次のような内容は単純なYES / NOにしにくいため、当面AI Reviewerの担当として残す。
+
+```text
+設計がADRの意図に合っているか
+責任分離が妥当か
+failure handlingが十分安全か
+hidden dependencyがないか
+testがfalse assuranceになっていないか
+```
+
+### Rule promotion model
+
+開発中に見つかったルールを、最初からすべて恒久ルールにはしない。
+
+候補となる昇格の流れは次のとおり。
+
+```text
+問題を発見
+  ↓
+AI Review / 人間が確認
+  ↓
+次のJIT Specで明示
+  ↓
+複数Issueで有効性を確認
+  ↓
+繰り返し必要と判明
+  ↓
+適切な正本へ昇格
+```
+
+昇格先の考え方は次のとおり。
+
+```text
+重要な設計判断
+  → ADR
+
+長期間守る製品ルール
+  → Product Specification / Invariant
+
+AI作業者が共通で守る開発ルール
+  → AGENTS.md / Project Rule Catalog
+
+機械判定できるルール
+  → CI / automated test
+
+Issue固有の詳細
+  → JIT Specとして役目を終える
+```
+
+これにより、ルールや文書を無制限に増やさないことを狙う。
+
+### Phased rollout candidate
+
+一度に大きく変えない。
+
+```text
+FND-05
+  現行方式のまま完了
+  ↓
+Retrospective
+  JIT Spec候補 / CI化候補を抽出
+  ↓
+FND-06
+  Issue単位の軽量JIT Specを小さく試す
+  明らかに機械判定できるルールを少数だけCI化
+  ↓
+WP-2以降
+  効果を確認しながら対象を広げる
+```
+
+FND-06で試した結果が悪ければ、採用範囲を縮小・撤回できるようにする。
+
+### Future observation axes
+
+現時点では新しいKPIやGateを追加しないが、Loop Engineeringが成熟しているかを見る材料として、将来は次の分担の変化を観測する候補とする。
+
+```text
+人間が判断するもの
+AI Reviewerが判断するもの
+CIが判断するもの
+Automated Testが判断するもの
+runtime evidenceで自動確認できるもの
+```
+
+成熟に伴い、**人間やAI Reviewerが毎回確認する単純項目が減り、CI / test / runtime evidenceで自動判定できる割合が増えるか**を見たい。
+
+ただしFND-06開始時点でKPI化することは前提にしない。まずは観測可能な形にできるかを検討する。
+
+### FND-05 treatment
+
+FND-05にはJust-in-Time Specの新制度も、新しいCI ruleも追加しない。FND-05の実験条件を途中で変えないことを優先する。
+
+### FND-06 follow-up
+
+FND-06開始前に次を再検討する。
+
+1. Issue単位の軽量JIT Specをどの最小形式で試すか
+2. FND-05でAI Reviewerが繰り返し確認した項目から、機械判定しやすいものを1〜数件だけ選べるか
+3. JIT SpecからADR / Specification / AGENTS.md / CI / testへ昇格する判断基準をどこまで軽く定義するか
+4. 人間 / AI Review / CI / automated test / runtime evidenceの役割分担を、追加負担なしで観測できるか
+
+### Core hypothesis
+
+> FND-05を通じて、Issueごとに必要な詳細仕様をその時点で生成し、完了後は必要な部分だけをADR・恒久仕様・CI・test等へ昇格させる「Just-in-Time Spec」の考え方が、AI主体の開発と相性が良い可能性があると考えた。
+>
+> また、AI Reviewerが繰り返し確認するルールのうち、機械判定可能なものは徐々にCI / automated testへ移し、AIの注意力に依存する範囲を減らすことが、半自動化へ向けた重要な改善候補である。
+>
+> FND-05では実験条件を変更せず、FND-06以降で小さく導入し、有効性を確認しながら対象を広げる。
