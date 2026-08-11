@@ -12,12 +12,6 @@ These decisions lock common benchmark conditions before candidate execution. Pro
 
 ### Local primary evidence — 2026-08-11 JST
 
-Canonical artifact:
-
-`docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md`
-
-Observed:
-
 - OS: Ubuntu 24.04.4 LTS under WSL2, `linux/amd64`
 - Docker Desktop 4.85.0 / Engine 29.6.2
 - Docker Compose v5.3.1
