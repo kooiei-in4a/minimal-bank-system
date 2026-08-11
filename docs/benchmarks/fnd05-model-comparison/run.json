@@ -652,6 +652,24 @@
       "producer_commit_sha": "9bfda5c11cd728cace7134f8e07598e4778c5d32",
       "status": "locked"
     },
+    "targeted_re_review_m02_m06_mutation_verifier": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-targeted-rereview-m02-m06-mutation-verifier-luna.md",
+      "content_sha256": "b5c13ee5e6c7e10032f1379e9ba1eeeb558c835d3a93ccb5a4e27767a938e4d7",
+      "prompt_revision": "fnd05-targeted-re-review-v2",
+      "target_head_sha": "9e704f53911be3fdf0d09538424d3bcd9012f96a",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/targeted-fix-m02-m06-result.md@a2e97d3baefb386a0a825a9a79e751ead4124016#sha256:53e8800472db7ba999abd713b5cc7171f6f42c96becc65f951a6924b76e40cce",
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-conditional-judge-composer-2.5.md@fb0b2f81e4817b494e2167547f537c1e774e919d#sha256:ce44323a2728f0d6ca2dde3d28040074e77d8b59c96ae65bbd528080600f64bb",
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-targeted-rereview-m02-m06-finding-owner-opus.md@9bfda5c11cd728cace7134f8e07598e4778c5d32#sha256:058d7516cb004070cdce8a2f7f1d059c6ac0aea93e4fe14b0a65c651d36a4993",
+        "run.json@5f37fe98eb819f7333afe817ce6d6bde8c6fc990#sha256:c110a26dcf345010b85dd5723a03fe79d23235dff386184428b3b93df2d3a339",
+        "pr:153@9e704f53911be3fdf0d09538424d3bcd9012f96a",
+        "github-actions-run:31515332416",
+        "github-actions-run:31515332435"
+      ],
+      "producer_slot": "lightweight_mutation_verifier:L2",
+      "producer_commit_sha": "9ee4cedd9abdfd4eba30f5301bc8e52cdecace1a",
+      "status": "locked"
+    },
     "gate_order_targeted_re_review": {
       "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-gate-001-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
       "content_sha256": "8e3a755b26ec5a56d839dcefc542d7be97e91162758714763934a7f1204c6222",
