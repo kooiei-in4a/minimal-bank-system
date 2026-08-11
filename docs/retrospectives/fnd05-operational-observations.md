@@ -210,3 +210,83 @@ FND-05終了時のretrospectiveで、O-01〜O-03をそれぞれ採用・棄却�
 ### Candidate future rule
 
 > AI-assisted development runでは、実行中に発見したprocess improvementをcurrent locked runへ直接混ぜず、non-normative Observation Ledgerへ発見時点で記録する。run終了後のretrospectiveで採否を決め、採用項目だけを次runのpre-run contractへ昇格する。
+
+---
+
+## O-04 — stage handoff hashはexact Git blobから再計算する
+
+### Observation
+
+Final Synthesis handoffで、pre-execution `run.json@3344c9025c2f0b2cf1dc1baa685fb872fcb44120`について、人間向けPreparation報告とFinal Synthesis lockに異なるSHA-256が記録された。
+
+Reconciliationではworktreeの現ファイルではなく、exact commitのGit blobを`git show <commit>:<path> | sha256sum`で再計算し、Preparation報告値が正しいことを確定できた。
+
+### Implication
+
+stage handoffでhashを二重記録するだけでは、転記ミスや別revisionのhash混入を防げない。downstream開始前に、**logical filenameではなくexact commit上のraw blobを再hashするverification step**を置く方が安全である。
+
+### Recommended check
+
+```text
+artifact / registry identity handoff
+  ↓
+exact commit SHAを固定
+  ↓
+git show <commit>:<path> でraw blob取得
+  ↓
+SHA-256再計算
+  ↓
+reported value / run.json lockと照合
+  ↓
+一致したidentityだけdownstreamへ渡す
+```
+
+PowerShell等のtext pipelineで改行・encoding変換が入り得る場合は、raw blobを一時ファイルへ保存してhashする。
+
+### FND-05 treatment
+
+FND-05ではFinal Synthesis実装自体をやり直さず、誤ったsource artifact hashだけをmetadata correction対象とする。
+
+### Candidate future rule
+
+> Immutable stage handoffのhashは、downstream開始直前にexact Git commit上のraw blobから独立再計算し、人間向け報告値とregistry lockの両方へ照合する。
+
+---
+
+## O-05 — artifact生成commitとlock commitを分離する
+
+### Observation
+
+FND-05のstage artifact contractは`artifact_path`、`content_sha256`、`target_head_sha`、`producer_commit_sha`等を要求する。Final Synthesisでは実装commit、artifact追加commit、run registry lockの責務が近接し、`producer_commit_sha`がartifactを実際に含むcommitと一致しているかをdownstream前に再確認する必要が生じた。
+
+### Implication
+
+artifact本文と、そのartifactのhash・producer commitを同一commit内で完全に自己参照させることはできない。したがって、stage artifactは原則として**二段階commit**にするとidentityが明確になる。
+
+```text
+Commit A — artifact production
+  - reviewed / produced artifactを追加
+  - target Headを確定
+
+Commit B — external lock
+  - run.jsonへartifact path / SHA256 / target_head_shaを記録
+  - producer_commit_sha = Commit A
+```
+
+この形なら、downstreamは`producer_commit_sha`をcheckoutしてartifactが実在し、そのblob hashが`content_sha256`と一致することを直接確認できる。
+
+### Why it matters
+
+- producer commitからartifactを取得できないidentity driftを防ぐ
+- target code Headとartifact producer commitを区別できる
+- lock commit自身のself-reference問題を避ける
+- downstream reviewerがexact refから再現可能になる
+- metadata-only correctionが製品Headの意味を曖昧にしにくい
+
+### FND-05 treatment
+
+FND-05 current runではProduct codeやmutation結果を変更せず、Final Synthesis artifact identityとS0 handoffをmetadata-onlyで正規化してからLight Reviewへ進む。
+
+### Candidate future rule
+
+> Stage artifactは原則としてartifact production commitとregistry lock commitを分離し、`producer_commit_sha`はartifact blobを実際に含むcommitを指す。`target_head_sha`はreview対象のexact Headとして別に管理する。
