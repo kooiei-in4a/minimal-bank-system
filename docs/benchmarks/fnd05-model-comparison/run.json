@@ -558,14 +558,20 @@
       "status": "locked"
     },
     "heavy_opus": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-heavy-h2-opus-claude-opus-5-claude-code.md",
+      "content_sha256": "cc0e996707f83f4b9c338b3ecc5033d0829646c0976843aec30de39b3a275425",
+      "prompt_revision": "fnd05-heavy-opus-v2",
+      "target_head_sha": "59aa87f9c6c4c581a56257caef738318e8d09ec3",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/light-findings-fix-result.md@2251adc9ba502ff81569295e05c74d1282901f5e#sha256:927deabfc98708219896815f856f8b61a7d60551aeb201640e67a2f3c73df17b",
+        "run.json@84c50824d274815e52f6459e689b74acb2c6bbd5#sha256:3eeedcfc07e33d5661b09c404763156c3871acb78e78e7d37b0d5927761ec017",
+        "pr:153@59aa87f9c6c4c581a56257caef738318e8d09ec3",
+        "github-actions-run:31505330867@event:push@checkout:59aa87f9c6c4c581a56257caef738318e8d09ec3",
+        "github-actions-run:31505330990@event:push@checkout:59aa87f9c6c4c581a56257caef738318e8d09ec3"
+      ],
       "producer_slot": "H2",
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "producer_commit_sha": "4ca962b4a8f0dd9faeacc1a494ed86f919f5536a",
+      "status": "locked"
     },
     "conditional_judge": {
       "artifact_path": null,
