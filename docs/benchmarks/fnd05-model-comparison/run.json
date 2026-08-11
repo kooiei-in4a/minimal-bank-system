@@ -508,14 +508,21 @@
       "status": "locked"
     },
     "light_l2": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-light-l2-contract-conformance-gpt-5.6-luna.md",
+      "content_sha256": "a7dcb771a22249f48b4fbb70ba0d36474f15543eef752b2a63d1d4635797c53c",
+      "prompt_revision": "fnd05-light-contract-v2",
+      "target_head_sha": "be45366af18e55a5f8dd8af932518b690c7a36c0",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/initial-result.md@be45366af18e55a5f8dd8af932518b690c7a36c0#sha256:87cc9fef65bf88c02be0405303f40e0cc9bf00762965c48b633cf9f05723cc42",
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/static-gate-result.md@259f1f83b25e0e3d9b6b8256bccf7a838400a2c7#sha256:e104c9be357e9617ff8526bf1c2d75f45809f09ed8a0812556ee58422ad760ee",
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-light-l1-project-quality-composer-2.5.md@c0f0710c3c6dff7855140040b5701243a661b44a#sha256:36da84a82482694deb1260eef35532030fdd78a9cba7189a7d8976c695bcda67",
+        "run.json@9e6e632a594a127a1d96fff1602878086586981f#sha256:5401ae6830dec2a5fb3e7206d4b2937561767c0c66929911857c9e62630ea8f1",
+        "github-actions-run:31491089738",
+        "github-actions-run:31491089797"
+      ],
       "producer_slot": "L2",
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "producer_commit_sha": "353ee30f661d99e281b511afb297147d8b62f09d",
+      "status": "locked"
     },
     "light_fix": {
       "artifact_path": null,
