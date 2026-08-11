@@ -447,7 +447,7 @@
         "github-actions-run:31460753661"
       ],
       "producer_slot": "implementation_evaluator:gpt-5.6-sol-codex-xhigh:attempt-1",
-      "producer_commit_sha": null,
+      "producer_commit_sha": "43a49e8a06c544d0810cfc3ff6de3c722ab334f9",
       "status": "locked"
     },
     "selection_adjudication": {
