@@ -66,6 +66,15 @@ API tests compare real PostgreSQL schema state before and after startup and afte
 production `BankDbContext`. Model tests use EF's pending-model mechanism and generated SQL rather
 than migration-name constants alone.
 
+## Compose runtime tests (FND-05)
+
+`Compose/*` exercises the production `compose.yaml` path with unique Compose project names
+(canonical lifecycle uses `minimal-bank-system-fnd05`). Oracles assert digest pinning, named
+volume identity, secret non-disclosure, Migrator-before-API ordering, Migrator failure → API
+never-start (with path/reason markers), migration history, restart/retain-data, and clean-reset
+absence. These tests require Docker Compose ≥ 2.38.2 and `MBS_DATABASE_PASSWORD` supplied by the
+test harness (never committed).
+
 `Persistence/DesignTimeConnectionSafetyTests` is the C8-M01 regression. It launches repository-
 local `dotnet-ef database update` as a child process, removes `ConnectionStrings__Database` only
 from that child, and verifies fail-closed behavior without a fabricated localhost, fake provider
@@ -81,5 +90,7 @@ or ambient destination.
 - Serialized scope: tests that replace process-global state, or intentionally manipulate shared
   cluster-wide state. `ApiRuntimeContractTests` is in a collection with
   `DisableParallelization = true` because it replaces `Console.Out` and `Console.Error`.
+  `Compose/*` uses the `Compose-runtime integration tests` collection for the same reason
+  (shared Docker daemon / Compose project resources).
 - A future cluster-wide test must use its own `DisableParallelization = true` collection and must
   not reuse an independently owned test database as shared mutable state.

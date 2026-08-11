@@ -10,7 +10,7 @@ Schema evolution is owned by EF Core migrations and applied by this one-shot mig
 | `BankDbContext`, provider configuration, migrations, snapshot, design-time factory | `MinimalBankSystem.Infrastructure` |
 | Applying migrations | `MinimalBankSystem.Migrator` |
 | Business tables, constraints, sequences and triggers | Later schema-owning Issues |
-| Compose ordering | FND-05 |
+| Compose ordering | FND-05 (`compose.yaml`, `docs/operations/compose-runtime.md`) |
 
 The migrator references Infrastructure and never starts the API host.
 
