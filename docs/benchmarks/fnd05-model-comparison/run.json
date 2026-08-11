@@ -472,14 +472,20 @@
       "status": "locked"
     },
     "final_synthesis_initial": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/final-synthesis/initial-result.md",
+      "content_sha256": "87cc9fef65bf88c02be0405303f40e0cc9bf00762965c48b633cf9f05723cc42",
+      "prompt_revision": "fnd05-final-synthesis-v2",
+      "target_head_sha": "32777b7a7fc67ff94e66eacd85b26694b09ddb61",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/selection-adjudication.md@3d3ec6f93bf4bea448f8413f711018f24c50c38d#sha256:547e0fe8d1171932b62bc1d8ea9ba4dd0f2ff23d888acafb9006a60c351797ee",
+        "docs/benchmarks/fnd05-model-comparison/implementation-evaluation-gpt-5.6-sol-codex-xhigh-attempt-1.md@43a49e8a06c544d0810cfc3ff6de3c722ab334f9#sha256:15d96bf366b4f1fe9bd766806badf5e114e45e9a62ba27bfab04e76bc20a04cd",
+        "run.json@3344c9025c2f0b2cf1dc1baa685fb872fcb44120#sha256:1c96e5ac467f8aee70fccc883f4e0390391d0a6ee0a71135148001619e07c515",
+        "issue:3",
+        "issue:43"
+      ],
+      "producer_slot": "final_synthesis_author:gpt-5.6-terra-codex-xhigh",
+      "producer_commit_sha": "32777b7a7fc67ff94e66eacd85b26694b09ddb61",
+      "status": "locked"
     },
     "light_l1": {
       "artifact_path": null,
