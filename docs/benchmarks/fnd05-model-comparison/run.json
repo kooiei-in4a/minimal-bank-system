@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.4",
+  "schema_version": "1.5",
   "benchmark_id": "fnd05-compose-model-comparison",
-  "status": "preparation_decision_locking",
+  "status": "preparation_decisions_locked",
   "implementation_permitted": false,
   "mutable_state_source_of_truth": "docs/benchmarks/fnd05-model-comparison/run.json",
   "preparation": {
@@ -141,6 +141,7 @@
     "review_matrix": "fnd05-review-matrix-v2",
     "mandatory_mutations": "fnd05-mutations-v2",
     "mutation_determinism_contract": "fnd05-mutation-determinism-v1",
+    "pre_run_decision_locks": "fnd05-decisions-v1",
     "scoring": "fnd05-scoring-v2",
     "implementation_prompt": "fnd05-implementation-v2",
     "implementation_evaluation_prompt": "fnd05-implementation-evaluation-v2",
@@ -160,67 +161,236 @@
   "open_decisions": {
     "D-01": {
       "question": "minimum Docker Compose version and required feature support",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
+      "status": "LOCKED",
+      "locked_value": {
+        "minimum_compose_version": "2.38.2",
+        "required_features": [
+          "depends_on.condition.service_healthy",
+          "depends_on.condition.service_completed_successfully",
+          "top_level_secrets_environment_source",
+          "docker_compose_config_quiet",
+          "docker_compose_config_format_json",
+          "docker_compose_ps_format_json",
+          "compose_project_labels"
+        ],
+        "local_observed_compose": "5.3.1",
+        "ci_observed_compose": "2.38.2"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "github-actions-run:31443292973",
+        "actions-runner-image:ubuntu24/20260720.247.2"
+      ]
     },
     "D-02": {
       "question": "exact PostgreSQL and .NET image identities/digests",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
+      "status": "LOCKED",
+      "locked_value": {
+        "platform": "linux/amd64",
+        "postgres": "postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+        "dotnet_sdk": "mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0",
+        "dotnet_aspnet": "mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:f1126d438ccc359f51cc6d4701a8deae513856cf10f5fe645d29ea6403dcac6b",
+        "tag_re_resolution_as_authority": false,
+        "digest_unavailable_action": "STOP_AND_RELOCK"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md"
+      ]
     },
     "D-03": {
       "question": "secret source and reader design",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
+      "status": "LOCKED",
+      "locked_value": {
+        "source": "host environment -> Compose top-level secret(environment)",
+        "payload": "database password",
+        "grant": "explicit per-service grant only",
+        "postgres_reader": "POSTGRES_PASSWORD_FILE mounted secret file",
+        "api_migrator_reader": "wrapper reads mounted secret file, constructs ConnectionStrings__Database from secret + non-secret parameters, exports env, execs dotnet",
+        "missing_secret": "fail_closed",
+        "prohibited": [
+          "committed_real_credential",
+          "secret_literal_in_compose",
+          "secret_in_argv",
+          "secret_in_logs",
+          "secret_in_rendered_config"
+        ]
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "ADR-0008",
+        "docker-docs:compose-secrets",
+        "docker-hub:postgres-POSTGRES_PASSWORD_FILE"
+      ]
     },
     "D-04": {
       "question": "canonical lifecycle commands and lifecycle semantics",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
+      "status": "LOCKED",
+      "locked_value": {
+        "project_name": "minimal-bank-system-fnd05",
+        "validate": "docker compose -p minimal-bank-system-fnd05 config --quiet",
+        "render": "docker compose -p minimal-bank-system-fnd05 config --format json",
+        "start": "docker compose -p minimal-bank-system-fnd05 up --build --detach --remove-orphans",
+        "stop_retain_data": "docker compose -p minimal-bank-system-fnd05 down --remove-orphans",
+        "restart": [
+          "docker compose -p minimal-bank-system-fnd05 down --remove-orphans",
+          "docker compose -p minimal-bank-system-fnd05 up --build --detach --remove-orphans"
+        ],
+        "clean_reset": "docker compose -p minimal-bank-system-fnd05 down --volumes --remove-orphans",
+        "canonical_restart_uses_compose_restart": false,
+        "migration_gate_re_evaluated_after_stop_restart": true,
+        "command_exit_zero_alone_is_evidence": false
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docker-docs:compose-down",
+        "docker-docs:compose-up"
+      ]
     },
     "D-05": {
       "question": "external state capture method for Migrator exit/finish, API state/start, migration history and project identity",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
+      "status": "LOCKED",
+      "locked_value": {
+        "project_name": "minimal-bank-system-fnd05",
+        "state_snapshot": "docker compose -p minimal-bank-system-fnd05 ps -a --format json",
+        "container_details": "docker inspect <container-id>",
+        "volume_details": "docker volume inspect <volume>",
+        "config_render": "docker compose -p minimal-bank-system-fnd05 config --format json",
+        "logs": "docker compose -p minimal-bank-system-fnd05 logs --no-color --timestamps",
+        "migration_history_query": "SELECT \"MigrationId\" FROM public.\"__EFMigrationsHistory\" ORDER BY \"MigrationId\";",
+        "required_container_fields": [
+          "State.Status",
+          "State.ExitCode",
+          "State.StartedAt",
+          "State.FinishedAt",
+          "Config.Labels.com.docker.compose.project",
+          "Config.Labels.com.docker.compose.service"
+        ],
+        "required_volume_labels": [
+          "com.docker.compose.project",
+          "com.docker.compose.volume"
+        ],
+        "success_rule": [
+          "migrator_exit_code_0",
+          "expected_migration_history_present",
+          "api_started_at_not_before_migrator_finished_at",
+          "api_running"
+        ],
+        "failure_rule": [
+          "migrator_exit_nonzero",
+          "api_never_started",
+          "started_then_exited_is_not_never_started"
+        ],
+        "events_json": "corroborating_only"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "docker-docs:compose-ps-json",
+        "docker-docs:inspect",
+        "docker-docs:compose-events-json"
+      ]
     },
     "D-06": {
       "question": "test-only failure and mutation injection mechanisms with deterministic preconditions/barriers/signatures and no production backdoor",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": [],
+      "status": "LOCKED",
       "contract_revision": "fnd05-mutation-determinism-v1",
-      "lock_requirements": [
-        "per-applicable-mutation deterministic precondition property",
-        "controlled barrier or fixture class",
-        "injection point class",
-        "expected failure signature",
-        "invalid failure signatures",
-        "cleanup requirement and residue check",
-        "M-01 holds Migrator incomplete without natural race timing",
-        "M-03 uses a DB state where auto-migration causes observable migration-state delta",
-        "M-08 keeps test/oracle unchanged while Migrator exits 0 without expected migration state",
-        "M-10 proves the targeted same-project resource exists before weakening cleanup"
+      "locked_value": {
+        "project_isolation": "unique Compose project per probe",
+        "source_isolation": "detached temporary git worktree when source mutation is required",
+        "one_mutation_at_a_time": true,
+        "production_branch_commit": false,
+        "residue_required": 0,
+        "candidate_disclosure": "contract/property/precondition/fixture-class/signature-class only",
+        "exact_patch_candidate_visible": false,
+        "mutation_classes": {
+          "M-01": "controlled incomplete-Migrator barrier + weakened API start permission",
+          "M-02": "intended Migrator failure + nonzero-to-zero masking",
+          "M-03": "isolated pending migration state + API startup auto-migration mutation",
+          "M-04": "sentinel secret + prohibited argv exposure",
+          "M-05": "digest-qualified baseline + tag-only mutation",
+          "M-06": "named-volume baseline + anonymous/bind replacement",
+          "M-07": "intended-path baseline + pre-path unrelated failure",
+          "M-08": "expected migration absent + exit-0 no-apply runtime mutation with unchanged oracle",
+          "M-09": "running baseline + start-then-exit command mutation",
+          "M-10": "pre-existing same-project resource + weakened cleanup"
+        }
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md"
       ]
     },
     "D-07": {
       "question": "cross-platform execution contract",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
+      "status": "LOCKED",
+      "locked_value": {
+        "required_container_platform": "linux/amd64",
+        "ci": "GitHub-hosted Ubuntu 24.04 x64",
+        "local_reference": "Ubuntu 24.04.4 LTS under WSL2 + Docker Desktop Linux engine",
+        "minimum_compose": "2.38.2",
+        "minimum_bash": "5.2",
+        "minimum_jq": "1.7",
+        "paths": "POSIX/Linux",
+        "shell_assets_line_endings": "LF",
+        "not_required": [
+          "Windows containers",
+          "PowerShell-only execution",
+          "macOS",
+          "linux/arm64"
+        ],
+        "local_core_autocrlf_is_contract": false
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "actions-runner-image:ubuntu24/20260720.247.2"
+      ]
     },
     "D-08": {
       "question": "Final Synthesis exact model/harness/effort identity",
-      "status": "TO_LOCK",
-      "locked_value": null,
-      "evidence_refs": []
+      "status": "LOCKED",
+      "locked_value": {
+        "model": "GPT-5.6 Terra",
+        "harness": "Codex",
+        "effort": "xHigh",
+        "fresh_context_required": true,
+        "silent_substitution": false,
+        "unavailable_action": "STOP_AND_RELOCK"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "fnd04-benchmark:gpt-5.6-terra-codex"
+      ]
     }
   },
   "stage_artifacts": {
+    "pre_run_decision_lock": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+      "content_sha256": "c8631ec2de21717838bc0c22149e2b1620373c6e1ded5db891140cf62c920326",
+      "prompt_revision": "fnd05-decisions-v1",
+      "target_head_sha": "7d9b5470678f921f09bc0a423384b9275fadf61d",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "github-actions-run:31443292973",
+        "docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md"
+      ],
+      "producer_slot": "coordinator",
+      "producer_commit_sha": "7d9b5470678f921f09bc0a423384b9275fadf61d",
+      "status": "locked"
+    },
+    "local_pre_lock_evidence": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+      "content_sha256": "2a97841e2e9ef7e6f83adb823815192904082a3992add02d262fcab810dccac1",
+      "prompt_revision": "local-evidence-20260811",
+      "target_head_sha": "274c750cdb7add638bf40501975b5992c3c78632",
+      "source_artifact_refs": [],
+      "producer_slot": "local_evidence_collector",
+      "producer_commit_sha": "fa216155ef192a38a65f3010fb0787cd97df5bbe",
+      "status": "locked"
+    },
     "static_gate": {
       "artifact_path": null,
       "content_sha256": null,
@@ -347,17 +517,17 @@
   },
   "gates": {
     "final_retrospective_reviewed": false,
-    "dependency_42_complete_merged_reverified": false,
+    "dependency_42_complete_merged_reverified": true,
     "issue_43_contract_current": false,
     "prompt_suite_targeted_re_review_pass": true,
-    "assumption_ledger_locked": false,
-    "implementation_test_design_locked": false,
-    "project_rules_locked": false,
-    "review_matrix_locked": false,
-    "mutations_locked": false,
-    "mutation_determinism_locked": false,
-    "scoring_locked": false,
-    "prompts_locked": false,
+    "assumption_ledger_locked": true,
+    "implementation_test_design_locked": true,
+    "project_rules_locked": true,
+    "review_matrix_locked": true,
+    "mutations_locked": true,
+    "mutation_determinism_locked": true,
+    "scoring_locked": true,
+    "prompts_locked": true,
     "common_base_locked": false,
     "candidate_branches_created": false,
     "candidate_pull_requests_created": false,
