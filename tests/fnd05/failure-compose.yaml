@@ -1,0 +1,4 @@
+services:
+  migrator:
+    environment:
+      POSTGRES_PORT: "1"
