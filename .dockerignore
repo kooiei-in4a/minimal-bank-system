@@ -1,0 +1,13 @@
+.git/
+.github/
+.vs/
+.claude/
+.config/*.log
+**/bin/
+**/obj/
+docs/
+tests/
+*.md
+.env
+.env.*
+!.env.example

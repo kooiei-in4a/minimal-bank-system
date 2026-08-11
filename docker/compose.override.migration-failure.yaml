@@ -1,0 +1,11 @@
+# Test-only fixture (RULE-PLACE-004). Reproduces an intended Migrator failure by pointing the
+# migrator service at a deterministically unreachable port (connection refused, not a natural
+# race or timing-dependent condition). This file is never part of the default
+# `docker compose up` path: it is only applied when explicitly layered on top of compose.yaml,
+# e.g. `docker compose -f compose.yaml -f docker/compose.override.migration-failure.yaml ...`.
+#
+# It changes configuration only. No production source, entrypoint or Dockerfile is modified.
+services:
+  migrator:
+    environment:
+      DB_PORT: "1"

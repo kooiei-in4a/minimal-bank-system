@@ -1,0 +1,3 @@
+# FND-05 D-07: shell assets must stay LF regardless of a developer's local core.autocrlf.
+scripts/fnd05/*.sh text eol=lf
+docker/entrypoint-with-secret.sh text eol=lf

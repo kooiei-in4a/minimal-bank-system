@@ -1,0 +1,84 @@
+# FND-05 Docker Compose execution baseline (Issue #43).
+#
+# Observable contract:
+#   PostgreSQL becomes usable
+#     -> FND-04 explicit Migrator runs
+#        - success (exit 0)  -> API start is permitted
+#        - failure (non-zero) -> API must not start
+#   Normal API startup never evolves the schema.
+#
+# Canonical lifecycle commands are documented in docker/README.md (D-04).
+name: minimal-bank-system-fnd05
+
+x-db-connection: &db-connection
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: minimal_bank_system
+  DB_USER: minimal_bank_system
+
+secrets:
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+
+volumes:
+  postgres-data: {}
+
+networks:
+  bank-net: {}
+
+services:
+  postgres:
+    image: postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: minimal_bank_system
+      POSTGRES_USER: minimal_bank_system
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      # PostgreSQL 18+ images store data under a major-version-specific subdirectory of
+      # /var/lib/postgresql (not /var/lib/postgresql/data); mount the parent directory.
+      - postgres-data:/var/lib/postgresql
+    networks:
+      - bank-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minimal_bank_system -d minimal_bank_system -h 127.0.0.1"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  migrator:
+    build:
+      context: .
+      dockerfile: src/MinimalBankSystem.Migrator/Dockerfile
+    image: minimal-bank-system/migrator:fnd05
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *db-connection
+    secrets:
+      - postgres_password
+    networks:
+      - bank-net
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/MinimalBankSystem.Api/Dockerfile
+    image: minimal-bank-system/api:fnd05
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      <<: *db-connection
+      ASPNETCORE_URLS: http://+:8080
+    secrets:
+      - postgres_password
+    networks:
+      - bank-net
+    ports:
+      - "8080:8080"
