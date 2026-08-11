@@ -2,7 +2,7 @@
 
 Target Issue: #43 `[FND-05] Docker Compose実行基盤を確立する`
 
-Status: **PREPARATION FIX REQUIRED / IMPLEMENTATION PROHIBITED**
+Status: **D-01〜D-08 LOCKED / ISSUE READY NOT YET PASSED / IMPLEMENTATION PROHIBITED**
 
 このdirectoryはFND-05実装開始前に、ADR・Issue・実装設計・test oracle・Project Rule・review責任を固定する。
 
@@ -12,14 +12,43 @@ Benchmark文書は製品仕様、Accepted ADR、Issue #43を上書きしない�
 
 Mutableなrun identity / gate / decision / stage artifact stateの正本は`run.json`。
 
-Markdown / executable promptは可読性のため値を再掲できるが、実行時は`run.json`のlocked value / evidence / artifact identityを照合する。
+D-01〜D-08の可読なlock正本は:
+
+`reference/pre-run-decision-locks.md`
+
+Local evidenceは:
+
+`evidence/local-pre-lock-evidence-20260811.md`
+
+## Current gate
+
+```yaml
+PROMPT_SUITE_TARGETED_RE_REVIEW:
+  BLOCKER: 0
+  MAJOR: 0
+  RESULT: PASS
+
+D_01_TO_D_08:
+  STATUS: LOCKED
+
+ISSUE_READY:
+  STATUS: NOT_YET_PASSED
+
+KOO_START_AUTHORIZATION:
+  STATUS: NOT_GRANTED
+
+IMPLEMENTATION_PERMITTED:
+  false
+```
 
 ## Final process shape
 
 ```text
 Product authority / D-01..D-08 lock
   ↓
-Issue Ready PASS
+Issue #43 current-contract sync
+  ↓
+fresh Issue Ready PASS
   ↓
 Koo explicit start authorization
   ↓
@@ -75,6 +104,44 @@ OpenCodeは使用しない。
 
 Parent / WPをProduct authorityとして使用しない。
 
+## Prompt-suite review closure
+
+Prompt suite remediationはfinding-owned targeted re-reviewまで完了した。
+
+```text
+Reviewed Head:
+6c626451fc7d8059e468d19afbfc3c80b666acb9
+
+Direct-head CI:
+31443292973 — SUCCESS
+
+Targeted re-review:
+GPT-5.6 Sol / Codex / xHigh
+FND05-PSR-005 = FIXED
+Blocker 0 / Major 0
+```
+
+Known non-blocking Minorは1件で、Issue Readyを阻害しない。
+
+## D-01〜D-08 lock summary
+
+Full contract:
+
+`reference/pre-run-decision-locks.md`
+
+```text
+D-01: Compose >= 2.38.2 + required feature set
+D-02: exact digest-qualified PostgreSQL/.NET images
+D-03: host env -> Compose secret -> mounted secret file / explicit grant
+D-04: canonical down/up lifecycle with migration-gate re-evaluation
+D-05: ps JSON + docker inspect + migration history + Compose labels
+D-06: deterministic mutation precondition/barrier/signature contract
+D-07: linux/amd64; Ubuntu 24.04; Bash >=5.2; jq >=1.7; LF shell assets
+D-08: GPT-5.6 Terra / Codex / xHigh Final Synthesis
+```
+
+D-08 exact identityがFinal Synthesis開始時に利用不能なら、silent substitutionせず停止してre-lockする。
+
 ## Self-review policy
 
 独立Formal Self-Review / H1 phaseは実施しない。
@@ -127,26 +194,27 @@ Issue #43が必須とするobservable behaviorをMUSTとする。
 - external secret / connection configuration
 - deterministic lifecycle / external evidence
 
-Dedicated `postgres` / `migrator` / `api` service names、exact Compose condition、exact file path等はreference design / conventionであり、pre-runでKooが共通shapeとしてlockしない限り独立ACへ昇格しない。
+Dedicated `postgres` / `migrator` / `api` service names、exact Compose condition、exact file path等はreference design / conventionであり、別lockでMUST化されていない限り独立ACへ昇格しない。
 
 ## Mutation model
 
-CandidateにはM-01〜M-10のprotected contract / observable propertyを開示する。Evaluatorのexact injection recipeへ過学習させない。
+CandidateにはM-01〜M-10のprotected contract、observable property、deterministic precondition property、barrier/fixture class、expected/invalid failure-signature classを開示する。
+
+Evaluatorのexact injection patch / exact source editはcandidateへ開示しない。
 
 Final Synthesisでは原則M-01〜M-10をすべて実行し、
 
 ```text
 baseline GREEN
+→ deterministic precondition PASS
 → one controlled defect
-→ RED for expected reason
+→ RED for expected signature
 → revert
 → GREEN
 → residue 0
 ```
 
 を確認する。
-
-M-08はtest oracle自体を壊さず、Migratorがexit 0でもexpected migration stateを作らないruntime defectとして検証する。
 
 ## Immutable stage artifact handoff
 
@@ -164,71 +232,24 @@ producer_commit_sha
 
 `run.json.stage_artifacts`へ同じidentityを記録する。Downstream promptはexact refを照合してから読む。
 
-## Open decisions before lock
-
-D-01〜D-08は`run.json.open_decisions`で`locked_value = null`の間は未確定。
-
-- D-01 minimum Compose version / features
-- D-02 PostgreSQL + .NET exact image identities
-- D-03 secret source / reader design
-- D-04 lifecycle commands + semantics
-- D-05 external state capture method
-- D-06 failure injection override
-- D-07 cross-platform contract
-- D-08 Final Synthesis exact identity
-
-Example / draft noteをcandidateへの必須answerとみなさない。
-
-## Pre-run gates
-
-- [ ] PR #144 review済み
-- [ ] PR #145 3-review共通finding修正済み
-- [ ] finding-owned targeted re-review B0 / M0
-- [ ] D-01〜D-08 locked with evidence
-- [ ] prompt / reference revision locked
-- [ ] common base full SHA fixed
-- [ ] 3 candidate branches / Draft PRs created from same base
-- [ ] exact Model / Harness / Effort locked
-- [ ] candidate output 0件
-- [ ] Issue #43 Issue Ready PASS
-- [ ] Koo explicit start authorization
-
-Issue Ready PASSだけではcandidate executionを開始しない。
-
-## Files
-
-### State / scoring
-
-- `run.json`
-- `pre-run-checklist.md`
-- `scoring.md`
-
-### Reference
-
-- `reference/assumption-ledger.md`
-- `reference/implementation-and-test-design-contract.md`
-- `reference/project-rule-catalog.md`
-- `reference/review-perspective-matrix.md`
-- `reference/mandatory-mutations.md`
-
-### Prompts
-
-- `prompts/implementation.md`
-- `prompts/implementation-evaluation.md`
-- `prompts/selection-adjudication.md`
-- `prompts/final-synthesis.md`
-- `prompts/light-review-project-quality.md`
-- `prompts/light-review-contract-conformance.md`
-- `prompts/light-findings-fix.md`
-- `prompts/heavy-review-sol.md`
-- `prompts/heavy-review-opus.md`
-- `prompts/conditional-judge.md`
-- `prompts/targeted-fix.md`
-- `prompts/targeted-re-review.md`
-- `prompts/issue-ready-review.md`
-
 ## Start boundary
 
-Prompt-suite targeted re-review → D-01〜D-08 lock → Issue #43同期 → Issue Ready PASS → Koo明示開始許可、の順序を崩さない。
+D-01〜D-08 lockは完了した。
+
+次は:
+
+```text
+current decision-lock Head CI SUCCESS
+↓
+Issue #43 current-contract sync
+↓
+fresh Issue Ready Review
+↓
+Issue Ready PASS
+↓
+Koo explicit start authorization
+↓
+candidate preparation / execution
+```
 
 現時点ではFND-05 implementationは禁止。
