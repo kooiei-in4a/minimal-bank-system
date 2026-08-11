@@ -414,14 +414,18 @@
       "status": "locked"
     },
     "static_gate": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/final-synthesis/static-gate-result.md",
+      "content_sha256": "e104c9be357e9617ff8526bf1c2d75f45809f09ed8a0812556ee58422ad760ee",
+      "prompt_revision": "fnd05-final-synthesis-v2",
+      "target_head_sha": "be45366af18e55a5f8dd8af932518b690c7a36c0",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/initial-result.md@be45366af18e55a5f8dd8af932518b690c7a36c0#sha256:87cc9fef65bf88c02be0405303f40e0cc9bf00762965c48b633cf9f05723cc42",
+        "github-actions-run:31491089797@checkout:be45366af18e55a5f8dd8af932518b690c7a36c0",
+        "github-actions-run:31491089738@checkout:be45366af18e55a5f8dd8af932518b690c7a36c0"
+      ],
+      "producer_slot": "S0:static_gate",
+      "producer_commit_sha": "259f1f83b25e0e3d9b6b8256bccf7a838400a2c7",
+      "status": "locked"
     },
     "implementation_evaluation": {
       "artifact_path": "docs/benchmarks/fnd05-model-comparison/implementation-evaluation-gpt-5.6-sol-codex-xhigh-attempt-1.md",
