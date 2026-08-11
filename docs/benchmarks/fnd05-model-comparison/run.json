@@ -142,9 +142,25 @@
   ],
   "conditional_judge": {
     "enabled_by_default": false,
-    "model": null,
-    "harness": null,
+    "triggered": true,
+    "primary_trigger": "blocker_or_major_disagreement",
+    "trigger_reasons": [
+      "blocker_or_major_disagreement",
+      "root_cause_disagreement",
+      "required_fix_direction_disagreement",
+      "merge_readiness_disagreement"
+    ],
     "trigger_recorder": "coordinator",
+    "target_head_sha": "59aa87f9c6c4c581a56257caef738318e8d09ec3",
+    "source_review_refs": [
+      "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-heavy-h1-sol-gpt-5.6-sol-codex.md@4583a32cdb6f6c788a56ce7fd43fba5266d5e5da#sha256:5de83bc37594896da2c681c92da89037c9c5dae3abec9b5a415362dd51967686",
+      "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-heavy-h2-opus-claude-opus-5-claude-code.md@4ca962b4a8f0dd9faeacc1a494ed86f919f5536a#sha256:cc0e996707f83f4b9c338b3ecc5033d0829646c0976843aec30de39b3a275425"
+    ],
+    "model": "Composer 2.5",
+    "harness": "Cursor",
+    "effort": "default",
+    "context": "Fresh Context",
+    "role": "Conditional Heavy Review Judge",
     "trigger_on": [
       "blocker_or_major_disagreement",
       "root_cause_disagreement",
