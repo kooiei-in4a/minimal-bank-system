@@ -186,7 +186,7 @@ Issue Ready PASS後に別gateとして取得する。
 1. FND05-GATE-001をfinding-targeted re-reviewする。
 2. B0/M0ならprompt-suite gateを再lockする。
 3. Issue #43 / WP-1 #33をcurrent stateへ同期する。
-4. decision-lock + gate-order-fix Head CI SUCCESSを確認する。
+4. gate-order-fix Head CI SUCCESSを確認する。
 5. fresh Issue Ready Gate v3を実行する。
 6. Issue Ready PASS後も停止し、Koo開始許可を待つ。
 
