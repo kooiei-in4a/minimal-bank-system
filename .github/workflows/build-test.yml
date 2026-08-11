@@ -45,3 +45,13 @@ jobs:
 
       - name: Test (real PostgreSQL)
         run: dotnet test tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj --no-build --filter "Category=PostgreSqlIntegration"
+
+      - name: Validate Docker Compose configuration
+        env:
+          MBS_DATABASE_PASSWORD: fnd05-ci-sentinel
+        run: docker compose -p minimal-bank-system-fnd05 config --quiet
+
+      - name: Verify Docker Compose execution contract
+        env:
+          MBS_DATABASE_PASSWORD: fnd05-ci-sentinel
+        run: bash scripts/fnd05/verify-compose.sh

@@ -1,0 +1,4 @@
+services:
+  migrator:
+    environment:
+      MBS_DB_PORT: "1"

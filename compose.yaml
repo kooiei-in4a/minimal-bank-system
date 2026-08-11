@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: minimal_bank_system
+      POSTGRES_USER: minimal_bank_system
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+    secrets:
+      - database_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    labels:
+      com.in4a.minimal-bank-system.role: database
+
+  migrator:
+    build:
+      context: .
+      dockerfile: docker/migrator.Dockerfile
+    platform: linux/amd64
+    environment:
+      MBS_DB_HOST: postgres
+      MBS_DB_PORT: "5432"
+      MBS_DB_NAME: minimal_bank_system
+      MBS_DB_USER: minimal_bank_system
+      MBS_DATABASE_PASSWORD_FILE: /run/secrets/database_password
+    secrets:
+      - database_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - dotnet
+      - /app/MinimalBankSystem.Migrator.dll
+    restart: "no"
+    labels:
+      com.in4a.minimal-bank-system.role: migrator
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    platform: linux/amd64
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      MBS_DB_HOST: postgres
+      MBS_DB_PORT: "5432"
+      MBS_DB_NAME: minimal_bank_system
+      MBS_DB_USER: minimal_bank_system
+      MBS_DATABASE_PASSWORD_FILE: /run/secrets/database_password
+    secrets:
+      - database_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    command:
+      - dotnet
+      - /app/MinimalBankSystem.Api.dll
+    labels:
+      com.in4a.minimal-bank-system.role: api
+
+volumes:
+  postgres_data:
+
+secrets:
+  database_password:
+    environment: MBS_DATABASE_PASSWORD
