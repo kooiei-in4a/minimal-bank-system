@@ -44,6 +44,13 @@ if grep --recursive --include='*.cs' --include='*.csproj' --extended-regexp 'Mig
 fi
 
 rendered="$(docker compose --project-directory "$source_root" -p "$project_name" -f "$source_root/compose.yaml" config --format json)"
+if ! jq --exit-status \
+  'any(.services.postgres.volumes[]; .type == "volume" and .source == "postgres_data" and .target == "/var/lib/postgresql")' \
+  <<<"$rendered" >/dev/null; then
+  printf 'ORACLE_SIGNATURE=named-volume-policy-violation\n' >&2
+  exit 1
+fi
+
 jq --exit-status \
   --arg postgres_image "$postgres_image" \
   --arg sdk_image "$sdk_image" \

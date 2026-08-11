@@ -143,6 +143,30 @@ failure_oracle() {
   }
 }
 
+m02_intended_failure_reached() {
+  local migrator_logs
+  migrator_logs="$(compose_run logs --no-color --timestamps migrator)"
+  [[ "$migrator_logs" == *'Migration failed. The deployment must not continue.'* ]] &&
+    [[ "$migrator_logs" =~ FND05_M02_MASKED_NONZERO=[1-9][0-9]* ]]
+}
+
+m02_masked_nonzero_observed() {
+  [[ "$(exit_code migrator)" == 0 && "$(state api)" == running ]]
+}
+
+m02_failure_oracle() {
+  m02_intended_failure_reached || {
+    printf 'ORACLE_SIGNATURE=m02-intended-failure-not-reached\n' >&2
+    return 1
+  }
+  m02_masked_nonzero_observed || {
+    printf 'ORACLE_SIGNATURE=m02-masked-nonzero-not-observed\n' >&2
+    return 1
+  }
+  printf 'ORACLE_SIGNATURE=migrator-nonzero-masked-after-intended-failure\n' >&2
+  return 1
+}
+
 secret_oracle() {
   local api_id top
   api_id="$(container_id api)"
@@ -229,7 +253,26 @@ run_m02() {
   local override
   set_project "minimal-bank-system-fnd05-m02-$run_id" "$repository_root"
   baseline
+  printf 'M-02: BASELINE_GREEN\n'
   clean_current
+
+  override="$(mktemp)"
+  write_override "$override" <<'YAML'
+services:
+  migrator:
+    command: ["bash", "-ceu", "dotnet MinimalBankSystem.Migrator.dll || { code=$$?; printf 'FND05_M02_MASKED_NONZERO=%s\\n' \"$$code\"; exit 0; }"]
+YAML
+  set_project "$project_name" "$repository_root" "$override"
+  compose_run up --build --detach --remove-orphans
+  wait_for_state migrator exited
+  wait_for_state api running
+  success_oracle
+  expect_red m02-intended-failure-not-reached m02_failure_oracle
+  printf 'M-02: MASK_ONLY_CONTROL_EXECUTED\n'
+  printf 'M-02: PRECONDITION_CONTROL_REJECTED\n'
+  clean_current
+  rm -f "$override"
+
   override="$(mktemp)"
   write_override "$override" <<'YAML'
 services:
@@ -242,9 +285,28 @@ YAML
   compose_run up --build --detach --remove-orphans
   wait_for_state migrator exited
   wait_for_state api running
-  expect_red migrator-nonzero-masked failure_oracle
+  m02_intended_failure_reached || {
+    printf 'M-02 intended Migrator failure precondition was not reached.\n' >&2
+    return 1
+  }
+  printf 'M-02: INTENDED_FAILURE_REACHED\n'
+  printf 'M-02: MACHINE_READABLE_PRECONDITION\n'
+  m02_masked_nonzero_observed || {
+    printf 'M-02 masked non-zero was not observed with API startability.\n' >&2
+    return 1
+  }
+  printf 'M-02: MASKED_NONZERO_OBSERVED\n'
+  expect_red migrator-nonzero-masked-after-intended-failure m02_failure_oracle
+  printf 'M-02: EXPECTED_RED\n'
+  printf 'M-02: EXPECTED_FAILURE_SIGNATURE=migrator-nonzero-masked-after-intended-failure\n'
   clean_current
   rm -f "$override"
+  set_project "$project_name" "$repository_root"
+  baseline
+  printf 'M-02: RESTORED_GREEN\n'
+  clean_current
+  assert_residue_zero
+  printf 'M-02: RESIDUE_ZERO\n'
   printf 'M-02: KILLED\n'
 }
 
@@ -374,22 +436,37 @@ run_m05() {
 }
 
 run_m06() {
-  local override rendered
-  override="$(mktemp)"
-  write_override "$override" <<'YAML'
-services:
-  postgres:
-    volumes:
-      - /var/lib/postgresql
-YAML
-  set_project "minimal-bank-system-fnd05-m06-$run_id" "$repository_root" "$override"
-  rendered="$(compose_run config --format json)"
-  if jq --exit-status 'any(.services.postgres.volumes[]; .type == "volume" and .source == "postgres_data")' <<<"$rendered" >/dev/null; then
+  local worktree
+  worktree="$(mktemp -d)"
+  git worktree add --detach "$worktree" HEAD
+  temporary_worktrees+=("$worktree")
+  set_project "minimal-bank-system-fnd05-m06-$run_id" "$repository_root"
+  FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
+    bash "$repository_root/tests/fnd05/static-gate.sh"
+  printf 'M-06: BASELINE_GREEN\n'
+  grep --fixed-strings --quiet -- '- postgres_data:/var/lib/postgresql' "$worktree/compose.yaml"
+  printf 'M-06: MUTATION_PRECONDITION\n'
+  sed -i 's#postgres_data:/var/lib/postgresql#/var/lib/postgresql#' "$worktree/compose.yaml"
+  if grep --fixed-strings --quiet -- 'postgres_data:/var/lib/postgresql' "$worktree/compose.yaml"; then
     printf 'M-06 mutation did not replace the named volume.\n' >&2
     return 1
   fi
+  printf 'M-06: MUTATION_APPLIED\n'
+  expect_red named-volume-policy-violation env \
+    "FND05_SOURCE_ROOT=$worktree" \
+    "FND05_PROJECT_NAME=$project_name" \
+    bash "$repository_root/tests/fnd05/static-gate.sh"
+  printf 'M-06: SHIPPED_ORACLE_EXECUTED\n'
+  printf 'M-06: EXPECTED_RED\n'
+  printf 'M-06: EXPECTED_FAILURE_SIGNATURE=named-volume-policy-violation\n'
+  git worktree remove --force "$worktree"
+  temporary_worktrees=()
+  FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
+    bash "$repository_root/tests/fnd05/static-gate.sh"
+  printf 'M-06: RESTORED_GREEN\n'
+  assert_residue_zero
+  printf 'M-06: RESIDUE_ZERO\n'
   printf 'M-06: KILLED\n'
-  rm -f "$override"
 }
 
 run_m07() {
