@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.5",
+  "schema_version": "1.6",
   "benchmark_id": "fnd05-compose-model-comparison",
-  "status": "preparation_decisions_locked",
+  "status": "preparation_gate_order_re_review_required",
   "implementation_permitted": false,
   "mutable_state_source_of_truth": "docs/benchmarks/fnd05-model-comparison/run.json",
   "preparation": {
@@ -9,25 +9,94 @@
     "pull_request": 145,
     "stacked_on_retrospective_pr": 144,
     "draft_artifacts_created": true,
-    "prompt_suite_review_verdict": "PASS_B0_M0",
-    "prompt_suite_review_sources": ["gpt-5.6-sol-browser-xhigh","gpt-5.6-sol-codex-xhigh","grok-4.5-cursor-high","gpt-5.6-sol-codex-xhigh-psr005-targeted-re-review"],
+    "prompt_suite_review_verdict": "TARGETED_RE_REVIEW_REQUIRED",
+    "prompt_suite_review_sources": [
+      "gpt-5.6-sol-browser-xhigh",
+      "gpt-5.6-sol-codex-xhigh",
+      "grok-4.5-cursor-high",
+      "gpt-5.6-sol-codex-xhigh-psr005-targeted-re-review"
+    ],
     "prompt_suite_reviewed_head": "6c626451fc7d8059e468d19afbfc3c80b666acb9",
     "prompt_suite_direct_head_ci": 31443292973,
     "prompt_suite_blocker": 0,
     "prompt_suite_major": 0,
-    "prompt_suite_minor_known": 1
+    "prompt_suite_minor_known": 1,
+    "gate_order_alignment": {
+      "finding_id": "FND05-GATE-001",
+      "root_cause": "Issue Ready prompt required candidate branches/common base before Issue Ready although fixed process creates them only after Issue Ready PASS and Koo authorization",
+      "fix_revision": "fnd05-issue-ready-review-v3",
+      "status": "AWAITING_TARGETED_RE_REVIEW"
+    }
   },
-  "target": {"repository":"kooiei-in4a/minimal-bank-system","parent_issue":3,"work_package_issue":33,"target_issue":43,"predecessor_issue":42,"base_branch":"main","common_base_sha":null},
-  "policy": {"open_code_allowed":false,"separate_formal_self_review":false,"implementation_prompt_embeds_completion_checks":true,"candidate_merge_or_cherry_pick_into_final":false,"heavy_review_after_light_gate_only":true,"heavy_review_default_full_invocations":2,"heavy_review_default_re_review_invocations":0,"judge_default":false,"issue_ready_required_before_execution":true,"koo_start_authorization_required_before_execution":true,"observable_contract_over_exact_implementation_shape":true,"mutation_kill_requires_deterministic_precondition":true},
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "parent_issue": 3,
+    "work_package_issue": 33,
+    "target_issue": 43,
+    "predecessor_issue": 42,
+    "base_branch": "main",
+    "common_base_sha": null
+  },
+  "policy": {
+    "open_code_allowed": false,
+    "separate_formal_self_review": false,
+    "implementation_prompt_embeds_completion_checks": true,
+    "candidate_merge_or_cherry_pick_into_final": false,
+    "heavy_review_after_light_gate_only": true,
+    "heavy_review_default_full_invocations": 2,
+    "heavy_review_default_re_review_invocations": 0,
+    "judge_default": false,
+    "issue_ready_required_before_execution": true,
+    "koo_start_authorization_required_before_execution": true,
+    "candidate_preparation_after_issue_ready_and_koo_authorization": true,
+    "observable_contract_over_exact_implementation_shape": true,
+    "mutation_kill_requires_deterministic_precondition": true
+  },
   "implementation_candidates": [
     {"slot":"C1","model":"GPT-5.6 Luna","harness":"Codex","effort_target":"xHigh-equivalent","effort_exact":null,"candidate_slug":"gpt-5.6-luna-codex","branch":null,"pull_request":null,"head_sha":null,"state":"planned"},
     {"slot":"C2","model":"Claude Sonnet 5","harness":"Claude Code","effort_target":"xHigh-equivalent","effort_exact":null,"candidate_slug":"claude-sonnet-5-claude-code","branch":null,"pull_request":null,"head_sha":null,"state":"planned"},
     {"slot":"C3","model":"Grok 4.5","harness":"Cursor","effort_target":"high","effort_exact":null,"prohibited_effort":"high fast","candidate_slug":"grok-4.5-cursor","branch":null,"pull_request":null,"head_sha":null,"state":"planned"}
   ],
-  "light_reviews": [{"slot":"L1","model":"Composer 2.5","harness":"Cursor","role":"project_quality_and_rule_conformance","state":"planned"},{"slot":"L2","model":"GPT-5.6 Luna","harness":"Codex","role":"adr_issue_ac_contract_conformance","state":"planned"}],
-  "heavy_reviews": [{"slot":"H1","model":"GPT-5.6 Sol","harness":"Codex","role":"architecture_and_contract_final_gate","full_review_budget":1,"default_re_review_budget":0,"state":"planned"},{"slot":"H2","model":"Claude Opus 5","harness":"Claude Code","role":"adversarial_failure_and_false_assurance_final_gate","full_review_budget":1,"default_re_review_budget":0,"state":"planned"}],
-  "conditional_judge": {"enabled_by_default":false,"model":null,"harness":null,"trigger_recorder":"coordinator","trigger_on":["blocker_or_major_disagreement","root_cause_disagreement","required_fix_direction_disagreement","merge_readiness_disagreement","common_unverified_assumption"]},
-  "revisions": {"process":"fnd05-review-funnel-v2","assumption_ledger":"fnd05-assumptions-v2","implementation_and_test_design":"fnd05-design-contract-v2","project_rules":"fnd05-project-rules-v2","review_matrix":"fnd05-review-matrix-v2","mandatory_mutations":"fnd05-mutations-v2","mutation_determinism_contract":"fnd05-mutation-determinism-v1","pre_run_decision_locks":"fnd05-decisions-v1","scoring":"fnd05-scoring-v2","implementation_prompt":"fnd05-implementation-v2","implementation_evaluation_prompt":"fnd05-implementation-evaluation-v2","selection_adjudication_prompt":"fnd05-selection-adjudication-v2","final_synthesis_prompt":"fnd05-final-synthesis-v2","light_project_review_prompt":"fnd05-light-project-v2","light_contract_review_prompt":"fnd05-light-contract-v2","light_fix_prompt":"fnd05-light-fix-v2","heavy_sol_prompt":"fnd05-heavy-sol-v2","heavy_opus_prompt":"fnd05-heavy-opus-v2","conditional_judge_prompt":"fnd05-conditional-judge-v2","issue_ready_review_prompt":"fnd05-issue-ready-review-v2","targeted_fix_prompt":"fnd05-targeted-fix-v2","targeted_re_review_prompt":"fnd05-targeted-re-review-v2","psr005_targeted_re_review":"fnd05-psr005-targeted-re-review-v1"},
+  "light_reviews": [
+    {"slot":"L1","model":"Composer 2.5","harness":"Cursor","role":"project_quality_and_rule_conformance","state":"planned"},
+    {"slot":"L2","model":"GPT-5.6 Luna","harness":"Codex","role":"adr_issue_ac_contract_conformance","state":"planned"}
+  ],
+  "heavy_reviews": [
+    {"slot":"H1","model":"GPT-5.6 Sol","harness":"Codex","role":"architecture_and_contract_final_gate","full_review_budget":1,"default_re_review_budget":0,"state":"planned"},
+    {"slot":"H2","model":"Claude Opus 5","harness":"Claude Code","role":"adversarial_failure_and_false_assurance_final_gate","full_review_budget":1,"default_re_review_budget":0,"state":"planned"}
+  ],
+  "conditional_judge": {
+    "enabled_by_default": false,
+    "model": null,
+    "harness": null,
+    "trigger_recorder": "coordinator",
+    "trigger_on": ["blocker_or_major_disagreement","root_cause_disagreement","required_fix_direction_disagreement","merge_readiness_disagreement","common_unverified_assumption"]
+  },
+  "revisions": {
+    "process":"fnd05-review-funnel-v2",
+    "assumption_ledger":"fnd05-assumptions-v2",
+    "implementation_and_test_design":"fnd05-design-contract-v2",
+    "project_rules":"fnd05-project-rules-v2",
+    "review_matrix":"fnd05-review-matrix-v2",
+    "mandatory_mutations":"fnd05-mutations-v2",
+    "mutation_determinism_contract":"fnd05-mutation-determinism-v1",
+    "pre_run_decision_locks":"fnd05-decisions-v1",
+    "scoring":"fnd05-scoring-v2",
+    "implementation_prompt":"fnd05-implementation-v2",
+    "implementation_evaluation_prompt":"fnd05-implementation-evaluation-v2",
+    "selection_adjudication_prompt":"fnd05-selection-adjudication-v2",
+    "final_synthesis_prompt":"fnd05-final-synthesis-v2",
+    "light_project_review_prompt":"fnd05-light-project-v2",
+    "light_contract_review_prompt":"fnd05-light-contract-v2",
+    "light_fix_prompt":"fnd05-light-fix-v2",
+    "heavy_sol_prompt":"fnd05-heavy-sol-v2",
+    "heavy_opus_prompt":"fnd05-heavy-opus-v2",
+    "conditional_judge_prompt":"fnd05-conditional-judge-v2",
+    "issue_ready_review_prompt":"fnd05-issue-ready-review-v3",
+    "targeted_fix_prompt":"fnd05-targeted-fix-v2",
+    "targeted_re_review_prompt":"fnd05-targeted-re-review-v2",
+    "psr005_targeted_re_review":"fnd05-psr005-targeted-re-review-v1"
+  },
   "open_decisions": {
     "D-01": {"question":"minimum Docker Compose version and required feature support","status":"LOCKED","locked_value":{"minimum_compose_version":"2.38.2","required_features":["depends_on.condition.service_healthy","depends_on.condition.service_completed_successfully","top_level_secrets_environment_source","docker_compose_config_quiet","docker_compose_config_format_json","docker_compose_ps_format_json","compose_project_labels"],"local_observed_compose":"5.3.1","ci_observed_compose":"2.38.2"},"evidence_refs":["docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md","docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md","github-actions-run:31443292973","actions-runner-image:ubuntu24/20260720.247.2"]},
     "D-02": {"question":"exact PostgreSQL and .NET image identities/digests","status":"LOCKED","locked_value":{"platform":"linux/amd64","postgres":"postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636","dotnet_sdk":"mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0","dotnet_aspnet":"mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:f1126d438ccc359f51cc6d4701a8deae513856cf10f5fe645d29ea6403dcac6b","tag_re_resolution_as_authority":false,"digest_unavailable_action":"STOP_AND_RELOCK"},"evidence_refs":["docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md","docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md"]},
@@ -54,6 +123,27 @@
     "targeted_fix": {"artifact_path":null,"content_sha256":null,"prompt_revision":null,"target_head_sha":null,"source_artifact_refs":[],"producer_slot":null,"producer_commit_sha":null,"status":"not_started"},
     "targeted_re_review": {"artifact_path":"docs/benchmarks/fnd05-model-comparison/reviews/fnd05-psr-005-targeted-re-review-gpt-5.6-sol-codex-xhigh.md","content_sha256":"7ce906eea7db810960948562382ec150ae284b467e21194ee0d2ad8262a52f67","prompt_revision":"fnd05-psr005-targeted-re-review-v1","target_head_sha":"6c626451fc7d8059e468d19afbfc3c80b666acb9","source_artifact_refs":["docs/benchmarks/fnd05-model-comparison/reviews/pre-run-prompt-suite-independent-review-gpt-5.6-sol-codex-xhigh.md","docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md"],"producer_slot":"finding_owner:gpt-5.6-sol-codex-xhigh","producer_commit_sha":null,"status":"locked"}
   },
-  "gates": {"final_retrospective_reviewed":false,"dependency_42_complete_merged_reverified":true,"issue_43_contract_current":false,"prompt_suite_targeted_re_review_pass":true,"assumption_ledger_locked":true,"implementation_test_design_locked":true,"project_rules_locked":true,"review_matrix_locked":true,"mutations_locked":true,"mutation_determinism_locked":true,"scoring_locked":true,"prompts_locked":true,"common_base_locked":false,"candidate_branches_created":false,"candidate_pull_requests_created":false,"candidate_branch_identity_verified":false,"exact_model_harness_effort_locked":false,"candidate_output_zero_confirmed":false,"issue_ready_pass":false,"koo_start_authorized":false},
+  "gates": {
+    "final_retrospective_reviewed": false,
+    "dependency_42_complete_merged_reverified": true,
+    "issue_43_contract_current": false,
+    "prompt_suite_targeted_re_review_pass": false,
+    "assumption_ledger_locked": true,
+    "implementation_test_design_locked": true,
+    "project_rules_locked": true,
+    "review_matrix_locked": true,
+    "mutations_locked": true,
+    "mutation_determinism_locked": true,
+    "scoring_locked": true,
+    "prompts_locked": false,
+    "common_base_locked": false,
+    "candidate_branches_created": false,
+    "candidate_pull_requests_created": false,
+    "candidate_branch_identity_verified": false,
+    "exact_model_harness_effort_locked": false,
+    "candidate_output_zero_confirmed": false,
+    "issue_ready_pass": false,
+    "koo_start_authorized": false
+  },
   "metric_targets": {"candidate_count":3,"separate_formal_self_review_count":0,"h1_phase_count":0,"open_code_execution_count":0,"light_review_count":2,"heavy_full_review_count":2,"default_heavy_re_review_count":0,"conditional_judge_default_count":0,"heavy_obvious_finding_count":0,"mandatory_mutation_definition_coverage":1.0,"final_mutation_kill_rate":1.0,"mutation_residue_count":0}
 }
