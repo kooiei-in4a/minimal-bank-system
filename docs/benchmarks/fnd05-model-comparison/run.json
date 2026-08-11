@@ -424,14 +424,31 @@
       "status": "not_started"
     },
     "implementation_evaluation": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/implementation-evaluation-gpt-5.6-sol-codex-xhigh-attempt-1.md",
+      "content_sha256": "15d96bf366b4f1fe9bd766806badf5e114e45e9a62ba27bfab04e76bc20a04cd",
+      "prompt_revision": "fnd05-implementation-evaluation-v2",
+      "target_head_sha": "not-single-head",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/prompts/implementation-evaluation.md",
+        "docs/benchmarks/fnd05-model-comparison/scoring.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/implementation-and-test-design-contract.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/project-rule-catalog.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/mandatory-mutations.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md",
+        "run.json@sha256:c2e38184aaf2a234106813bd1a19c851900a7272dc4257b96f9b139b5fed22fb",
+        "issue:3",
+        "issue:43",
+        "pr:150@c3599c9bd4bc920b5c87c80148d81b8a53aa95fc",
+        "pr:151@146ea92a4e815a5a08fe81562ef80f70f80c551b",
+        "pr:152@b69910dd00bca56254f3340fd7f5954da38b2814",
+        "github-actions-run:31461355578",
+        "github-actions-run:31460858572",
+        "github-actions-run:31460753661"
+      ],
+      "producer_slot": "implementation_evaluator:gpt-5.6-sol-codex-xhigh:attempt-1",
       "producer_commit_sha": null,
-      "status": "not_started"
+      "status": "locked"
     },
     "selection_adjudication": {
       "artifact_path": null,
