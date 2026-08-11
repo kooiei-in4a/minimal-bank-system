@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "fnd05-compose-model-comparison",
+  "product_common_base_sha": "ee8abbb15758c1a2cfb624791482b755be578da2",
+  "product_common_base_branch": "main",
+  "koo_start_authorized": true,
+  "koo_start_authorization_evidence": "docs/benchmarks/fnd05-model-comparison/evidence/koo-start-authorization-20260811.md",
+  "candidate_preparation_authorized": true,
+  "candidate_execution_authorized_subject_to_pre_execution_identity_gate": true,
+  "candidate_initial_snapshot_policy": "all candidate branches must point to the same execution-control commit before any candidate-specific output",
+  "candidates": [
+    {
+      "slot": "C1",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "effort": "xHigh",
+      "slug": "gpt-5.6-luna-codex",
+      "branch": "agent/issue-43-fnd-05-gpt5.6-luna-codex"
+    },
+    {
+      "slot": "C2",
+      "model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "effort": "xhigh",
+      "slug": "claude-sonnet-5-claude-code",
+      "branch": "agent/issue-43-fnd-05-claude-sonnet-5"
+    },
+    {
+      "slot": "C3",
+      "model": "Grok 4.5",
+      "harness": "Cursor",
+      "effort": "high",
+      "prohibited_effort": "high fast",
+      "slug": "grok-4.5-cursor",
+      "branch": "agent/issue-43-fnd-05-grok-4.5"
+    }
+  ],
+  "final_synthesis": {
+    "model": "GPT-5.6 Terra",
+    "harness": "Codex",
+    "effort": "xHigh"
+  },
+  "open_items_before_execution": [
+    "create three candidate branches from the same execution-control commit",
+    "create three Draft PRs to main",
+    "record PR numbers in run.json",
+    "set run.json koo_start_authorized=true and common_base_sha to product_common_base_sha",
+    "confirm all three candidate branch Heads are identical",
+    "confirm candidate-specific product output count is zero",
+    "set implementation_permitted=true only after final identity verification"
+  ]
+}
