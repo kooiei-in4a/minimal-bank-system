@@ -492,14 +492,20 @@
       "status": "locked"
     },
     "light_l1": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-light-l1-project-quality-composer-2.5.md",
+      "content_sha256": "36da84a82482694deb1260eef35532030fdd78a9cba7189a7d8976c695bcda67",
+      "prompt_revision": "fnd05-light-project-v2",
+      "target_head_sha": "be45366af18e55a5f8dd8af932518b690c7a36c0",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/initial-result.md@be45366af18e55a5f8dd8af932518b690c7a36c0#sha256:87cc9fef65bf88c02be0405303f40e0cc9bf00762965c48b633cf9f05723cc42",
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/static-gate-result.md@259f1f83b25e0e3d9b6b8256bccf7a838400a2c7#sha256:e104c9be357e9617ff8526bf1c2d75f45809f09ed8a0812556ee58422ad760ee",
+        "run.json@86a59e48fa913c8ca009687ec8cfb09a82f1a5e0#sha256:37fc4d58d6efe9775e9ee59fb100172436227b5a628a0e5988daed60c2dd5ddd",
+        "github-actions-run:31491089738",
+        "github-actions-run:31491089797"
+      ],
       "producer_slot": "L1",
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "producer_commit_sha": "c0f0710c3c6dff7855140040b5701243a661b44a",
+      "status": "locked"
     },
     "light_l2": {
       "artifact_path": null,
