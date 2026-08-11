@@ -1,6 +1,6 @@
 # FND-05 Pre-Run Completion Checklist
 
-Status: **PREPARATION FIX REQUIRED / IMPLEMENTATION PROHIBITED**
+Status: **DECISIONS LOCKED / ISSUE READY NOT YET PASSED / IMPLEMENTATION PROHIBITED**
 
 Mutable stateの正本は`run.json`。本checklistは確認手順であり、値を独立に確定しない。
 
@@ -25,154 +25,129 @@ Mutable stateの正本は`run.json`。本checklistは確認手順であり、値
 
 ## 2. Prompt-suite review remediation
 
-3 independent reviewsの共通findingを反映し、targeted re-reviewを通すまでD-01〜D-08 lockへ進まない。
-
-- [x] exact implementation-shape MUSTの見直しを開始
+- [x] exact implementation-shape MUSTの見直し
 - [x] M-08をruntime defect mutationへ再設計
 - [x] Light rejected/unresolved B/MのHeavy handoff contract追加
 - [x] Product authorityとGate evidenceの分離
 - [x] open decisionのanswer leakage除去
 - [x] `run.json`へstage artifact registry追加
-- [x] `reference/mutation-determinism-contract.md`でPSR-005 deterministic mutation contractを追加
-- [ ] implementation / evaluation / selection / final / Light / Heavy promptsへv2 contract反映
-- [ ] finding-owned targeted re-review
-- [ ] Blocker 0 / Major 0
-- [ ] `run.json.gates.prompt_suite_targeted_re_review_pass = true`
+- [x] `reference/mutation-determinism-contract.md`でPSR-005 deterministic mutation contract追加
+- [x] finding-owned targeted re-review
+- [x] Blocker 0 / Major 0
+- [x] `run.json.gates.prompt_suite_targeted_re_review_pass = true`
 
-## 3. Decisions still to lock
+Targeted re-review reviewed Head:
 
-`run.json.open_decisions`へ`locked_value`と`evidence_refs`を記録する。
+```text
+6c626451fc7d8059e468d19afbfc3c80b666acb9
+```
 
-### D-01 Compose version / features
+Direct-head CI:
 
-- [ ] local Compose version
-- [ ] GitHub Actions version
-- [ ] required feature support
-- [ ] validation commands
+```text
+31443292973 — SUCCESS
+```
 
-### D-02 PostgreSQL / .NET image identities
+## 3. D-01〜D-08 lock
 
-- [ ] PostgreSQL 18 exact source + full digest
-- [ ] .NET 10 SDK exact source + full digest
-- [ ] ASP.NET 10 runtime exact source + full digest
-- [ ] platform / architecture確認
+Canonical lock artifact:
 
-### D-03 Secret source / reader design
+```text
+docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md
+Revision: fnd05-decisions-v1
+```
 
-- [ ] source / grant / reader designをKoo lock
-- [ ] repository非保存
-- [ ] argv非露出
-- [ ] log / rendered-config観測
-- [ ] missing-secret fail-closed
-- [ ] local / CI再現性
+Local evidence artifact:
 
-### D-04 Lifecycle commands + semantics
+```text
+docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md
+```
 
-- [ ] validate
-- [ ] clean start
-- [ ] stop
-- [ ] start-after-stop
-- [ ] restart
-- [ ] down-retain-data
-- [ ] clean reset
-- [ ] migration gate re-evaluation semantics
-- [ ] cleanup absence observation
+- [x] D-01 minimum Compose version / required features = LOCKED
+- [x] D-02 PostgreSQL / .NET exact digest identities = LOCKED
+- [x] D-03 secret source / reader design = LOCKED
+- [x] D-04 lifecycle commands / semantics = LOCKED
+- [x] D-05 external state capture = LOCKED
+- [x] D-06 failure injection / mutation determinism = LOCKED
+- [x] D-07 cross-platform contract = LOCKED
+- [x] D-08 Final Synthesis identity = LOCKED
+- [x] `run.json.gates.mutation_determinism_locked = true`
 
-### D-05 External state capture
+### Key lock summary
 
-- [ ] Migrator exit code
-- [ ] Migrator completion ordering evidence
-- [ ] API never-started vs started-then-exited state
-- [ ] API start ordering evidence
-- [ ] migration history query / result
-- [ ] Compose project/resource identity
-- [ ] local / CI共通machine-readable command
-
-### D-06 Failure injection / mutation determinism
-
-`reference/mutation-determinism-contract.md`のschemaを満たすまでD-06をLOCKEDにしない。
-
-- [ ] invalid credential等のfailure path
-- [ ] M-01〜M-10 injection plan
-- [ ] 各applicable mutationのdeterministic precondition property
-- [ ] 各applicable mutationのcontrolled barrier / fixture class
-- [ ] 各applicable mutationのinjection point class
-- [ ] expected failure signature
-- [ ] invalid failure signatures
-- [ ] cleanup requirement / residue check
-- [ ] M-01: Migrator completionを自然raceではなくcontrolled barrierで未完了に保持できる
-- [ ] M-03: auto-migrationが存在すれば必ずobservable migration-state deltaが出るDB preconditionを作れる
-- [ ] M-08: test / validatorを変更せずexit 0 + expected migration state欠落を作る
-- [ ] M-10: mutation対象のsame-project resourceがcleanup前に実在することを証明する
-- [ ] exact evaluator patch / source editをcandidate-facing contractへ漏らさない
-- [ ] test-only isolation
-- [ ] no production backdoor
-- [ ] no residue
-
-### D-07 Cross-platform contract
-
-- [ ] GitHub Actions Linux
-- [ ] primary local environment
-- [ ] shell / helper requirements
-- [ ] path / line ending behavior
-
-### D-08 Final Synthesis identity
-
-- [ ] exact Model
-- [ ] exact Harness
-- [ ] exact Effort
-- [ ] fresh-context availability
-- [ ] final branch / Draft PR事前作成
+```text
+D-01: Compose >= 2.38.2
+D-02: digest-qualified postgres/.NET images from current registry evidence
+D-03: host env -> Compose secret -> mounted file / explicit grant
+D-04: down/up restart semantics; clean reset uses --volumes --remove-orphans
+D-05: compose ps JSON + docker inspect + migration history + project labels
+D-06: deterministic precondition/barrier/signature per mutation
+D-07: linux/amd64, Ubuntu 24.04, Bash >=5.2, jq >=1.7, LF shell assets
+D-08: GPT-5.6 Terra / Codex / xHigh; fresh context; no silent substitution
+```
 
 ## 4. Repository / Issue preparation
 
-- [ ] PR #144 final retrospective review
-- [ ] PR #145 prompt-suite targeted re-review PASS
-- [ ] Issue #43 body / dependency / gate statusをcurrent contractへ同期
+- [ ] PR #144 final retrospective review/current-state confirmation
+- [x] PR #145 prompt-suite targeted re-review PASS
+- [x] dependency #42 COMPLETE / MERGED reverified
+- [ ] current decision-lock Head CI SUCCESS
+- [ ] Issue #43 body / dependency / gate statusをcurrent locked contractへ同期
 - [ ] Parent #3 / WP-1 #33 current statusをGate evidenceとして再確認
 
-Issue本文はprompt suiteとD-01〜D-08 lock後に同期する。draft answerを確定事項として先に書かない。
+Issue本文はD-lock後に同期する。Issue Ready PASSはその後のfresh Gate Reviewでのみ確定する。
 
 ## 5. Common base / branches
 
+まだ実施しない。
+
+- [ ] preparation PR merge authorization
 - [ ] preparation PR merge
 - [ ] current main full SHA取得
 - [ ] common base fixed in `run.json`
 - [ ] C1 / C2 / C3 branch作成
 - [ ] 3 / 3 Head = common base
 - [ ] 3 Draft PR事前作成
-- [ ] exact model / harness / effort固定
+- [ ] exact candidate Model / Harness / Effort固定
 - [ ] candidate output 0件確認
 
-## 6. Gate review
+## 6. Issue Ready Gate
+
+まだ実施しない。
 
 - [ ] `prompts/issue-ready-review.md` fresh execution
 - [ ] Issue Ready verdict = PASS
 - [ ] `run.json.gates.issue_ready_pass = true`
-- [ ] Kooがcandidate execution開始を明示許可
-- [ ] `run.json.gates.koo_start_authorized = true`
 
 Issue Ready PASSだけではimplementationを開始しない。
 
-## 7. Stop rule
+## 7. Koo start authorization
+
+Issue Ready PASS後に別gateとして取得する。
+
+- [ ] Kooがcandidate execution開始を明示許可
+- [ ] `run.json.gates.koo_start_authorized = true`
+- [ ] `implementation_permitted = true`
+
+## 8. Stop rule
 
 次のいずれかが未完了ならcandidate executionを開始しない。
 
-- prompt-suite targeted re-review B0 / M0
-- D-01〜D-08 lock
-- D-06 mutation determinism contract lock
-- common base / branch / PR identity
-- exact model / harness / effort
+- D-01〜D-08 lock identity保持
+- current locked Head CI success
+- Issue #43 current contract sync
+- Parent / WP / dependency gate確認
+- common base / candidate branch / Draft PR identity
+- exact candidate Model / Harness / Effort
 - Issue Ready PASS
 - Koo start authorization
 
-## 8. Current next action
+## 9. Current next action
 
-1. PR #145 v2 prompt suite修正を完了する。
-2. F-01〜共通findingのtargeted re-reviewを実施する。
-3. B0 / M0後にD-01〜D-08を一次証拠でlockする。
-4. Issue #43を同期する。
-5. fresh Issue Ready Gateを実行する。
-6. Koo開始許可後だけcandidateを開始する。
+1. D-lock後のPR #145 exact Head CIを確認する。
+2. Issue #43をcurrent locked contractへ同期する。
+3. Parent #3 / WP-1 #33 / dependency stateを再確認する。
+4. fresh Issue Ready Gateを実行する。
+5. Issue Ready PASS後も停止し、Koo開始許可を待つ。
 
-現時点ではDocker Compose実装を開始しない。
+現時点ではFND-05 implementationを開始しない。
