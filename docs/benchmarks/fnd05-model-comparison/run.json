@@ -590,14 +590,20 @@
       "status": "locked"
     },
     "conditional_judge": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-conditional-judge-composer-2.5.md",
+      "content_sha256": "ce44323a2728f0d6ca2dde3d28040074e77d8b59c96ae65bbd528080600f64bb",
+      "prompt_revision": "fnd05-conditional-judge-v2",
+      "target_head_sha": "59aa87f9c6c4c581a56257caef738318e8d09ec3",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-conditional-judge-phase-a-composer-2.5.md@b01d11759f343c1a04ca84c7ba71ae57ff6c3731#sha256:824ee163cb543a42f80bbe23c3549c9b5a6d7aad143ffd075afdce9c1f9ae047",
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-heavy-h1-sol-gpt-5.6-sol-codex.md@4583a32cdb6f6c788a56ce7fd43fba5266d5e5da#sha256:5de83bc37594896da2c681c92da89037c9c5dae3abec9b5a415362dd51967686",
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-heavy-h2-opus-claude-opus-5-claude-code.md@4ca962b4a8f0dd9faeacc1a494ed86f919f5536a#sha256:cc0e996707f83f4b9c338b3ecc5033d0829646c0976843aec30de39b3a275425",
+        "run.json@453b319b278b0df145cb3493d634dfc8478bdd68#sha256:06bd4d8e7a80b0d7939edd7ff2db88aa7a62dc6fe03aa4c133195b427f212e54",
+        "pr:153@59aa87f9c6c4c581a56257caef738318e8d09ec3"
+      ],
+      "producer_slot": "J",
+      "producer_commit_sha": "fb0b2f81e4817b494e2167547f537c1e774e919d",
+      "status": "locked"
     },
     "targeted_fix": {
       "artifact_path": null,
