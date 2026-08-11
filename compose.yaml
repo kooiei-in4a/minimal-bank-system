@@ -1,0 +1,69 @@
+name: minimal-bank-system-fnd05
+
+services:
+  postgres:
+    image: postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: minimal_bank
+      POSTGRES_USER: minimal_bank
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+    secrets:
+      - source: database_password
+        target: database_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=\"$${POSTGRES_USER}\" --dbname=\"$${POSTGRES_DB}\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  migrator:
+    build:
+      context: .
+      dockerfile: src/MinimalBankSystem.Migrator/Dockerfile
+      args:
+        SDK_IMAGE: mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0
+        RUNTIME_IMAGE: mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:f1126d438ccc359f51cc6d4701a8deae513856cf10f5fe645d29ea6403dcac6b
+    platform: linux/amd64
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DATABASE: minimal_bank
+      POSTGRES_USERNAME: minimal_bank
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets:
+      - source: database_password
+        target: database_password
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/MinimalBankSystem.Api/Dockerfile
+      args:
+        SDK_IMAGE: mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0
+        RUNTIME_IMAGE: mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:f1126d438ccc359f51cc6d4701a8deae513856cf10f5fe645d29ea6403dcac6b
+    platform: linux/amd64
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DATABASE: minimal_bank
+      POSTGRES_USERNAME: minimal_bank
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    secrets:
+      - source: database_password
+        target: database_password
+
+secrets:
+  database_password:
+    environment: MBS_DATABASE_PASSWORD
+
+volumes:
+  postgres_data:

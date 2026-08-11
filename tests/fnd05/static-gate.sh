@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly project_name="${FND05_PROJECT_NAME:-minimal-bank-system-fnd05}"
+readonly source_root="${FND05_SOURCE_ROOT:-$(git rev-parse --show-toplevel)}"
+readonly postgres_image="postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+readonly sdk_image="mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0"
+readonly runtime_image="mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:f1126d438ccc359f51cc6d4701a8deae513856cf10f5fe645d29ea6403dcac6b"
+
+require_command() {
+  command -v "$1" >/dev/null
+}
+
+require_literal() {
+  local literal="$1" path="$2" signature="$3"
+  grep --fixed-strings --quiet "$literal" "$path" || {
+    printf 'ORACLE_SIGNATURE=%s\n' "$signature" >&2
+    return 1
+  }
+}
+
+for command_name in docker git jq grep; do
+  require_command "$command_name" || {
+    printf 'Static gate prerequisite missing: %s\n' "$command_name" >&2
+    exit 69
+  }
+done
+
+: "${MBS_DATABASE_PASSWORD:?MBS_DATABASE_PASSWORD is required for the Compose render check}"
+
+git -C "$source_root" -c core.autocrlf=true diff --check
+
+require_literal "$postgres_image" "$source_root/compose.yaml" 'postgres-image-digest-missing'
+require_literal "$sdk_image" "$source_root/compose.yaml" 'sdk-image-digest-missing'
+require_literal "$runtime_image" "$source_root/compose.yaml" 'runtime-image-digest-missing'
+require_literal 'environment: MBS_DATABASE_PASSWORD' "$source_root/compose.yaml" 'secret-environment-source-missing'
+require_literal 'POSTGRES_PASSWORD_FILE: /run/secrets/database_password' "$source_root/compose.yaml" 'postgres-secret-file-configuration-missing'
+require_literal 'condition: service_completed_successfully' "$source_root/compose.yaml" 'migrator-completion-gate-missing'
+require_literal 'condition: service_healthy' "$source_root/compose.yaml" 'postgres-health-gate-missing'
+
+if grep --recursive --include='*.cs' --include='*.csproj' --extended-regexp 'MigrateAsync|\.Migrate\(|EnsureCreated' "$source_root/src/MinimalBankSystem.Api"; then
+  printf 'API source contains a schema-evolution startup call.\n' >&2
+  exit 1
+fi
+
+rendered="$(docker compose --project-directory "$source_root" -p "$project_name" -f "$source_root/compose.yaml" config --format json)"
+if ! jq --exit-status \
+  'any(.services.postgres.volumes[]; .type == "volume" and .source == "postgres_data" and .target == "/var/lib/postgresql")' \
+  <<<"$rendered" >/dev/null; then
+  printf 'ORACLE_SIGNATURE=named-volume-policy-violation\n' >&2
+  exit 1
+fi
+
+jq --exit-status \
+  --arg postgres_image "$postgres_image" \
+  --arg sdk_image "$sdk_image" \
+  --arg runtime_image "$runtime_image" \
+  '
+    .services.postgres.image == $postgres_image and
+    .services.migrator.build.args.SDK_IMAGE == $sdk_image and
+    .services.migrator.build.args.RUNTIME_IMAGE == $runtime_image and
+    .services.api.build.args.SDK_IMAGE == $sdk_image and
+    .services.api.build.args.RUNTIME_IMAGE == $runtime_image and
+    any(.services.postgres.volumes[]; .type == "volume" and .source == "postgres_data" and .target == "/var/lib/postgresql") and
+    .secrets.database_password.environment == "MBS_DATABASE_PASSWORD" and
+    (.services.migrator.secrets | length) == 1 and
+    (.services.api.secrets | length) == 1
+  ' <<<"$rendered" >/dev/null
+
+if git -C "$source_root" ls-files | grep --extended-regexp '(^|/)\.env($|\.[^e])|\.local$'; then
+  printf 'Tracked secret-like artifact is prohibited.\n' >&2
+  exit 1
+fi
+
+printf 'STATIC_GATE: PASS\n'
