@@ -1,6 +1,6 @@
 # FND-05 Pre-Run Completion Checklist
 
-Status: **DECISIONS LOCKED / ISSUE READY NOT YET PASSED / IMPLEMENTATION PROHIBITED**
+Status: **DECISIONS LOCKED / GATE-ORDER TARGETED RE-REVIEW REQUIRED / IMPLEMENTATION PROHIBITED**
 
 Mutable stateの正本は`run.json`。本checklistは確認手順であり、値を独立に確定しない。
 
@@ -22,8 +22,12 @@ Mutable stateの正本は`run.json`。本checklistは確認手順であり、値
 - [x] Judge = conditional only
 - [x] re-review = finding owner / blast radius
 - [x] observable contractをexact implementation shapeより優先
+- [x] Issue ReadyとKoo start authorizationを分離
+- [x] candidate preparationはIssue Ready PASS + Koo authorization後
 
 ## 2. Prompt-suite review remediation
+
+### Completed
 
 - [x] exact implementation-shape MUSTの見直し
 - [x] M-08をruntime defect mutationへ再設計
@@ -31,12 +35,11 @@ Mutable stateの正本は`run.json`。本checklistは確認手順であり、値
 - [x] Product authorityとGate evidenceの分離
 - [x] open decisionのanswer leakage除去
 - [x] `run.json`へstage artifact registry追加
-- [x] `reference/mutation-determinism-contract.md`でPSR-005 deterministic mutation contract追加
-- [x] finding-owned targeted re-review
-- [x] Blocker 0 / Major 0
-- [x] `run.json.gates.prompt_suite_targeted_re_review_pass = true`
+- [x] mutation determinism contract追加
+- [x] `FND05-PSR-005` finding-owned targeted re-review
+- [x] `FND05-PSR-005` Blocker 0 / Major 0
 
-Targeted re-review reviewed Head:
+PSR-005 reviewed Head:
 
 ```text
 6c626451fc7d8059e468d19afbfc3c80b666acb9
@@ -47,6 +50,40 @@ Direct-head CI:
 ```text
 31443292973 — SUCCESS
 ```
+
+### Gate-order alignment
+
+fresh Issue Ready準備で次の循環を検出した。
+
+```text
+旧issue-ready-review.md:
+Issue Ready PASS前提としてcandidate branch/common baseを要求
+
+fixed process:
+Issue Ready PASS
+→ Koo authorization
+→ candidate branch/common base preparation
+```
+
+Finding:
+
+```text
+FND05-GATE-001
+```
+
+Fix:
+
+```text
+prompts/issue-ready-review.md
+fnd05-issue-ready-review-v3
+```
+
+- [x] circular dependencyを除去
+- [x] Issue Readyとpost-authorization pre-execution preparationを分離
+- [ ] FND05-GATE-001 finding-targeted re-review
+- [ ] FND05-GATE-001 Blocker 0 / Major 0
+- [ ] `run.json.gates.prompt_suite_targeted_re_review_pass = true` 再lock
+- [ ] `run.json.gates.prompts_locked = true` 再lock
 
 ## 3. D-01〜D-08 lock
 
@@ -89,65 +126,68 @@ D-08: GPT-5.6 Terra / Codex / xHigh; fresh context; no silent substitution
 ## 4. Repository / Issue preparation
 
 - [ ] PR #144 final retrospective review/current-state confirmation
-- [x] PR #145 prompt-suite targeted re-review PASS
+- [ ] PR #145 gate-order targeted re-review PASS
 - [x] dependency #42 COMPLETE / MERGED reverified
-- [ ] current decision-lock Head CI SUCCESS
+- [ ] current gate-order-fix Head CI SUCCESS
 - [ ] Issue #43 body / dependency / gate statusをcurrent locked contractへ同期
-- [ ] Parent #3 / WP-1 #33 current statusをGate evidenceとして再確認
+- [x] Parent #3でWP-1 Issue Set Ready / Implementation Ready PASSを再確認
+- [ ] WP-1 #33 current statusをFND-05 current stateへ同期
 
-Issue本文はD-lock後に同期する。Issue Ready PASSはその後のfresh Gate Reviewでのみ確定する。
+Issue Ready PASSはfresh Gate Reviewでのみ確定する。
 
-## 5. Common base / branches
+## 5. Common base / candidate preparation
 
-まだ実施しない。
+**Issue Ready PASS + Koo explicit start authorization後に実施する。現時点では実施禁止。**
 
-- [ ] preparation PR merge authorization
-- [ ] preparation PR merge
 - [ ] current main full SHA取得
 - [ ] common base fixed in `run.json`
 - [ ] C1 / C2 / C3 branch作成
-- [ ] 3 / 3 Head = common base
+- [ ] 3 / 3 initial Head = common base
 - [ ] 3 Draft PR事前作成
 - [ ] exact candidate Model / Harness / Effort固定
 - [ ] candidate output 0件確認
+- [ ] pre-execution identity verification
 
 ## 6. Issue Ready Gate
 
-まだ実施しない。
+FND05-GATE-001 targeted re-review B0/M0後に実施する。
 
-- [ ] `prompts/issue-ready-review.md` fresh execution
+- [ ] `prompts/issue-ready-review.md` v3 fresh execution
 - [ ] Issue Ready verdict = PASS
 - [ ] `run.json.gates.issue_ready_pass = true`
 
-Issue Ready PASSだけではimplementationを開始しない。
+Issue Ready PASSだけではcandidate preparationもimplementationも開始しない。
 
 ## 7. Koo start authorization
 
 Issue Ready PASS後に別gateとして取得する。
 
-- [ ] Kooがcandidate execution開始を明示許可
+- [ ] Kooがcandidate preparation / execution開始を明示許可
 - [ ] `run.json.gates.koo_start_authorized = true`
-- [ ] `implementation_permitted = true`
+
+`implementation_permitted = true`は、その後にcommon base / candidate branch / Draft PR / exact identity / output-zeroのpre-execution gateまで満たしてから更新する。
 
 ## 8. Stop rule
 
 次のいずれかが未完了ならcandidate executionを開始しない。
 
+- FND05-GATE-001 targeted re-review B0/M0
 - D-01〜D-08 lock identity保持
-- current locked Head CI success
 - Issue #43 current contract sync
 - Parent / WP / dependency gate確認
-- common base / candidate branch / Draft PR identity
-- exact candidate Model / Harness / Effort
 - Issue Ready PASS
 - Koo start authorization
+- common base / candidate branch / Draft PR identity
+- exact candidate Model / Harness / Effort
+- candidate output 0件
 
 ## 9. Current next action
 
-1. D-lock後のPR #145 exact Head CIを確認する。
-2. Issue #43をcurrent locked contractへ同期する。
-3. Parent #3 / WP-1 #33 / dependency stateを再確認する。
-4. fresh Issue Ready Gateを実行する。
-5. Issue Ready PASS後も停止し、Koo開始許可を待つ。
+1. FND05-GATE-001をfinding-targeted re-reviewする。
+2. B0/M0ならprompt-suite gateを再lockする。
+3. Issue #43 / WP-1 #33をcurrent stateへ同期する。
+4. decision-lock + gate-order-fix Head CI SUCCESSを確認する。
+5. fresh Issue Ready Gate v3を実行する。
+6. Issue Ready PASS後も停止し、Koo開始許可を待つ。
 
 現時点ではFND-05 implementationを開始しない。
