@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.7",
+  "schema_version": "1.8",
   "benchmark_id": "fnd05-compose-model-comparison",
-  "status": "preparation_issue_ready_review_authorized",
+  "status": "issue_ready_pass_waiting_for_koo_authorization",
   "implementation_permitted": false,
   "mutable_state_source_of_truth": "docs/benchmarks/fnd05-model-comparison/run.json",
   "preparation": {
@@ -31,6 +31,14 @@
       "direct_head_ci": 31447021460,
       "blocker": 0,
       "major": 0
+    },
+    "issue_ready_review": {
+      "prompt_revision": "fnd05-issue-ready-review-v3",
+      "result_revision": "fnd05-issue-ready-review-v3-result-1",
+      "reviewed_head": "e26925345720adabd667a6d543a7f50bf525c9d3",
+      "direct_head_ci": 31448687166,
+      "expected_main_sha": "9a352a3a61945647273ccc7dfbc8e1816c3ca07c",
+      "verdict": "PASS"
     }
   },
   "target": {
@@ -169,7 +177,8 @@
     "targeted_fix_prompt": "fnd05-targeted-fix-v2",
     "targeted_re_review_prompt": "fnd05-targeted-re-review-v2",
     "psr005_targeted_re_review": "fnd05-psr005-targeted-re-review-v1",
-    "gate001_targeted_re_review": "fnd05-gate001-targeted-re-review-v1"
+    "gate001_targeted_re_review": "fnd05-gate001-targeted-re-review-v1",
+    "issue_ready_review_result": "fnd05-issue-ready-review-v3-result-1"
   },
   "open_decisions": {
     "D-01": {
@@ -538,6 +547,24 @@
       "producer_slot": "finding_owner:gpt-5.6-sol-codex-xhigh",
       "producer_commit_sha": null,
       "status": "locked"
+    },
+    "issue_ready_review": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-issue-ready-review-v3.md",
+      "content_sha256": "ee6715f9524c0da00953c3bf71fb4189e7eefb636030cceb0be4cac3a6892257",
+      "prompt_revision": "fnd05-issue-ready-review-v3",
+      "target_head_sha": "e26925345720adabd667a6d543a7f50bf525c9d3",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-gate-001-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/run.json",
+        "issue:43",
+        "issue:42",
+        "issue:33",
+        "commit:9a352a3a61945647273ccc7dfbc8e1816c3ca07c"
+      ],
+      "producer_slot": "pre_run_gate_reviewer",
+      "producer_commit_sha": null,
+      "status": "locked"
     }
   },
   "gates": {
@@ -559,7 +586,7 @@
     "candidate_branch_identity_verified": false,
     "exact_model_harness_effort_locked": false,
     "candidate_output_zero_confirmed": false,
-    "issue_ready_pass": false,
+    "issue_ready_pass": true,
     "koo_start_authorized": false
   },
   "metric_targets": {
