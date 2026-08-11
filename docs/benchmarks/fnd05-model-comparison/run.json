@@ -1,0 +1,606 @@
+{
+  "schema_version": "1.8",
+  "benchmark_id": "fnd05-compose-model-comparison",
+  "status": "issue_ready_pass_waiting_for_koo_authorization",
+  "implementation_permitted": false,
+  "mutable_state_source_of_truth": "docs/benchmarks/fnd05-model-comparison/run.json",
+  "preparation": {
+    "branch": "agent/fnd05-pre-run-preparation",
+    "pull_request": 145,
+    "stacked_on_retrospective_pr": 144,
+    "draft_artifacts_created": true,
+    "prompt_suite_review_verdict": "PASS_B0_M0",
+    "prompt_suite_review_sources": [
+      "gpt-5.6-sol-browser-xhigh",
+      "gpt-5.6-sol-codex-xhigh",
+      "grok-4.5-cursor-high",
+      "gpt-5.6-sol-codex-xhigh-psr005-targeted-re-review",
+      "gpt-5.6-sol-codex-xhigh-gate001-targeted-re-review"
+    ],
+    "prompt_suite_reviewed_head": "d37ac13e4b8adc6e14cd140d1b8d5342f04b5a5a",
+    "prompt_suite_direct_head_ci": 31447021460,
+    "prompt_suite_blocker": 0,
+    "prompt_suite_major": 0,
+    "prompt_suite_minor_known": 1,
+    "gate_order_alignment": {
+      "finding_id": "FND05-GATE-001",
+      "root_cause": "Issue Ready prompt required candidate branches/common base before Issue Ready although fixed process creates them only after Issue Ready PASS and Koo authorization",
+      "fix_revision": "fnd05-issue-ready-review-v3",
+      "status": "FIXED_VERIFIED",
+      "reviewed_head": "d37ac13e4b8adc6e14cd140d1b8d5342f04b5a5a",
+      "direct_head_ci": 31447021460,
+      "blocker": 0,
+      "major": 0
+    },
+    "issue_ready_review": {
+      "prompt_revision": "fnd05-issue-ready-review-v3",
+      "result_revision": "fnd05-issue-ready-review-v3-result-1",
+      "reviewed_head": "e26925345720adabd667a6d543a7f50bf525c9d3",
+      "direct_head_ci": 31448687166,
+      "expected_main_sha": "9a352a3a61945647273ccc7dfbc8e1816c3ca07c",
+      "verdict": "PASS"
+    }
+  },
+  "target": {
+    "repository": "kooiei-in4a/minimal-bank-system",
+    "parent_issue": 3,
+    "work_package_issue": 33,
+    "target_issue": 43,
+    "predecessor_issue": 42,
+    "base_branch": "main",
+    "common_base_sha": null
+  },
+  "policy": {
+    "open_code_allowed": false,
+    "separate_formal_self_review": false,
+    "implementation_prompt_embeds_completion_checks": true,
+    "candidate_merge_or_cherry_pick_into_final": false,
+    "heavy_review_after_light_gate_only": true,
+    "heavy_review_default_full_invocations": 2,
+    "heavy_review_default_re_review_invocations": 0,
+    "judge_default": false,
+    "issue_ready_required_before_execution": true,
+    "koo_start_authorization_required_before_execution": true,
+    "candidate_preparation_after_issue_ready_and_koo_authorization": true,
+    "observable_contract_over_exact_implementation_shape": true,
+    "mutation_kill_requires_deterministic_precondition": true
+  },
+  "implementation_candidates": [
+    {
+      "slot": "C1",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "effort_target": "xHigh-equivalent",
+      "effort_exact": null,
+      "candidate_slug": "gpt-5.6-luna-codex",
+      "branch": null,
+      "pull_request": null,
+      "head_sha": null,
+      "state": "planned"
+    },
+    {
+      "slot": "C2",
+      "model": "Claude Sonnet 5",
+      "harness": "Claude Code",
+      "effort_target": "xHigh-equivalent",
+      "effort_exact": null,
+      "candidate_slug": "claude-sonnet-5-claude-code",
+      "branch": null,
+      "pull_request": null,
+      "head_sha": null,
+      "state": "planned"
+    },
+    {
+      "slot": "C3",
+      "model": "Grok 4.5",
+      "harness": "Cursor",
+      "effort_target": "high",
+      "effort_exact": null,
+      "prohibited_effort": "high fast",
+      "candidate_slug": "grok-4.5-cursor",
+      "branch": null,
+      "pull_request": null,
+      "head_sha": null,
+      "state": "planned"
+    }
+  ],
+  "light_reviews": [
+    {
+      "slot": "L1",
+      "model": "Composer 2.5",
+      "harness": "Cursor",
+      "role": "project_quality_and_rule_conformance",
+      "state": "planned"
+    },
+    {
+      "slot": "L2",
+      "model": "GPT-5.6 Luna",
+      "harness": "Codex",
+      "role": "adr_issue_ac_contract_conformance",
+      "state": "planned"
+    }
+  ],
+  "heavy_reviews": [
+    {
+      "slot": "H1",
+      "model": "GPT-5.6 Sol",
+      "harness": "Codex",
+      "role": "architecture_and_contract_final_gate",
+      "full_review_budget": 1,
+      "default_re_review_budget": 0,
+      "state": "planned"
+    },
+    {
+      "slot": "H2",
+      "model": "Claude Opus 5",
+      "harness": "Claude Code",
+      "role": "adversarial_failure_and_false_assurance_final_gate",
+      "full_review_budget": 1,
+      "default_re_review_budget": 0,
+      "state": "planned"
+    }
+  ],
+  "conditional_judge": {
+    "enabled_by_default": false,
+    "model": null,
+    "harness": null,
+    "trigger_recorder": "coordinator",
+    "trigger_on": [
+      "blocker_or_major_disagreement",
+      "root_cause_disagreement",
+      "required_fix_direction_disagreement",
+      "merge_readiness_disagreement",
+      "common_unverified_assumption"
+    ]
+  },
+  "revisions": {
+    "process": "fnd05-review-funnel-v2",
+    "assumption_ledger": "fnd05-assumptions-v2",
+    "implementation_and_test_design": "fnd05-design-contract-v2",
+    "project_rules": "fnd05-project-rules-v2",
+    "review_matrix": "fnd05-review-matrix-v2",
+    "mandatory_mutations": "fnd05-mutations-v2",
+    "mutation_determinism_contract": "fnd05-mutation-determinism-v1",
+    "pre_run_decision_locks": "fnd05-decisions-v1",
+    "scoring": "fnd05-scoring-v2",
+    "implementation_prompt": "fnd05-implementation-v2",
+    "implementation_evaluation_prompt": "fnd05-implementation-evaluation-v2",
+    "selection_adjudication_prompt": "fnd05-selection-adjudication-v2",
+    "final_synthesis_prompt": "fnd05-final-synthesis-v2",
+    "light_project_review_prompt": "fnd05-light-project-v2",
+    "light_contract_review_prompt": "fnd05-light-contract-v2",
+    "light_fix_prompt": "fnd05-light-fix-v2",
+    "heavy_sol_prompt": "fnd05-heavy-sol-v2",
+    "heavy_opus_prompt": "fnd05-heavy-opus-v2",
+    "conditional_judge_prompt": "fnd05-conditional-judge-v2",
+    "issue_ready_review_prompt": "fnd05-issue-ready-review-v3",
+    "targeted_fix_prompt": "fnd05-targeted-fix-v2",
+    "targeted_re_review_prompt": "fnd05-targeted-re-review-v2",
+    "psr005_targeted_re_review": "fnd05-psr005-targeted-re-review-v1",
+    "gate001_targeted_re_review": "fnd05-gate001-targeted-re-review-v1",
+    "issue_ready_review_result": "fnd05-issue-ready-review-v3-result-1"
+  },
+  "open_decisions": {
+    "D-01": {
+      "question": "minimum Docker Compose version and required feature support",
+      "status": "LOCKED",
+      "locked_value": {
+        "minimum_compose_version": "2.38.2",
+        "required_features": [
+          "depends_on.condition.service_healthy",
+          "depends_on.condition.service_completed_successfully",
+          "top_level_secrets_environment_source",
+          "docker_compose_config_quiet",
+          "docker_compose_config_format_json",
+          "docker_compose_ps_format_json",
+          "compose_project_labels"
+        ],
+        "local_observed_compose": "5.3.1",
+        "ci_observed_compose": "2.38.2"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "github-actions-run:31443292973",
+        "actions-runner-image:ubuntu24/20260720.247.2"
+      ]
+    },
+    "D-02": {
+      "question": "exact PostgreSQL and .NET image identities/digests",
+      "status": "LOCKED",
+      "locked_value": {
+        "platform": "linux/amd64",
+        "postgres": "postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+        "dotnet_sdk": "mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0",
+        "dotnet_aspnet": "mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:f1126d438ccc359f51cc6d4701a8deae513856cf10f5fe645d29ea6403dcac6b",
+        "tag_re_resolution_as_authority": false,
+        "digest_unavailable_action": "STOP_AND_RELOCK"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md"
+      ]
+    },
+    "D-03": {
+      "question": "secret source and reader design",
+      "status": "LOCKED",
+      "locked_value": {
+        "source": "host environment -> Compose top-level secret(environment)",
+        "payload": "database password",
+        "grant": "explicit per-service grant only",
+        "postgres_reader": "POSTGRES_PASSWORD_FILE mounted secret file",
+        "api_migrator_reader": "wrapper reads mounted secret file, constructs ConnectionStrings__Database from secret + non-secret parameters, exports env, execs dotnet",
+        "missing_secret": "fail_closed",
+        "prohibited": [
+          "committed_real_credential",
+          "secret_literal_in_compose",
+          "secret_in_argv",
+          "secret_in_logs",
+          "secret_in_rendered_config"
+        ]
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "ADR-0008",
+        "docker-docs:compose-secrets",
+        "docker-hub:postgres-POSTGRES_PASSWORD_FILE"
+      ]
+    },
+    "D-04": {
+      "question": "canonical lifecycle commands and lifecycle semantics",
+      "status": "LOCKED",
+      "locked_value": {
+        "project_name": "minimal-bank-system-fnd05",
+        "validate": "docker compose -p minimal-bank-system-fnd05 config --quiet",
+        "render": "docker compose -p minimal-bank-system-fnd05 config --format json",
+        "start": "docker compose -p minimal-bank-system-fnd05 up --build --detach --remove-orphans",
+        "stop_retain_data": "docker compose -p minimal-bank-system-fnd05 down --remove-orphans",
+        "restart": [
+          "docker compose -p minimal-bank-system-fnd05 down --remove-orphans",
+          "docker compose -p minimal-bank-system-fnd05 up --build --detach --remove-orphans"
+        ],
+        "clean_reset": "docker compose -p minimal-bank-system-fnd05 down --volumes --remove-orphans",
+        "canonical_restart_uses_compose_restart": false,
+        "migration_gate_re_evaluated_after_stop_restart": true,
+        "command_exit_zero_alone_is_evidence": false
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docker-docs:compose-down",
+        "docker-docs:compose-up"
+      ]
+    },
+    "D-05": {
+      "question": "external state capture method for Migrator exit/finish, API state/start, migration history and project identity",
+      "status": "LOCKED",
+      "locked_value": {
+        "project_name": "minimal-bank-system-fnd05",
+        "state_snapshot": "docker compose -p minimal-bank-system-fnd05 ps -a --format json",
+        "container_details": "docker inspect <container-id>",
+        "volume_details": "docker volume inspect <volume>",
+        "config_render": "docker compose -p minimal-bank-system-fnd05 config --format json",
+        "logs": "docker compose -p minimal-bank-system-fnd05 logs --no-color --timestamps",
+        "migration_history_query": "SELECT \"MigrationId\" FROM public.\"__EFMigrationsHistory\" ORDER BY \"MigrationId\";",
+        "required_container_fields": [
+          "State.Status",
+          "State.ExitCode",
+          "State.StartedAt",
+          "State.FinishedAt",
+          "Config.Labels.com.docker.compose.project",
+          "Config.Labels.com.docker.compose.service"
+        ],
+        "required_volume_labels": [
+          "com.docker.compose.project",
+          "com.docker.compose.volume"
+        ],
+        "success_rule": [
+          "migrator_exit_code_0",
+          "expected_migration_history_present",
+          "api_started_at_not_before_migrator_finished_at",
+          "api_running"
+        ],
+        "failure_rule": [
+          "migrator_exit_nonzero",
+          "api_never_started",
+          "started_then_exited_is_not_never_started"
+        ],
+        "events_json": "corroborating_only"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "docker-docs:compose-ps-json",
+        "docker-docs:inspect",
+        "docker-docs:compose-events-json"
+      ]
+    },
+    "D-06": {
+      "question": "test-only failure and mutation injection mechanisms with deterministic preconditions/barriers/signatures and no production backdoor",
+      "status": "LOCKED",
+      "contract_revision": "fnd05-mutation-determinism-v1",
+      "locked_value": {
+        "project_isolation": "unique Compose project per probe",
+        "source_isolation": "detached temporary git worktree when source mutation is required",
+        "one_mutation_at_a_time": true,
+        "production_branch_commit": false,
+        "residue_required": 0,
+        "candidate_disclosure": "contract/property/precondition/fixture-class/signature-class only",
+        "exact_patch_candidate_visible": false,
+        "mutation_classes": {
+          "M-01": "controlled incomplete-Migrator barrier + weakened API start permission",
+          "M-02": "intended Migrator failure + nonzero-to-zero masking",
+          "M-03": "isolated pending migration state + API startup auto-migration mutation",
+          "M-04": "sentinel secret + prohibited argv exposure",
+          "M-05": "digest-qualified baseline + tag-only mutation",
+          "M-06": "named-volume baseline + anonymous/bind replacement",
+          "M-07": "intended-path baseline + pre-path unrelated failure",
+          "M-08": "expected migration absent + exit-0 no-apply runtime mutation with unchanged oracle",
+          "M-09": "running baseline + start-then-exit command mutation",
+          "M-10": "pre-existing same-project resource + weakened cleanup"
+        }
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md"
+      ]
+    },
+    "D-07": {
+      "question": "cross-platform execution contract",
+      "status": "LOCKED",
+      "locked_value": {
+        "required_container_platform": "linux/amd64",
+        "ci": "GitHub-hosted Ubuntu 24.04 x64",
+        "local_reference": "Ubuntu 24.04.4 LTS under WSL2 + Docker Desktop Linux engine",
+        "minimum_compose": "2.38.2",
+        "minimum_bash": "5.2",
+        "minimum_jq": "1.7",
+        "paths": "POSIX/Linux",
+        "shell_assets_line_endings": "LF",
+        "not_required": [
+          "Windows containers",
+          "PowerShell-only execution",
+          "macOS",
+          "linux/arm64"
+        ],
+        "local_core_autocrlf_is_contract": false
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "actions-runner-image:ubuntu24/20260720.247.2"
+      ]
+    },
+    "D-08": {
+      "question": "Final Synthesis exact model/harness/effort identity",
+      "status": "LOCKED",
+      "locked_value": {
+        "model": "GPT-5.6 Terra",
+        "harness": "Codex",
+        "effort": "xHigh",
+        "fresh_context_required": true,
+        "silent_substitution": false,
+        "unavailable_action": "STOP_AND_RELOCK"
+      },
+      "evidence_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "fnd04-benchmark:gpt-5.6-terra-codex"
+      ]
+    }
+  },
+  "stage_artifacts": {
+    "pre_run_decision_lock": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+      "content_sha256": "c8631ec2de21717838bc0c22149e2b1620373c6e1ded5db891140cf62c920326",
+      "prompt_revision": "fnd05-decisions-v1",
+      "target_head_sha": "7d9b5470678f921f09bc0a423384b9275fadf61d",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+        "github-actions-run:31443292973",
+        "docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md"
+      ],
+      "producer_slot": "coordinator",
+      "producer_commit_sha": "7d9b5470678f921f09bc0a423384b9275fadf61d",
+      "status": "locked"
+    },
+    "local_pre_lock_evidence": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/evidence/local-pre-lock-evidence-20260811.md",
+      "content_sha256": "2a97841e2e9ef7e6f83adb823815192904082a3992add02d262fcab810dccac1",
+      "prompt_revision": "local-evidence-20260811",
+      "target_head_sha": "274c750cdb7add638bf40501975b5992c3c78632",
+      "source_artifact_refs": [],
+      "producer_slot": "local_evidence_collector",
+      "producer_commit_sha": "fa216155ef192a38a65f3010fb0787cd97df5bbe",
+      "status": "locked"
+    },
+    "static_gate": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "implementation_evaluation": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "selection_adjudication": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "final_synthesis_initial": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_l1": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "L1",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_l2": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "L2",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "light_fix": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "heavy_sol": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "H1",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "heavy_opus": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": "H2",
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "conditional_judge": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "targeted_fix": {
+      "artifact_path": null,
+      "content_sha256": null,
+      "prompt_revision": null,
+      "target_head_sha": null,
+      "source_artifact_refs": [],
+      "producer_slot": null,
+      "producer_commit_sha": null,
+      "status": "not_started"
+    },
+    "targeted_re_review": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-psr-005-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
+      "content_sha256": "7ce906eea7db810960948562382ec150ae284b467e21194ee0d2ad8262a52f67",
+      "prompt_revision": "fnd05-psr005-targeted-re-review-v1",
+      "target_head_sha": "6c626451fc7d8059e468d19afbfc3c80b666acb9",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reviews/pre-run-prompt-suite-independent-review-gpt-5.6-sol-codex-xhigh.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/mutation-determinism-contract.md"
+      ],
+      "producer_slot": "finding_owner:gpt-5.6-sol-codex-xhigh",
+      "producer_commit_sha": null,
+      "status": "locked"
+    },
+    "gate_order_targeted_re_review": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-gate-001-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
+      "content_sha256": "8e3a755b26ec5a56d839dcefc542d7be97e91162758714763934a7f1204c6222",
+      "prompt_revision": "fnd05-gate001-targeted-re-review-v1",
+      "target_head_sha": "d37ac13e4b8adc6e14cd140d1b8d5342f04b5a5a",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/prompts/issue-ready-review.md"
+      ],
+      "producer_slot": "finding_owner:gpt-5.6-sol-codex-xhigh",
+      "producer_commit_sha": null,
+      "status": "locked"
+    },
+    "issue_ready_review": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-issue-ready-review-v3.md",
+      "content_sha256": "ee6715f9524c0da00953c3bf71fb4189e7eefb636030cceb0be4cac3a6892257",
+      "prompt_revision": "fnd05-issue-ready-review-v3",
+      "target_head_sha": "e26925345720adabd667a6d543a7f50bf525c9d3",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-gate-001-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
+        "docs/benchmarks/fnd05-model-comparison/reference/pre-run-decision-locks.md",
+        "docs/benchmarks/fnd05-model-comparison/run.json",
+        "issue:43",
+        "issue:42",
+        "issue:33",
+        "commit:9a352a3a61945647273ccc7dfbc8e1816c3ca07c"
+      ],
+      "producer_slot": "pre_run_gate_reviewer",
+      "producer_commit_sha": null,
+      "status": "locked"
+    }
+  },
+  "gates": {
+    "final_retrospective_reviewed": false,
+    "dependency_42_complete_merged_reverified": true,
+    "issue_43_contract_current": true,
+    "prompt_suite_targeted_re_review_pass": true,
+    "assumption_ledger_locked": true,
+    "implementation_test_design_locked": true,
+    "project_rules_locked": true,
+    "review_matrix_locked": true,
+    "mutations_locked": true,
+    "mutation_determinism_locked": true,
+    "scoring_locked": true,
+    "prompts_locked": true,
+    "common_base_locked": false,
+    "candidate_branches_created": false,
+    "candidate_pull_requests_created": false,
+    "candidate_branch_identity_verified": false,
+    "exact_model_harness_effort_locked": false,
+    "candidate_output_zero_confirmed": false,
+    "issue_ready_pass": true,
+    "koo_start_authorized": false
+  },
+  "metric_targets": {
+    "candidate_count": 3,
+    "separate_formal_self_review_count": 0,
+    "h1_phase_count": 0,
+    "open_code_execution_count": 0,
+    "light_review_count": 2,
+    "heavy_full_review_count": 2,
+    "default_heavy_re_review_count": 0,
+    "conditional_judge_default_count": 0,
+    "heavy_obvious_finding_count": 0,
+    "mandatory_mutation_definition_coverage": 1.0,
+    "final_mutation_kill_rate": 1.0,
+    "mutation_residue_count": 0
+  }
+}
