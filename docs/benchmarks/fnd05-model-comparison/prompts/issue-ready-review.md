@@ -1,6 +1,6 @@
 # FND-05 Issue Ready Gate Review Prompt
 
-Revision: `fnd05-issue-ready-review-v2`
+Revision: `fnd05-issue-ready-review-v3`
 
 応答は日本語で出力してください。
 
@@ -16,7 +16,7 @@ PREPARATION_PR: "<PR>"
 PREPARATION_HEAD: "<FULL_SHA>"
 EXPECTED_MAIN_SHA: "<FULL_SHA>"
 RUN_REGISTRY_SHA: "<RUN_JSON_SHA256>"
-PROMPT_REVISION: "fnd05-issue-ready-review-v2"
+PROMPT_REVISION: "fnd05-issue-ready-review-v3"
 ```
 
 ## 2. Product authority
@@ -38,7 +38,41 @@ PROMPT_REVISION: "fnd05-issue-ready-review-v2"
 
 Gate evidenceがProduct authorityと矛盾する場合はPASSにせず停止する。
 
-## 4. Required checks
+## 4. Gate boundary — Issue Readyとexecution preparationを分離する
+
+このGateは、Issue #43とpre-run contractが**実装準備へ進める状態か**だけを判定する。
+
+固定順序は次である。
+
+```text
+D-01〜D-08 lock
+↓
+Issue #43 current-contract sync
+↓
+Issue Ready PASS
+↓
+Koo explicit start authorization
+↓
+common base / candidate branches / Draft PRs / exact candidate execution identity preparation
+↓
+pre-execution identity verification
+↓
+candidate execution
+```
+
+したがって、本Issue Ready Gateでは次を要求しない。
+
+- candidate branch作成済み
+- candidate Draft PR作成済み
+- common base lock済み
+- candidate branch Head = common base
+- exact candidate Effort実行ラベルの最終lock
+
+これらをIssue Readyの前提にすると、`Issue Ready → Koo authorization → candidate preparation`という固定順序と循環するためである。
+
+本Gateで要求するのは、candidate preparationを安全に開始できるproduct/process contractが固定され、candidate executionがまだ開始されていないことである。
+
+## 5. Required checks
 
 ### Dependency / current contract
 
@@ -52,6 +86,7 @@ Gate evidenceがProduct authorityと矛盾する場合はPASSにせず停止す�
 - 3-review共通P0 findingが修正済み
 - `FND05-PSR-005` mutation determinism root causeが修正済み
 - finding-owned targeted re-review Blocker 0 / Major 0
+- gate-order circularity fixのtargeted re-review Blocker 0 / Major 0
 - `run.json.gates.prompt_suite_targeted_re_review_pass = true`
 
 ### D-01〜D-08 lock
@@ -85,11 +120,12 @@ D-05はMigrator exit / completion、API state / ordering、migration history、p
 - M-10: mutation対象のsame-project resourceがclean reset前に実在することを証明する
 - exact evaluator patch / exact source editをcandidate-facing contractへ漏らしていない
 
-`run.json.gates.mutation_determinism_locked != true`、または上記 evidence が欠ける場合はIssue ReadyをPASSにしない。
+`run.json.gates.mutation_determinism_locked != true`、または上記evidenceが欠ける場合はIssue ReadyをPASSにしない。
 
 ### Process lock
 
-- candidate 3 / OpenCode 0
+- candidate count / Model + Harness policy = 3 slots fixed
+- OpenCode 0
 - separate Formal Self-Review 0
 - Light 2 / Heavy 2
 - Heavy explicit non-goals
@@ -98,27 +134,39 @@ D-05はMigrator exit / completion、API state / ordering、migration history、p
 - scoring / prompts / revisions locked
 - stage artifact identity contract locked
 
-### Experiment identity
+### Post-authorization preparation contract
 
-- common base full SHA
-- 3 candidate branches / Draft PRs
-- 3 / 3 Heads = common base
-- exact Model / Harness / Effort
-- candidate output 0件
+Issue Ready後に実施すべき項目が`run.json` / checklist / implementation promptで明示されていることを確認する。
+
+```text
+common base full SHA lock
+C1 / C2 / C3 branch作成
+3 Draft PR作成
+3 / 3 initial Heads = common base
+exact candidate Model / Harness / Effort label lock
+candidate output 0件確認
+Koo authorization evidence保持
+```
+
+これらは本GateのPASS条件ではなく、candidate execution前の必須条件である。
 
 ### Safety / scope
 
 - FND-06 / business / backup / production deployment先取りなし
 - secret / credential未保存
+- candidate branch未作成
+- candidate PR未作成
 - candidate execution未開始
+- `implementation_permitted = false`
+- `run.json.gates.koo_start_authorized = false`
 
-## 5. Verdict semantics
+## 6. Verdict semantics
 
 ### PASS
 
-Issue #43をcandidate実装へ進める**技術的・プロセス上の準備が整っている**。
+Issue #43は、Kooの開始許可を受けた後にcandidate preparationへ進める**技術的・プロセス上の準備が整っている**。
 
-PASS時に行うのは:
+PASS時に更新可能なのは:
 
 ```text
 run.json.gates.issue_ready_pass = true
@@ -126,26 +174,23 @@ run.json.gates.issue_ready_pass = true
 
 だけである。
 
-**Issue Ready PASSはcandidate execution開始許可ではない。**
+**Issue Ready PASSはcandidate branch作成・candidate PR作成・candidate executionの許可ではない。**
 
 ### FAIL / BLOCKED
 
 未解決項目または検証不能があるためimplementation禁止を維持する。
 
-## 6. Koo start authorization — separate gate
+## 7. Koo start authorization — separate gate
 
-Candidate execution開始にはIssue Ready PASSの後で、別途Kooの明示開始許可が必要。
+Candidate preparation開始にはIssue Ready PASSの後で、別途Kooの明示開始許可が必要。
 
-開始直前にcoordinatorが次を記録する。
+Koo authorization後、coordinatorはcandidate branch / Draft PR / common base / exact execution identityを準備し、candidate execution直前に全identityを再検証する。
 
-```text
-run.json.gates.koo_start_authorized = true
-implementation_permitted = true
-```
+`implementation_permitted = true`へ更新するのは、Issue Ready PASS、Koo authorization、およびpost-authorization pre-execution identity gatesがすべて満たされた後だけである。
 
 本Gate ReviewerはKooの許可を推測・代理しない。
 
-## 7. Output
+## 8. Output
 
 ```text
 # FND-05 Issue Ready Gate Review
@@ -158,12 +203,13 @@ PROMPT_SUITE_REMEDIATION:
 DECISION_LOCKS:
 D06_MUTATION_DETERMINISM:
 PROCESS_LOCK:
-EXPERIMENT_IDENTITY:
+POST_AUTHORIZATION_PREPARATION_CONTRACT:
 SAFETY_SCOPE:
 OPEN_ITEMS:
 
 VERDICT: PASS / FAIL / BLOCKED
 ISSUE_READY_PASS: YES / NO
+CANDIDATE_PREPARATION_AUTHORIZED: NO
 CANDIDATE_EXECUTION_AUTHORIZED: NO
 
 REQUIRED_ACTIONS:
@@ -172,5 +218,6 @@ OPERATION_CONFIRMATION:
 - Issue changed: NO
 - code changed: NO
 - branch changed: NO
+- candidate branches created: NO
 - Koo authorization inferred: NO
 ```
