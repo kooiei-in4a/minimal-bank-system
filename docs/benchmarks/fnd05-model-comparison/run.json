@@ -468,7 +468,7 @@
         "github-actions-run:31460753661@checkout:b69910dd00bca56254f3340fd7f5954da38b2814"
       ],
       "producer_slot": "technical_selection_lead",
-      "producer_commit_sha": null,
+      "producer_commit_sha": "3d3ec6f93bf4bea448f8413f711018f24c50c38d",
       "status": "locked"
     },
     "final_synthesis_initial": {
