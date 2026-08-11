@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "benchmark_id": "fnd05-compose-model-comparison",
-  "archive_status": "in_progress",
+  "archive_status": "complete_archived",
   "timing": {
     "started_at_local": "2026-08-12T03:16:35+09:00",
-    "finished_at_local": null,
-    "duration_minutes": null
+    "finished_at_local": "2026-08-12T03:26:27+09:00",
+    "duration_minutes": 10
   },
   "final_product": {
     "pr": 153,
@@ -13,6 +13,7 @@
     "merge_commit": "c0b0103381ae2fc3d00a638decea36b71bda7c1f",
     "observed_pr_state": "closed",
     "observed_merged": true,
+    "observed_issue_43_state": "closed_completed",
     "observed_main_head": "c0b0103381ae2fc3d00a638decea36b71bda7c1f",
     "main_changed_by_archive_run": false
   },
@@ -35,16 +36,17 @@
       "observed_pr_head_sha": "c3599c9bd4bc920b5c87c80148d81b8a53aa95fc",
       "identity_verified_at": "2026-08-12T03:19:48+09:00",
       "archive_tag": "benchmark/fnd05/gpt-5.6-luna-codex",
-      "tag_type": null,
-      "tag_object_sha": null,
-      "tag_dereferenced_commit_sha": null,
-      "tag_verified": false,
-      "final_pr_state": null,
-      "final_pr_merged": null,
-      "pr_closed_unmerged": false,
-      "final_remote_branch_state": null,
-      "branch_deleted": false,
-      "verification_timestamp": null
+      "tag_type": "annotated",
+      "tag_object_sha": "f24f072a8d34a141c6415a658dd955b07a676ef7",
+      "tag_dereferenced_commit_sha": "c3599c9bd4bc920b5c87c80148d81b8a53aa95fc",
+      "tag_verified": true,
+      "tag_verified_at": "2026-08-12T03:22:26+09:00",
+      "final_pr_state": "closed",
+      "final_pr_merged": false,
+      "pr_closed_unmerged": true,
+      "final_remote_branch_state": "absent",
+      "branch_deleted": true,
+      "verification_timestamp": "2026-08-12T03:26:27+09:00"
     },
     {
       "slot": "C2",
@@ -64,16 +66,17 @@
       "observed_pr_head_sha": "146ea92a4e815a5a08fe81562ef80f70f80c551b",
       "identity_verified_at": "2026-08-12T03:19:48+09:00",
       "archive_tag": "benchmark/fnd05/claude-sonnet-5-claude-code",
-      "tag_type": null,
-      "tag_object_sha": null,
-      "tag_dereferenced_commit_sha": null,
-      "tag_verified": false,
-      "final_pr_state": null,
-      "final_pr_merged": null,
-      "pr_closed_unmerged": false,
-      "final_remote_branch_state": null,
-      "branch_deleted": false,
-      "verification_timestamp": null
+      "tag_type": "annotated",
+      "tag_object_sha": "c41dc4862254967aa67bc793b2ee7dfef7ca9c8b",
+      "tag_dereferenced_commit_sha": "146ea92a4e815a5a08fe81562ef80f70f80c551b",
+      "tag_verified": true,
+      "tag_verified_at": "2026-08-12T03:22:26+09:00",
+      "final_pr_state": "closed",
+      "final_pr_merged": false,
+      "pr_closed_unmerged": true,
+      "final_remote_branch_state": "absent",
+      "branch_deleted": true,
+      "verification_timestamp": "2026-08-12T03:26:27+09:00"
     },
     {
       "slot": "C3",
@@ -93,16 +96,17 @@
       "observed_pr_head_sha": "b69910dd00bca56254f3340fd7f5954da38b2814",
       "identity_verified_at": "2026-08-12T03:19:48+09:00",
       "archive_tag": "benchmark/fnd05/grok-4.5-cursor",
-      "tag_type": null,
-      "tag_object_sha": null,
-      "tag_dereferenced_commit_sha": null,
-      "tag_verified": false,
-      "final_pr_state": null,
-      "final_pr_merged": null,
-      "pr_closed_unmerged": false,
-      "final_remote_branch_state": null,
-      "branch_deleted": false,
-      "verification_timestamp": null
+      "tag_type": "annotated",
+      "tag_object_sha": "151dac461b9757140428a4a2cef929867a018b8f",
+      "tag_dereferenced_commit_sha": "b69910dd00bca56254f3340fd7f5954da38b2814",
+      "tag_verified": true,
+      "tag_verified_at": "2026-08-12T03:22:26+09:00",
+      "final_pr_state": "closed",
+      "final_pr_merged": false,
+      "pr_closed_unmerged": true,
+      "final_remote_branch_state": "absent",
+      "branch_deleted": true,
+      "verification_timestamp": "2026-08-12T03:26:27+09:00"
     }
   ],
   "preservation": {
@@ -124,8 +128,12 @@
       "observed_pr_state": "open",
       "observed_pr_draft": true,
       "observed_pr_merged": false,
+      "final_pr_state": "open",
+      "final_pr_draft": true,
+      "final_pr_merged": false,
       "branch": "agent/fnd04-benchmark-archive",
       "observed_branch_head": "23084406a571db36529fde971d7de1ed182d1058",
+      "final_branch_head": "23084406a571db36529fde971d7de1ed182d1058",
       "changed_by_archive_run": false
     },
     "other_fnd05_review_control_branch_heads": {
@@ -149,10 +157,11 @@
     },
     "other_fnd05_review_control_branches_changed": false
   },
-  "candidate_tags_verified": "0/3",
-  "candidate_prs_closed_unmerged": "0/3",
-  "candidate_branches_deleted": "0/3",
+  "candidate_tags_verified": "3/3",
+  "candidate_prs_closed_unmerged": "3/3",
+  "candidate_branches_deleted": "3/3",
   "retrospective_evidence_preserved": true,
+  "final_verification_timestamp": "2026-08-12T03:26:27+09:00",
   "new_pr_created": false,
   "retrospective_started": false,
   "fnd06_started": false
