@@ -5,6 +5,7 @@ readonly project_name="${FND05_PROJECT_NAME:-minimal-bank-system-fnd05}"
 readonly expected_migration='20260809113338_InitialFoundation'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_TEST_SENTINEL_NOT_A_CREDENTIAL}"
 readonly compose=(docker compose -p "$project_name")
+declare -a cleanup_project_names=("$project_name")
 
 require_command() {
   command -v "$1" >/dev/null
@@ -71,10 +72,15 @@ read_history() {
 }
 
 assert_no_project_residue() {
+  assert_no_project_residue_for "$project_name"
+}
+
+assert_no_project_residue_for() {
+  local target_project_name="$1"
   local containers volumes networks
-  containers="$(docker ps -aq --filter "label=com.docker.compose.project=$project_name")"
-  volumes="$(docker volume ls -q --filter "label=com.docker.compose.project=$project_name")"
-  networks="$(docker network ls -q --filter "label=com.docker.compose.project=$project_name")"
+  containers="$(docker ps -aq --filter "label=com.docker.compose.project=$target_project_name")"
+  volumes="$(docker volume ls -q --filter "label=com.docker.compose.project=$target_project_name")"
+  networks="$(docker network ls -q --filter "label=com.docker.compose.project=$target_project_name")"
   [[ -z "$containers" && -z "$volumes" && -z "$networks" ]] || {
     printf 'Project-scoped Docker residue remains after canonical clean reset.\n' >&2
     return 1
@@ -82,8 +88,11 @@ assert_no_project_residue() {
 }
 
 cleanup_safety() {
-  "${compose[@]}" down --volumes --remove-orphans
-  assert_no_project_residue
+  local cleanup_project_name
+  for cleanup_project_name in "${cleanup_project_names[@]}"; do
+    docker compose -p "$cleanup_project_name" down --volumes --remove-orphans
+    assert_no_project_residue_for "$cleanup_project_name"
+  done
 }
 
 trap cleanup_safety EXIT
@@ -147,8 +156,76 @@ assert_failure_contract() {
   }
 }
 
+assert_missing_secret_contract() {
+  local missing_project_name="$1" missing_up_output="$2" missing_up_exit_code="$3"
+  local api_id rendered inspect
+  local -a container_ids=()
+  local missing_compose=(docker compose -p "$missing_project_name")
+  (( missing_up_exit_code != 0 )) || {
+    printf 'Missing-secret probe incorrectly returned success.\n' >&2
+    return 1
+  }
+  [[ "$missing_up_output" == *'MBS_DATABASE_PASSWORD'* && "$missing_up_output" == *'required by secret'* ]] || {
+    printf 'Missing-secret probe did not report the required-secret configuration failure.\n' >&2
+    return 1
+  }
+  api_id="$("${missing_compose[@]}" ps -aq api)"
+  if [[ -n "$api_id" ]]; then
+    docker inspect "$api_id" | jq --exit-status '
+      .[0].State.Status == "created" and
+      .[0].State.StartedAt == "0001-01-01T00:00:00Z"
+    ' >/dev/null || {
+      printf 'Missing-secret probe allowed API startup.\n' >&2
+      return 1
+    }
+  fi
+  mapfile -t container_ids < <(docker ps -aq --filter "label=com.docker.compose.project=$missing_project_name")
+  if ((${#container_ids[@]})); then
+    inspect="$(docker inspect "${container_ids[@]}")"
+    jq --exit-status 'all(.[]; .State.StartedAt == "0001-01-01T00:00:00Z")' <<<"$inspect" >/dev/null || {
+      printf 'Missing-secret probe started a service before fail-closed handling.\n' >&2
+      return 1
+    }
+  else
+    inspect='[]'
+  fi
+  rendered="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" config --format json)"
+  for observation_surface in "$missing_up_output" "$rendered" "$inspect"; do
+    [[ "$observation_surface" != *"$sentinel"* ]] || {
+      printf 'Missing-secret probe exposed the sentinel.\n' >&2
+      return 1
+    }
+  done
+}
+
+run_missing_secret_probe() {
+  local missing_project_name="${project_name}-missing-secret-${RANDOM}${RANDOM}"
+  local -a missing_compose=(docker compose -p "$missing_project_name")
+  local missing_up_output missing_up_exit_code
+
+  cleanup_project_names+=("$missing_project_name")
+
+  set +e
+  missing_up_output="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
+  missing_up_exit_code=$?
+  set -e
+  assert_missing_secret_contract "$missing_project_name" "$missing_up_output" "$missing_up_exit_code"
+  "${missing_compose[@]}" down --volumes --remove-orphans
+  assert_no_project_residue_for "$missing_project_name"
+  printf 'MISSING_SECRET: NEGATIVE_PROBE_EXECUTED\n'
+  printf 'MISSING_SECRET: FAIL_CLOSED_OBSERVED\n'
+  printf 'MISSING_SECRET: EXPECTED_FAILURE_SIGNATURE=required-secret-configuration\n'
+  printf 'MISSING_SECRET: API_NOT_SERVING\n'
+  printf 'MISSING_SECRET: NO_LEAK\n'
+  printf 'MISSING_SECRET: CLEANUP\n'
+  printf 'MISSING_SECRET: RESIDUE_ZERO\n'
+  printf 'MISSING_SECRET_PROBE: PASS (compose-up-exit=%s)\n' "$missing_up_exit_code"
+}
+
 "${compose[@]}" config --quiet
 bash tests/fnd05/static-gate.sh
+
+run_missing_secret_probe
 
 "${compose[@]}" up --build --detach --remove-orphans
 wait_for_state migrator exited

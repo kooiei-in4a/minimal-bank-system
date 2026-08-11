@@ -341,15 +341,36 @@ YAML
 }
 
 run_m05() {
-  local mutated
-  mutated="$(mktemp)"
-  sed 's#postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636#postgres:18.4#' compose.yaml >"$mutated"
-  if grep --fixed-strings --quiet 'postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636' "$mutated"; then
+  local worktree
+  worktree="$(mktemp -d)"
+  git worktree add --detach "$worktree" HEAD
+  temporary_worktrees+=("$worktree")
+  set_project "minimal-bank-system-fnd05-m05-$run_id" "$repository_root"
+  FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
+    bash "$repository_root/tests/fnd05/static-gate.sh"
+  printf 'M-05: BASELINE_GREEN\n'
+  grep --fixed-strings --quiet 'postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636' "$worktree/compose.yaml"
+  printf 'M-05: MUTATION_PRECONDITION\n'
+  sed -i 's#postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636#postgres:18.4#' "$worktree/compose.yaml"
+  if grep --fixed-strings --quiet 'postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636' "$worktree/compose.yaml"; then
     printf 'M-05 mutation was not applied.\n' >&2
     return 1
   fi
+  printf 'M-05: MUTATION_APPLIED\n'
+  expect_red postgres-image-digest-missing env \
+    "FND05_SOURCE_ROOT=$worktree" \
+    "FND05_PROJECT_NAME=$project_name" \
+    bash "$repository_root/tests/fnd05/static-gate.sh"
+  printf 'M-05: EXPECTED_RED\n'
+  printf 'M-05: EXPECTED_FAILURE_SIGNATURE=postgres-image-digest-missing\n'
+  git worktree remove --force "$worktree"
+  temporary_worktrees=()
+  FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
+    bash "$repository_root/tests/fnd05/static-gate.sh"
+  printf 'M-05: RESTORED_GREEN\n'
+  assert_residue_zero
+  printf 'M-05: RESIDUE_ZERO\n'
   printf 'M-05: KILLED\n'
-  rm -f "$mutated"
 }
 
 run_m06() {
