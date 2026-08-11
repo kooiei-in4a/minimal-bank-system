@@ -542,14 +542,20 @@
       "status": "locked"
     },
     "heavy_sol": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-heavy-h1-sol-gpt-5.6-sol-codex.md",
+      "content_sha256": "5de83bc37594896da2c681c92da89037c9c5dae3abec9b5a415362dd51967686",
+      "prompt_revision": "fnd05-heavy-sol-v2",
+      "target_head_sha": "59aa87f9c6c4c581a56257caef738318e8d09ec3",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/light-findings-fix-result.md@2251adc9ba502ff81569295e05c74d1282901f5e#sha256:927deabfc98708219896815f856f8b61a7d60551aeb201640e67a2f3c73df17b",
+        "run.json@6cde564abe3e16581ecd264934ad02fef251ecef#sha256:34f066db8eebf66267c8bd3e32e2592688b3b0d4001d1b0fefe8c50ea9002001",
+        "pr:153@59aa87f9c6c4c581a56257caef738318e8d09ec3",
+        "github-actions-run:31505330867@event:push@checkout:59aa87f9c6c4c581a56257caef738318e8d09ec3",
+        "github-actions-run:31505330990@event:push@checkout:59aa87f9c6c4c581a56257caef738318e8d09ec3"
+      ],
       "producer_slot": "H1",
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "producer_commit_sha": "4583a32cdb6f6c788a56ce7fd43fba5266d5e5da",
+      "status": "locked"
     },
     "heavy_opus": {
       "artifact_path": null,
