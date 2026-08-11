@@ -2,7 +2,7 @@
 
 Target Issue: #43 `[FND-05] Docker Compose実行基盤を確立する`
 
-Status: **D-01〜D-08 LOCKED / ISSUE READY NOT YET PASSED / IMPLEMENTATION PROHIBITED**
+Status: **D-01〜D-08 LOCKED / GATE-ORDER TARGETED RE-REVIEW REQUIRED / IMPLEMENTATION PROHIBITED**
 
 このdirectoryはFND-05実装開始前に、ADR・Issue・実装設計・test oracle・Project Rule・review責任を固定する。
 
@@ -12,24 +12,23 @@ Benchmark文書は製品仕様、Accepted ADR、Issue #43を上書きしない�
 
 Mutableなrun identity / gate / decision / stage artifact stateの正本は`run.json`。
 
-D-01〜D-08の可読なlock正本は:
-
-`reference/pre-run-decision-locks.md`
-
-Local evidenceは:
-
-`evidence/local-pre-lock-evidence-20260811.md`
+D-01〜D-08の可読なlock正本は`reference/pre-run-decision-locks.md`、local evidenceは`evidence/local-pre-lock-evidence-20260811.md`。
 
 ## Current gate
 
 ```yaml
-PROMPT_SUITE_TARGETED_RE_REVIEW:
+PSR005_TARGETED_RE_REVIEW:
   BLOCKER: 0
   MAJOR: 0
   RESULT: PASS
 
 D_01_TO_D_08:
   STATUS: LOCKED
+
+GATE_ORDER_ALIGNMENT:
+  FINDING: FND05-GATE-001
+  FIX: fnd05-issue-ready-review-v3
+  TARGETED_RE_REVIEW: REQUIRED
 
 ISSUE_READY:
   STATUS: NOT_YET_PASSED
@@ -51,6 +50,10 @@ Issue #43 current-contract sync
 fresh Issue Ready PASS
   ↓
 Koo explicit start authorization
+  ↓
+common base / 3 candidate branches / Draft PRs / exact execution identity preparation
+  ↓
+pre-execution identity verification
   ↓
 3 independent implementations
   - GPT-5.6 Luna / Codex
@@ -80,6 +83,8 @@ B0 / M0
   └─ NO  → targeted fix / finding-owned re-review
 ```
 
+Candidate branch / Draft PRをIssue Readyより前に要求しない。Issue Ready PASSだけでも作成せず、Koo explicit start authorization後にpre-execution preparationとして作成する。
+
 JudgeはSol / OpusのBlocker・Major、root cause、required fix、merge readiness等が割れた場合だけconditionalに実行する。
 
 OpenCodeは使用しない。
@@ -104,30 +109,38 @@ OpenCodeは使用しない。
 
 Parent / WPをProduct authorityとして使用しない。
 
-## Prompt-suite review closure
+## Prompt-suite review history
 
-Prompt suite remediationはfinding-owned targeted re-reviewまで完了した。
+Initial prompt suite remediation and `FND05-PSR-005` targeted re-review are complete.
 
 ```text
-Reviewed Head:
+PSR-005 Reviewed Head:
 6c626451fc7d8059e468d19afbfc3c80b666acb9
 
 Direct-head CI:
 31443292973 — SUCCESS
 
-Targeted re-review:
+Reviewer:
 GPT-5.6 Sol / Codex / xHigh
+
 FND05-PSR-005 = FIXED
 Blocker 0 / Major 0
 ```
 
-Known non-blocking Minorは1件で、Issue Readyを阻害しない。
+その後、D-lock後のfresh Issue Ready準備で、Issue Ready promptがcandidate branch/common baseをIssue Ready前提として要求する循環を発見した。
+
+```text
+FND05-GATE-001
+Issue Ready requires candidate branches
+but fixed process creates candidate branches only after
+Issue Ready PASS + Koo authorization
+```
+
+`issue-ready-review.md` v3で、Issue Readyとpost-authorization pre-execution preparationを分離した。現在はこのchanged surfaceだけのtargeted re-review待ちである。
 
 ## D-01〜D-08 lock summary
 
-Full contract:
-
-`reference/pre-run-decision-locks.md`
+Full contract: `reference/pre-run-decision-locks.md`
 
 ```text
 D-01: Compose >= 2.38.2 + required feature set
@@ -234,14 +247,14 @@ producer_commit_sha
 
 ## Start boundary
 
-D-01〜D-08 lockは完了した。
-
-次は:
+D-01〜D-08 lockは完了しているが、`FND05-GATE-001` targeted re-reviewが完了するまでfresh Issue Ready Gateへ進まない。
 
 ```text
-current decision-lock Head CI SUCCESS
+FND05-GATE-001 targeted re-review B0/M0
 ↓
-Issue #43 current-contract sync
+current Head CI SUCCESS
+↓
+Issue #43 current-contract sync確認
 ↓
 fresh Issue Ready Review
 ↓
@@ -249,7 +262,9 @@ Issue Ready PASS
 ↓
 Koo explicit start authorization
 ↓
-candidate preparation / execution
+candidate preparation
+↓
+candidate execution
 ```
 
 現時点ではFND-05 implementationは禁止。
