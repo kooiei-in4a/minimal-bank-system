@@ -606,14 +606,20 @@
       "status": "locked"
     },
     "targeted_fix": {
-      "artifact_path": null,
-      "content_sha256": null,
-      "prompt_revision": null,
-      "target_head_sha": null,
-      "source_artifact_refs": [],
-      "producer_slot": null,
-      "producer_commit_sha": null,
-      "status": "not_started"
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/final-synthesis/targeted-fix-m02-m06-result.md",
+      "content_sha256": "53e8800472db7ba999abd713b5cc7171f6f42c96becc65f951a6924b76e40cce",
+      "prompt_revision": "fnd05-targeted-fix-v2",
+      "target_head_sha": "9e704f53911be3fdf0d09538424d3bcd9012f96a",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-conditional-judge-composer-2.5.md@fb0b2f81e4817b494e2167547f537c1e774e919d#sha256:ce44323a2728f0d6ca2dde3d28040074e77d8b59c96ae65bbd528080600f64bb",
+        "run.json@5540f44bcc59a6581129ca8c4d6ffb043f61dbbc#sha256:71f852e7397031b91d2f41a20116f18d40e99a4dbd687c0d2a4ce2b065e9936f",
+        "pr:153@9e704f53911be3fdf0d09538424d3bcd9012f96a",
+        "github-actions-run:31515332416@event:push@checkout:9e704f53911be3fdf0d09538424d3bcd9012f96a",
+        "github-actions-run:31515332435@event:push@checkout:9e704f53911be3fdf0d09538424d3bcd9012f96a"
+      ],
+      "producer_slot": "final_synthesis_author:targeted_fix",
+      "producer_commit_sha": "a2e97d3baefb386a0a825a9a79e751ead4124016",
+      "status": "locked"
     },
     "targeted_re_review": {
       "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-psr-005-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
