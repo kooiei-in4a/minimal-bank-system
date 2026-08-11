@@ -1,6 +1,7 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "benchmark_id": "fnd05-compose-model-comparison",
+  "status": "READY_FOR_CANDIDATE_EXECUTION",
   "role": "coordinator-owned mutable execution overlay for merged run.json",
   "product_common_base_sha": "ee8abbb15758c1a2cfb624791482b755be578da2",
   "product_common_base_branch": "main",
@@ -8,10 +9,10 @@
   "koo_start_authorized": true,
   "koo_start_authorization_evidence": "docs/benchmarks/fnd05-model-comparison/evidence/koo-start-authorization-20260811.md",
   "candidate_preparation_authorized": true,
-  "candidate_execution_authorized_subject_to_pre_execution_identity_gate": true,
-  "candidate_initial_snapshot_policy": "all candidate branches must point to the same execution-control commit before any candidate-specific output",
+  "candidate_execution_authorized": true,
+  "candidate_initial_snapshot_policy": "all candidate branches point to the same execution-control commit before any candidate-specific output",
   "run_json_overlay_semantics": {
-    "reason": "merged run.json preserves pre-authorization historical state; candidate branches need one identical post-authorization execution snapshot without mutating product main",
+    "reason": "merged run.json preserves pre-authorization historical state; candidate branches use this identical post-authorization execution overlay for mutable execution fields while merged run.json remains authoritative for locked contracts, D-01..D-08, policy and review history",
     "overlay_fields": [
       "target.common_base_sha",
       "gates.koo_start_authorized",
@@ -66,6 +67,20 @@
     "harness": "Codex",
     "effort": "xHigh"
   },
+  "pre_execution_identity_evidence": {
+    "verified_parent_control_head": "dcd3ea636a73b152300873cbc43b4e49ec7593c7",
+    "candidate_prs": [150, 151, 152],
+    "all_prs_open": true,
+    "all_prs_draft": true,
+    "all_prs_base_main": true,
+    "all_candidate_heads_equal": true,
+    "candidate_specific_product_output_count": 0,
+    "common_base_to_control_changed_files": [
+      "docs/benchmarks/fnd05-model-comparison/execution-control.json"
+    ],
+    "product_code_changed_before_execution": false,
+    "product_tests_changed_before_execution": false
+  },
   "pre_execution_gates": {
     "issue_ready_pass": true,
     "koo_start_authorized": true,
@@ -73,15 +88,9 @@
     "candidate_branches_created": true,
     "candidate_pull_requests_created": true,
     "exact_model_harness_effort_locked": true,
-    "candidate_output_zero_confirmed": false,
-    "candidate_branch_identity_verified": false,
-    "implementation_permitted": false
+    "candidate_output_zero_confirmed": true,
+    "candidate_branch_identity_verified": true,
+    "implementation_permitted": true
   },
-  "open_items_before_execution": [
-    "fast-forward all three candidate branches to this same execution-control commit",
-    "verify all three Draft PRs still target main and all three Heads are identical",
-    "verify no candidate-specific product code/test output exists",
-    "finalize pre-execution identity gate",
-    "set implementation_permitted=true in one final shared execution-control commit"
-  ]
+  "next_action": "run C1/C2/C3 independently using the canonical implementation prompt plus this execution overlay; do not inspect other candidate branches before each candidate snapshot is locked"
 }
