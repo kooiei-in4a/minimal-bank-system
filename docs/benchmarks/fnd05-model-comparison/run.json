@@ -634,6 +634,24 @@
       "producer_commit_sha": null,
       "status": "locked"
     },
+    "targeted_re_review_m02_m06_finding_owner": {
+      "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-targeted-rereview-m02-m06-finding-owner-opus.md",
+      "content_sha256": "058d7516cb004070cdce8a2f7f1d059c6ac0aea93e4fe14b0a65c651d36a4993",
+      "prompt_revision": "fnd05-targeted-re-review-v2",
+      "target_head_sha": "9e704f53911be3fdf0d09538424d3bcd9012f96a",
+      "source_artifact_refs": [
+        "docs/benchmarks/fnd05-model-comparison/final-synthesis/targeted-fix-m02-m06-result.md@a2e97d3baefb386a0a825a9a79e751ead4124016#sha256:53e8800472db7ba999abd713b5cc7171f6f42c96becc65f951a6924b76e40cce",
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-conditional-judge-composer-2.5.md@fb0b2f81e4817b494e2167547f537c1e774e919d#sha256:ce44323a2728f0d6ca2dde3d28040074e77d8b59c96ae65bbd528080600f64bb",
+        "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-heavy-h2-opus-claude-opus-5-claude-code.md@4ca962b4a8f0dd9faeacc1a494ed86f919f5536a#sha256:cc0e996707f83f4b9c338b3ecc5033d0829646c0976843aec30de39b3a275425",
+        "run.json@b7911db65406debddd962ef6907a8e7c54a73186#sha256:44dd3b670f3ae41d39e26d0c29d9804366b62f7a1d179b51a2f53108f14f8434",
+        "pr:153@9e704f53911be3fdf0d09538424d3bcd9012f96a",
+        "github-actions-run:31515332416",
+        "github-actions-run:31515332435"
+      ],
+      "producer_slot": "finding_owner:H2",
+      "producer_commit_sha": "9bfda5c11cd728cace7134f8e07598e4778c5d32",
+      "status": "locked"
+    },
     "gate_order_targeted_re_review": {
       "artifact_path": "docs/benchmarks/fnd05-model-comparison/reviews/fnd05-gate-001-targeted-re-review-gpt-5.6-sol-codex-xhigh.md",
       "content_sha256": "8e3a755b26ec5a56d839dcefc542d7be97e91162758714763934a7f1204c6222",
