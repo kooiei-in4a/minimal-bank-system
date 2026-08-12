@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure.Persistence;
@@ -43,6 +44,15 @@ builder.Services.AddDbContext<BankDbContext>((serviceProvider, options) =>
     options.UseBankPostgreSql(connectionString);
 });
 
+// Liveness stays dependency-free; only readiness observes PostgreSQL.
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<PostgreSqlReadinessHealthCheck>(
+        HealthContract.ReadinessCheckName,
+        failureStatus: HealthStatus.Unhealthy,
+        tags: [HealthContract.ReadinessTag],
+        timeout: HealthContract.ReadinessTimeout);
+
 WebApplication app = builder.Build();
 
 app.UseMiddleware<ApiExceptionMiddleware>();
@@ -59,6 +69,12 @@ app.UseStatusCodePages(async statusCodeContext =>
             context.RequestAborted);
     }
 });
+
+// Operational health endpoints. They own their own sanitized response and are never mapped onto
+// the business error envelope.
+app.MapHealthChecks(HealthContract.LivePath, HealthContract.Liveness);
+app.MapHealthChecks(HealthContract.ReadyPath, HealthContract.Readiness);
+
 app.MapControllers();
 
 app.Run();
