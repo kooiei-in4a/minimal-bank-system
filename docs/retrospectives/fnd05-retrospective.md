@@ -39,7 +39,7 @@ SECTION_C_OBSERVATIONS:
     FINAL_DECISION: ADOPT
 
 SECTION_D_FND06_EXPERIMENTS:
-  STATUS: IN_PROGRESS
+  STATUS: KOO_DECISIONS_RECORDED
   D_01:
     DECISION: ADOPT_FOR_FND06_PILOT
     PILOT_MODE: WARNING_LEVEL
@@ -72,7 +72,9 @@ SECTION_D_FND06_EXPERIMENTS:
     DIRECTION: REMAINS_ADOPTED
     FND06_STANDALONE_EXPERIMENT: false
   D_08:
-    STATUS: PENDING_KOO_DECISION
+    DECISION: DEFER_FROM_FND06
+    DIRECTION: REMAINS_ADOPTED
+    FND06_INCLUDE: false
 
 FND06_PROCESS_CHANGES:
   STATUS: NOT_AUTHORIZED
@@ -551,7 +553,7 @@ SECTION_C_OBSERVATIONS:
     FINAL_DECISION: ADOPT
 
 SECTION_D_FND06_EXPERIMENTS:
-  STATUS: IN_PROGRESS
+  STATUS: KOO_DECISIONS_RECORDED
   D_01:
     DECISION: ADOPT_FOR_FND06_PILOT
     PILOT_MODE: WARNING_LEVEL
@@ -584,7 +586,9 @@ SECTION_D_FND06_EXPERIMENTS:
     DIRECTION: REMAINS_ADOPTED
     FND06_STANDALONE_EXPERIMENT: false
   D_08:
-    STATUS: PENDING_KOO_DECISION
+    DECISION: DEFER_FROM_FND06
+    DIRECTION: REMAINS_ADOPTED
+    FND06_INCLUDE: false
 
 FND06_PROCESS_CHANGES:
   STATUS: NOT_AUTHORIZED
@@ -1026,12 +1030,52 @@ FND06:
   STARTED: false
 ```
 
-D-08（Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。
+#### D-08 — Branch / Archive cleanup automation
+
+```yaml
+DECISION: DEFER_FROM_FND06
+DIRECTION:
+  REMAINS_ADOPTED: true
+FND06:
+  INCLUDE: false
+CURRENT_OPERATION:
+  MANUAL_ARCHIVE_AND_CLEANUP: CONTINUE
+FUTURE_IMPLEMENTATION:
+  TARGET: SEPARATE_PROCESS_UPDATE
+  TIMING: AFTER_FND06
+  SAFETY_ORDER:
+    - final consolidation
+    - final manifest
+    - recovery annotated tag
+    - tag verification
+    - only then branch cleanup
+AUTOMATIC_BRANCH_DELETION:
+  BEFORE_RECOVERY_VERIFICATION: PROHIBITED
+```
+
+Branch / Archive cleanup automationの方向性は採用済みのまま維持するが、FND-06のexperimentには含めない。FND-06では既存のmanual archive / cleanupを継続し、run品質に直接関係しない後処理のautomationを追加して変更要因を増やさない。
+
+将来の自動化では、evidenceを消すのではなく、最終状態をconsolidateし、final manifestとrecovery annotated tagを作成し、そのtagから復元できることを確認してから不要なreview / control branchを整理する。recovery verification前のautomatic branch deletionは禁止する。
+
+```yaml
+D_08_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+BRANCH_CLEANUP_AUTOMATION:
+  IMPLEMENTED: false
+PROCESS_CHANGE_IMPLEMENTATION:
+  AUTHORIZED: false
+FND06:
+  STARTED: false
+```
+
+D-08をFND-06から外すことはB-04 Branch / Archive CleanupのREJECTを意味しない。FND-06後の独立Process Update候補として維持する。
+
+Section DのD-01〜D-08についてKooの判断はすべて記録済みである。D-01〜D-05をFND-06 pilot対象とし、D-06〜D-08はFND-06へ追加しない。この判断完了はFND-05 retrospective全体の完了、process変更の実装承認、またはFND-06開始承認を意味しない。
 
 ---
 
 ## 11. Next Step
 
-Coordinatorへ返却し、KooがSection DのFND-06 experiment選定を別工程で判断する。Section CのO-01〜O-07最終判断は本sectionへ記録済みである。
+Section DのFND-06 experiment選定判断は完了した。次はFND-05 retrospective本文の未完了領域（What Worked Well、What Did Not Work Well、Quality Gain vs Process Cost、Candidate / Review Lessons、Keep / Simplify / Remove、Candidate Improvements for FND-06）を一次証拠と既存review結果に基づいて完成させる。
 
 retrospectiveは`IN_PROGRESS`に維持し、PR #154をDraftのままにする。FND-06を開始せず、process変更を実装しない。
