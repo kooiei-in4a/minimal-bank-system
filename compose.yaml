@@ -60,6 +60,21 @@ services:
     secrets:
       - source: database_password
         target: database_password
+    # FND-06: container health is the readiness endpoint itself, not process existence, an open
+    # TCP port or pg_isready. The probe uses only bash builtins that the shipped runtime image
+    # already provides, so no probe tooling is installed into the API image.
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && IFS= read -r status <&3 && [[ $$status == "HTTP/1.1 200 "* ]]'
+      # The probe budget exceeds the readiness endpoint budget, so an exhausted readiness check is
+      # observed as a real 503 instead of being killed mid-request.
+      interval: 5s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
 
 secrets:
   database_password:

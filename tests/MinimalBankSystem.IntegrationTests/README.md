@@ -71,6 +71,22 @@ local `dotnet-ef database update` as a child process, removes `ConnectionStrings
 from that child, and verifies fail-closed behavior without a fabricated localhost, fake provider
 or ambient destination.
 
+## Health contract tests
+
+`HealthContractTests` needs no Docker. It proves liveness stays independent of PostgreSQL,
+readiness fails as an operational health failure over both the test server and real Kestrel, and a
+failure never becomes an FND-02 business error envelope or discloses connection detail.
+
+`PostgreSql/HealthReadinessTests` reuses the FND-03 fixture and the production Migrator process. It
+proves connectivity alone is not readiness: a reachable but unmigrated database is rejected without
+creating any schema, readiness succeeds only after the explicit Migrator applied, and readiness
+fails again when the applied migration record is removed while PostgreSQL stays up.
+
+`PostgreSql/HealthTransitionTests` owns its own digest-pinned PostgreSQL container published on a
+reserved host port, so the destination survives a real container stop and start. It stops the actual
+server, proves liveness still succeeds and readiness fails, starts the server again, and proves the
+same API instance returns to ready without being restarted.
+
 ## Parallel policy
 
 - Parallel-safe scope: work against independently owned databases. The concurrency test verifies
