@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MinimalBankSystem.Api.Health;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure.Persistence;
@@ -60,6 +61,7 @@ app.UseStatusCodePages(async statusCodeContext =>
     }
 });
 app.MapControllers();
+app.MapHealthEndpoints();
 
 app.Run();
 
