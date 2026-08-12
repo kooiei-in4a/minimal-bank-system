@@ -125,6 +125,10 @@ STATUS: UNREVIEWED
 
 STATUS: UNREVIEWED
 
+### O-07 — Windows / WSL Git EOL contract
+
+STATUS: UNREVIEWED
+
 必要に応じてLedgerに存在する追加Observationも、
 GitHub一次証拠を確認したうえでこのsectionへ追加する。
 
