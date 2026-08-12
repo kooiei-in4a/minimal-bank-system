@@ -21,6 +21,8 @@ public sealed class HealthTransitionTests(RestartablePostgreSqlFixture fixture)
     private static readonly TimeSpan MigrationBudget = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan RecoveryBudget = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan ProbeInterval = TimeSpan.FromMilliseconds(500);
+    private const string Mut01OracleSignature =
+        "ORACLE_SIGNATURE=FND06_MUT01_READY_MUST_FAIL_WHEN_POSTGRES_STOPPED";
 
     [Fact]
     public async Task LivenessSurvivesRealPostgreSqlStopAndReadinessRecoversWithoutApiRestart()
@@ -36,7 +38,7 @@ public sealed class HealthTransitionTests(RestartablePostgreSqlFixture fixture)
         Assert.False(await fixture.AcceptsConnectionsAsync());
 
         await AssertLiveAsync(client);
-        await AssertNotReadyAsync(client);
+        await AssertReadinessRejectsStoppedPostgreSqlAsync(client);
 
         await fixture.StartAsync();
         await WaitForReadyAsync(client);
@@ -58,6 +60,18 @@ public sealed class HealthTransitionTests(RestartablePostgreSqlFixture fixture)
     private static async Task AssertNotReadyAsync(HttpClient client)
     {
         using HttpResponseMessage response = await client.GetAsync(HealthContract.ReadyPath);
+        await HealthContractTests.AssertNotReadyAsync(response);
+    }
+
+    private static async Task AssertReadinessRejectsStoppedPostgreSqlAsync(HttpClient client)
+    {
+        using HttpResponseMessage response = await client.GetAsync(HealthContract.ReadyPath);
+        string body = await response.Content.ReadAsStringAsync();
+        if (response.StatusCode != HttpStatusCode.ServiceUnavailable || body != HealthContract.UnhealthyBody)
+        {
+            Assert.Fail($"{Mut01OracleSignature}; status={(int)response.StatusCode}; body={body}");
+        }
+
         await HealthContractTests.AssertNotReadyAsync(response);
     }
 

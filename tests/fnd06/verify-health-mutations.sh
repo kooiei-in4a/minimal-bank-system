@@ -47,7 +47,7 @@ run_oracle_green() {
 }
 
 expect_oracle_red() {
-  local test_filter="$1" expected_test="$2" output exit_code
+  local test_filter="$1" expected_test="$2" expected_signature="$3" output exit_code
   set +e
   output="$("$dotnet_host" test "$dotnet_test_project" --no-restore --filter "$test_filter" --verbosity minimal 2>&1)"
   exit_code=$?
@@ -59,6 +59,11 @@ expect_oracle_red() {
   }
   [[ "$output" == *"$expected_test"* ]] || {
     printf 'ORACLE_SIGNATURE=unexpected-mutation-failure:%s\n' "$expected_test" >&2
+    printf '%s\n' "$output" >&2
+    return 1
+  }
+  [[ "$output" == *"$expected_signature"* ]] || {
+    printf 'ORACLE_SIGNATURE=unexpected-mutation-failure:missing-semantic-signature:%s\n' "$expected_signature" >&2
     printf '%s\n' "$output" >&2
     return 1
   }
@@ -76,7 +81,7 @@ replace_once() {
 }
 
 run_mutation() {
-  local name="$1" before="$2" after="$3" test_filter="$4" test_name="$5"
+  local name="$1" before="$2" after="$3" test_filter="$4" test_name="$5" signature="$6"
   printf '%s: BASELINE_GREEN\n' "$name"
   run_oracle_green "$test_filter"
 
@@ -85,9 +90,9 @@ run_mutation() {
   replace_once "$before" "$after"
 
   printf '%s: MUTATION_APPLIED\n' "$name"
-  expect_oracle_red "$test_filter" "$test_name"
+  expect_oracle_red "$test_filter" "$test_name" "$signature"
   printf '%s: MUTATION_RED\n' "$name"
-  printf '%s: EXPECTED_REASON_CONFIRMED=%s\n' "$name" "$test_name"
+  printf '%s: EXPECTED_REASON_CONFIRMED=%s\n' "$name" "$signature"
 
   restore_source
   run_oracle_green "$test_filter"
@@ -100,7 +105,8 @@ run_mutation \
   'return Reject(DatabaseUnreachable);' \
   'return HealthCheckResult.Healthy();' \
   'FullyQualifiedName~HealthTransitionTests.LivenessSurvivesRealPostgreSqlStopAndReadinessRecoversWithoutApiRestart' \
-  'HealthTransitionTests.LivenessSurvivesRealPostgreSqlStopAndReadinessRecoversWithoutApiRestart'
+  'HealthTransitionTests.LivenessSurvivesRealPostgreSqlStopAndReadinessRecoversWithoutApiRestart' \
+  'ORACLE_SIGNATURE=FND06_MUT01_READY_MUST_FAIL_WHEN_POSTGRES_STOPPED'
 
 # MUT-02: liveness must never execute any readiness-tagged registration.
 run_mutation \
@@ -108,7 +114,8 @@ run_mutation \
   'CreateOptions(_ => false)' \
   'CreateOptions(registration => registration.Tags.Contains(ReadinessTag))' \
   'FullyQualifiedName~HealthContractTests.LivenessNeverExecutesAReadinessTaggedCheck' \
-  'HealthContractTests.LivenessNeverExecutesAReadinessTaggedCheck'
+  'HealthContractTests.LivenessNeverExecutesAReadinessTaggedCheck' \
+  'ORACLE_SIGNATURE=FND06_MUT02_LIVENESS_MUST_NOT_EXECUTE_READINESS'
 
 # MUT-03: a reachable but migration-incomplete PostgreSQL database must not be reported ready.
 run_mutation \
@@ -116,7 +123,8 @@ run_mutation \
   '? Reject(MigrationsPending)' \
   '? HealthCheckResult.Healthy()' \
   'FullyQualifiedName~HealthReadinessTests.ReadinessRejectsAReachableUnmigratedDatabaseWithoutCreatingSchema' \
-  'HealthReadinessTests.ReadinessRejectsAReachableUnmigratedDatabaseWithoutCreatingSchema'
+  'HealthReadinessTests.ReadinessRejectsAReachableUnmigratedDatabaseWithoutCreatingSchema' \
+  'ORACLE_SIGNATURE=FND06_MUT03_PENDING_MIGRATION_MUST_NOT_BE_READY'
 
 [[ -z "$backup_file" ]] || {
   printf 'ORACLE_SIGNATURE=mutation-residue\n' >&2

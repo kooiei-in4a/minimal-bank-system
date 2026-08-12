@@ -15,6 +15,8 @@ public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
     : PostgreSqlDatabaseTestBase(fixture), IClassFixture<PostgreSqlContainerFixture>
 {
     private static readonly TimeSpan MigrationBudget = TimeSpan.FromSeconds(120);
+    private const string Mut03OracleSignature =
+        "ORACLE_SIGNATURE=FND06_MUT03_PENDING_MIGRATION_MUST_NOT_BE_READY";
 
     [Fact]
     public async Task ReadinessRejectsAReachableUnmigratedDatabaseWithoutCreatingSchema()
@@ -31,7 +33,7 @@ public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
 
         using (HttpResponseMessage ready = await client.GetAsync(HealthContract.ReadyPath))
         {
-            await HealthContractTests.AssertNotReadyAsync(ready);
+            await AssertReadinessRejectsReachableUnmigratedDatabaseAsync(ready);
         }
 
         // No marker table, migration history, or business state may be created by the API probe.
@@ -106,6 +108,19 @@ public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
     private Task<string[]> ReadMigrationHistoryAsync() =>
         ReadStringsAsync(
             $"SELECT \"MigrationId\" FROM {BankPersistence.MigrationsHistorySchema}.\"{BankPersistence.MigrationsHistoryTableName}\" ORDER BY \"MigrationId\";");
+
+    private static async Task AssertReadinessRejectsReachableUnmigratedDatabaseAsync(
+        HttpResponseMessage response)
+    {
+        string body = await response.Content.ReadAsStringAsync();
+        if (response.StatusCode != System.Net.HttpStatusCode.ServiceUnavailable ||
+            body != HealthContract.UnhealthyBody)
+        {
+            Assert.Fail($"{Mut03OracleSignature}; status={(int)response.StatusCode}; body={body}");
+        }
+
+        await HealthContractTests.AssertNotReadyAsync(response);
+    }
 
     private async Task ExecuteNonQueryAsync(string commandText)
     {

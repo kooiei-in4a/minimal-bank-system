@@ -16,6 +16,9 @@ namespace MinimalBankSystem.IntegrationTests;
 [Collection(TestExecutionCollections.ConsoleSensitive)]
 public sealed class HealthContractTests
 {
+    private const string Mut02OracleSignature =
+        "ORACLE_SIGNATURE=FND06_MUT02_LIVENESS_MUST_NOT_EXECUTE_READINESS";
+
     [Fact]
     public async Task LivenessSucceedsWithoutAConfiguredDatabase()
     {
@@ -53,10 +56,11 @@ public sealed class HealthContractTests
 
         using (HttpResponseMessage live = await client.GetAsync(HealthContract.LivePath))
         {
+            AssertReadinessTaggedCheckWasNotExecutedByLiveness(spy);
             await AssertLiveAsync(live);
         }
 
-        Assert.Equal(0, spy.InvocationCount);
+        AssertReadinessTaggedCheckWasNotExecutedByLiveness(spy);
 
         using (HttpResponseMessage ready = await client.GetAsync(HealthContract.ReadyPath))
         {
@@ -231,6 +235,14 @@ public sealed class HealthContractTests
         Assert.Equal("text/plain", response.Content.Headers.ContentType?.MediaType);
         Assert.True(response.Headers.CacheControl?.NoStore);
         Assert.True(response.Headers.CacheControl?.NoCache);
+    }
+
+    private static void AssertReadinessTaggedCheckWasNotExecutedByLiveness(ReadinessSpy spy)
+    {
+        if (spy.InvocationCount != 0)
+        {
+            Assert.Fail($"{Mut02OracleSignature}; readiness-spy-invocations={spy.InvocationCount}");
+        }
     }
 
     private sealed class ReadinessSpy : IHealthCheck
