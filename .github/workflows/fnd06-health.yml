@@ -31,6 +31,9 @@ jobs:
           FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
         run: bash tests/fnd06/verify-health-compose.sh
 
+      - name: Restore FND-06 mutation test dependencies
+        run: dotnet restore tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj
+
       - name: Verify FND-06 critical mutation oracles
         run: bash tests/fnd06/verify-health-mutations.sh
 
@@ -55,6 +58,9 @@ jobs:
           MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
           FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
         run: bash tests/fnd06/verify-health-compose.sh
+
+      - name: Restore FND-06 mutation test dependencies
+        run: dotnet restore tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj
 
       - name: Verify FND-06 critical mutation oracles
         run: bash tests/fnd06/verify-health-mutations.sh
