@@ -14,6 +14,9 @@ No FND-06 process change is authorized by this document alone.
 RETROSPECTIVE:
   STATUS: IN_PROGRESS
 
+RETROSPECTIVE_SYNTHESIS_BODY:
+  STATUS: DRAFT_RECORDED
+
 SECTION_A_DEVELOPMENT_FLOW:
   STATUS: KOO_DECISIONS_RECORDED
 
@@ -89,8 +92,6 @@ FND06:
 
 この振り返りで確認する対象を記載する。
 
-現時点では評価を行わない。
-
 - FND-05 product implementation
 - candidate implementation / evaluation
 - Selection / Adjudication
@@ -107,53 +108,229 @@ FND06:
 
 ## 2. Fixed Facts / Timeline
 
-GitHub一次証拠から確認する事実を後で整理するための領域。
+今回の振り返りで前提とする主要な確定事実は次のとおり。
 
-現時点では主要な確定identityのみ記録する。
+- Target Issue: #43 `[FND-05] Docker Compose実行基盤を確立する`
+- Final Synthesis PR: #153
+- Final Product Head before merge: `9e704f53911be3fdf0d09538424d3bcd9012f96a`
+- Final Merge Commit: `c0b0103381ae2fc3d00a638decea36b71bda7c1f`
+- PR #153: MERGED
+- Issue #43: CLOSED / COMPLETED
+- direct-head CI: PASS
+- PR CI: PASS
+- post-merge main CI: PASS
+- H1 Heavy Review: APPROVE / Blocker 0 / Major 0
+- H2 Heavy Review: initially CHANGES_REQUIRED / Major 2
+- Conditional Judge: H2の2件をUPHELD
+- Targeted Fix後のrequired targeted re-review: FIXED / COMPLETE
+- full H1/H2 rerun: NOT REQUIRED
 
-- Issue #43
-- Final Synthesis PR #153
-- Final Product Head
-- Final Merge Commit
-- candidate archive
-- final post-merge state
+製品としては、PostgreSQL、one-shot Migrator、APIのCompose実行経路、migration成功後のAPI起動、migration失敗時のAPI非起動、digest pinning、secret外部注入、named volume、reproducible lifecycle、static / runtime / mutation verificationまでmainへ統合できた。
 
-詳細な評価や解釈はまだ書かない。
+一方、process側では、後段stageの結果が存在していてもcanonicalな`docs/benchmarks/fnd05-model-comparison/run.json`へ最終集約されず、main上のregistryがpre-run相当の状態を残す問題が観測された。この点は製品品質とは別のprocess defectとして扱う。
 
 ---
 
 ## 3. What Worked Well
 
-TBD
+FND-05は、製品実装としては成功した。Issue #43のclose conditionに必要なCompose実行基盤をmainへ統合し、direct-head、PR、post-merge mainの各CIがPASSした。特に、migration成功後だけAPIを開始し、migration失敗時にはAPIを開始しないという重要なfailure behaviorを、runtime evidenceとmutation verificationを含めて確認できた。
+
+### Candidateを比較してから選ぶ流れは有効だった
+
+Candidateを共通基準で評価するImplementation Evaluationと、最終的に何を採用するかを決めるSelection / Adjudicationを分離したことは有効だった。
+
+単純に「一番点数が高いcandidateをそのまま採用する」のではなく、各candidateの良い要素をauthority-firstで選び、Final Synthesisで一本の実装へまとめることができた。これにより、candidate scoreとmerge readinessを混同せずに済んだ。
+
+### Final Synthesisを独立stageとして置いた価値があった
+
+Candidateのどれかをmerge / cherry-pickするのではなく、Selectionで選ばれた要素をFresh ContextのFinal Synthesisへ渡したことで、最終実装を一度整理し直せた。
+
+FND-05の最終製品Headは`9e704f5...`として固定され、PR #153でmainへ統合された。候補実装そのものではなく、最終的に選び直した構成を製品正本へできたことは維持すべき点である。
+
+### Heavy Reviewを異なる観点で2本実施したことは実際に品質へ寄与した
+
+FND-05ではHeavy Reviewer H1がBlocker 0 / Major 0でAPPROVEした一方、H2は2件のMajorを発見した。
+
+- exit-0 maskingが、意図したreal Migrator failureの後に発生したことを証明できていなかった
+- mutation killがshipped volume-policy oracleではなくinline self-checkへ依存していた
+
+Conditional Judgeはこの2件を両方UPHELDした。したがって、「1本のHeavy ReviewでMajor 0なら十分」とは言えない実例になった。
+
+同じ観点のreviewを2回繰り返したのではなく、architecture / contractと、adversarial failure / false assuranceという異なるperspectiveを割り当てたことが意味を持った。
+
+### Targeted Fix / Targeted Re-reviewは効率が良かった
+
+H2の2件に対しては、対象を`tests/fnd05/verify-mutations.sh`と`tests/fnd05/static-gate.sh`へ限定してTargeted Fixを行い、そのchanged surfaceだけをfinding ownerと別perspective verifierで再確認した。
+
+結果として両findingはFIXEDとなり、新しいBlocker / Majorはなく、full H1/H2 rerunは不要と判断できた。
+
+これは「重大な問題が1件見つかるたびに全reviewを最初からやり直す」のではなく、変更範囲とroot causeを限定できる場合はTargeted Re-reviewで十分という実証になった。
+
+### exact identityとevidenceを重視したことは有効だった
+
+Final Product Head、merge commit、actual checkout、critical artifact hash、Git blob identity、producer commitなどを区別して扱ったことは、どの成果物をreviewしたのかを明確にするうえで有効だった。
+
+特にFND-05のようにcandidate、selection、final synthesis、複数review、targeted fixが連続するprocessでは、「その内容を見たつもり」ではなく「どのexact Head / artifactを見たか」を固定する必要がある。
+
+この厳密さ自体は削らず、人間による取得・転記作業を減らす方向がよい。
+
+### Observation Ledgerでrun中の改善とcurrent runを分離できた
+
+実行中に見つかったprocess改善案をその場でcurrent runへ混ぜず、Observationとして残してretrospectiveで判断する運用は有効だった。
+
+これにより、FND-05の実験条件を途中で変えずに、O-01〜O-07を後からADOPT / DEFER / REJECTで判断できた。改善を止めるのではなく、「今のrunを変えること」と「次回へ学びを残すこと」を分離できた点を維持する。
 
 ---
 
 ## 4. What Did Not Work Well
 
-TBD
+FND-05の主な問題は、品質確認そのものではなく、その周辺のoperator作業が重くなりすぎたことである。
+
+### canonical `run.json`が最終状態へ追いつかなかった
+
+もっとも明確なprocess defectは、後段stageが完了しているにもかかわらず、canonical registryとされた`docs/benchmarks/fnd05-model-comparison/run.json`へ最終結果が集約されなかったことである。
+
+main上の`run.json`は、FND-05製品がmerge・Issue closeまで完了した後も、statusやcandidate / review stateにpre-run相当の値を残していた。
+
+つまり、人間は最終状態を知るために複数branch、artifact、PR、review結果を横断して確認する必要があった。これは「証拠を厳密に残した」こととは別問題であり、single authoritative registryとしては不十分だった。
+
+### SHA / identityの確認方法は正しかったが、人間の転記が多すぎた
+
+exact Headやartifact hashの確認は必要だったが、同じSHAやidentityをprompt、Issue、artifact、`run.json`、handoffへ何度も手入力する場面が多かった。
+
+確認を厳密にするほどoperatorがcopy / pasteする箇所も増え、転記ミスを防ぐための確認が、別の転記ミスを生む可能性を持つ状態になっていた。
+
+問題はidentity verificationではなく、identityの取得・再利用方法である。
+
+### handoffを毎回人間が組み立てる負荷が大きかった
+
+Model / Harness / Effort / Context、Target Head、artifact identity、STOP条件、返却evidence、next actionをstageごとに人間が組み立てていた。
+
+これらの多くはauthoritative metadataから機械的に取得できる。意味判断が必要な部分と、転記するだけの部分を分けられていなかった。
+
+### Light Reviewへ機械的な確認が混ざっていた
+
+checkout identity、hash、required-field completeness、file placementなど、短時間でYES / NO判定できる項目まで人間のReviewerへ渡していた。
+
+これらはsemantic reviewではなくmechanical verificationである。人間Reviewerにはcontract correctness、oracle correctness、negative case、false assuranceなどの意味判断へ集中してもらう方がよい。
+
+### `CI GREEN`や`Mutation KILLED`だけではfalse assuranceを防げなかった
+
+FND-05で最も重要な技術的な学びの一つである。
+
+H2が見つけた2件は、testやmutationの結果だけを表面的に見ると「検証できている」と誤認しやすい内容だった。
+
+mutation後にREDになったとしても、狙ったfailure behaviorによってREDになったとは限らない。どの理由で失敗したかまで確認しないと、oracle correctnessを証明できない。
+
+このため、すべてのmutationを重いframeworkへするのではなく、critical mutationについてだけbaseline GREEN → mutation → expected reasonでRED → restore GREENを確認する必要がある。
+
+### 固定3候補とLight Review 2本は制度として硬すぎた
+
+FND-05では固定3候補とLight Review 2本を使ったが、今後すべてのIssueで同じ数を要求する根拠はない。
+
+重要なのは数そのものよりperspective diversityである。Candidateはriskと目的に応じて2〜3候補を選べる制度へし、Light Reviewはmechanical checkを外したうえでsemantic review 1本へ簡略化する方がよい。
+
+ただしFND-06では他のprocess変更が多いため、candidate数削減の実験までは同時に行わない。
+
+### branch / archive管理も手作業が多かった
+
+review-control branchやcandidate branchを証拠保持のため長く残すと、どれがcurrent authorityか判断しづらくなる。
+
+一方で、単純にbranchを削除すると復元性を失う。最終manifestとrecovery tagを作ってから不要branchを整理する仕組みが必要だが、FND-06へ新しい変更要因としては追加しない。
 
 ---
 
 ## 5. Quality Gain vs Process Cost
 
-TBD
+FND-05では、品質を上げた工程と、人間の作業量だけを増やした部分を分ける必要がある。
 
-以下を後で比較する。
+| 項目 | 品質への寄与 | Process Cost | 判断 |
+| --- | --- | --- | --- |
+| Implementation Evaluation | 高い | 中 | KEEP |
+| Selection / Adjudication | 高い | 中 | KEEP |
+| Final Synthesis | 高い | 中〜高 | KEEP。handoffは自動化方向 |
+| Light Review ×2 | 中 | 高 | SIMPLIFY |
+| Heavy Review ×2 | 非常に高い | 高 | KEEP |
+| Conditional Judge | disagreement時は高い | 常時実行すると高い | KEEP / default OFF |
+| Targeted Fix / Targeted Re-review | 高い | 低〜中 | KEEP |
+| exact identity / hash verification | 高い | 手作業では高い | KEEPしつつ自動化 |
+| manual handoff assembly | 直接の品質寄与は低い | 高い | SIMPLIFY / generate |
+| manual SHA duplication | 直接の品質寄与は低い | 高い | REMOVE |
+| branchによる長期evidence保持 | 一部有効 | 高い | 後でSIMPLIFY |
 
-- 品質向上に実際に寄与した工程
-- 同じ品質を得るために簡略化できそうな工程
-- 重複していたreview / handoff / verification
-- 人間の判断負荷
-- prompt / artifact / branch数
-- STOP / reworkの原因
+### 高いコストでも残すもの
+
+Heavy Review ×2はコストが高いが、FND-05でH1 Major 0の後にH2がMajor 2を発見しており、品質寄与が実証された。そのため現時点では削減しない。
+
+Selection / AdjudicationとFinal Synthesisも、candidateを丸ごと採用せず最終製品をauthority-firstで組み直す役割があり、残す価値がある。
+
+### 品質を落とさず軽くできるもの
+
+Light Reviewは、mechanical checkをFast Mechanical Gateへ移せばsemantic reviewを1本へ減らせる。
+
+SHA / artifact identity確認も確認自体は残し、authoritative metadataから一度取得して複数stageで再利用すればoperator costを減らせる。
+
+handoffも同様に、生成だけを自動化し、人間が確認してから投入する形なら安全性を大きく変えずに負担を減らせる。
+
+### 削るべきなのは品質stageより重複作業
+
+FND-05から得られた中心的な判断は、ReviewやEvidenceを単純に減らすことではない。
+
+削るべきなのは、同じSHAの手入力、同じmetadataの再転記、機械で判定できる項目を人間Reviewerが繰り返し読むこと、不要になったbranchを人間が個別に管理することなどである。
+
+品質を守る工程は残し、mechanical / repetitive workを自動化または簡略化する方向が妥当である。
 
 ---
 
 ## 6. Candidate / Review Lessons
 
-TBD
+### Candidate数よりperspectiveの違いが重要
 
-candidate比較やreview funnelから得られた知見を後で整理する。
+「3候補あるから安全」ではなく、候補ごとに何を違う角度から考えさせるかが重要である。
+
+今後は固定3候補制を廃止し、riskと必要なperspectiveに応じて2〜3候補を選べるようにする。ただしFND-06ではcandidate数削減そのものは実験しない。
+
+### Candidate scoreとmerge readinessは別物
+
+Implementation Evaluationは候補を比較するために必要だが、高得点candidateをそのままmergeしてよいとは限らない。
+
+Selection / Adjudicationで要素を選び、Final Synthesisで最終実装を作る役割は分離したまま維持する。
+
+### 「GREEN」「KILLED」は意味まで保証しない
+
+CIがGREENでも、mutationがKILLEDでも、それだけではoracleが正しい理由で反応したとは限らない。
+
+重要なfailure behaviorでは、expected failure signatureまで確認する。FND-06ではcritical mutation 1〜3件程度へ限定してこの確認を試す。
+
+### Heavy Reviewerは人数だけでなくperspective diversityを固定する
+
+FND-05ではH1とH2の結果が分かれたため、Heavy Reviewを2本維持する根拠がある。
+
+ただし同じ観点を2回聞くのではなく、architecture / contractとadversarial failure / false assuranceのようにreview responsibilityを分ける。
+
+### 第3Reviewerは常設しなくてよい
+
+Conditional Judgeは、Blocker / Major、root cause、fix direction、merge readinessなどでmeaningful disagreementがある場合だけ起動する。
+
+FND-05ではH2 findingをJudgeがUPHELDし、Targeted Fixへ進む判断に役立った。一方、常時3本目のfull reviewとして実行する必要はない。
+
+### 小さな修正はTargeted Re-reviewで十分な場合がある
+
+changed surfaceが限定され、root causeが明確で、exact-head CIがGREENであり、finding ownerと別perspective verifierが確認できる場合は、full Heavy rerunを標準にしない。
+
+ただしproduction architecture、security boundary、cross-cutting変更などへ広がった場合はfull re-reviewへ戻る。
+
+### identityの正本はAgent自己申告ではなく外部metadataを優先する
+
+Model / Harness identity、actual checkout、artifact identityなどは、取得できる範囲でHarness / platform metadataやmachine-readable registryを正本とする。
+
+Agent self-reportだけをauthoritative evidenceにしない。
+
+### run中に見つけた改善は次回へ送る
+
+良い改善案でもcurrent runへ途中投入すると、比較条件が変わる。
+
+Observation Ledgerへ記録してretrospectiveで採否を決める方法を維持する。
 
 ---
 
@@ -233,39 +410,137 @@ FINAL_DECISION: ADOPT
 
 minimal `.gitattributes`とlightweight EOL preflightにより、Windows / WSL間でEOLだけの大量偽差分を抑える方向を採用する。ただし今回のPRでは実装しない。将来もrepository全体の一括変換、全ファイルの強制normalize、複雑なplatform別ruleは最初から導入せず、大量diffを伴うnormalizeが必要なら独立cleanupとして扱う。
 
-必要に応じてLedgerに存在する追加Observationも、
-GitHub一次証拠を確認したうえでこのsectionへ追加する。
-
 ---
 
 ## 8. Keep / Simplify / Remove
 
-最終的にFND-05のprocessを以下へ分類する。
+FND-05の結果から、次回以降のprocessを以下のように整理する。
 
 ### KEEP
 
-TBD
+- Implementation Evaluation
+  - candidateを共通基準で比較するstageとして維持する
+- Selection / Adjudication
+  - winner-take-allではなく、authority-firstで要素を選ぶ独立stageとして維持する
+- Final Synthesis
+  - 選択済み要素から最終実装を作るstageとして維持する
+- Heavy Review ×2
+  - perspective diversityを必須にして維持する
+- Conditional Judge
+  - default OFFのまま、meaningful disagreement時だけ使う
+- Targeted Fix / Targeted Re-review
+  - changed surfaceを限定できる場合の標準的な回復経路として維持する
+- critical identity / artifact verification
+  - exact Head、critical artifact hash、producer identity等は削らない
+- Observation Ledger
+  - current runを変えずに改善案を次回へ送る仕組みとして維持する
 
 ### SIMPLIFY
 
-TBD
+- Candidate Policy
+  - 「常に3候補」を廃止し、riskとperspectiveに応じた2〜3候補制へする
+  - ただしFND-06ではcandidate数削減実験は行わない
+- Light Review
+  - Light Review ×2から、Fast Mechanical Gate + Semantic Light Review ×1へ簡略化する
+- Mechanical verification
+  - checkout identity、run.json completeness、critical artifact identity/hashなどをFast Mechanical Gateへ移す
+- `run.json`
+  - stage結果をfinal consolidationし、required-stage completenessをwarning-levelから確認する
+- Execution handoff
+  - metadataからgenerate-onlyで作り、人間が確認してから投入する
+- Identity / SHA handling
+  - 同じidentity source / logicをD-03 / D-04で再利用し、別systemを増やさない
+- Mutation verification
+  - 全mutationの重いframeworkではなくcritical mutation 1〜3件程度から始める
+- Core Spec / JIT Stage Spec
+  - Core Spec 1件、JIT Stage Spec 1件のminimal pilotに限定する
+- Branch / Archive cleanup
+  - 将来はmanifest + recovery tagへ寄せるが、FND-06では手動運用を続ける
 
-### REMOVE
+### REMOVE / DO NOT STANDARDIZE
 
-TBD
+- 固定3候補を絶対ルールにすること
+- 同じSHAをprompt / Issue / artifact / `run.json`へ何度も手入力すること
+- generated metadataを別Markdownへ再転記すること
+- Agent self-reportだけをModel / Harness identityのauthorityにすること
+- fast / deterministicなYES / NO確認を人間Reviewerが毎回読むこと
+- 小さなTargeted Fixでも無条件にfull Heavy Reviewを最初からやり直すこと
+- 全mutationへ一律のmeta-verification frameworkを要求すること
+- JIT Stage Specを全stageへ義務化すること
+- Core Specの重いversion / dependency / drift管理を最初から導入すること
+- recovery verification前にbranchを自動削除すること
+- generated handoffからAgent実行、Ready化、merge、next stageまで自動で進めること
+
+ここでREMOVEとするのは、品質を守るstageそのものではなく、重複した手作業や過剰な標準化である。
 
 ---
 
 ## 9. Candidate Improvements for FND-06
 
-TBD
+FND-06では改善を一度に大量導入せず、Section Dで選定したD-01〜D-05だけをpilot対象とする。
 
-重要:
+### D-01 — `run.json` Final Consolidation
 
-ここには最初から改善案を大量に入れない。
+- final run.json consolidation
+- required-stage completeness check
+- 最初はwarning-only
+- merge blockerにはしない
 
-FND-05 retrospectiveの結果として、
-FND-06で実際に試す変更を少数へ絞る。
+目的は、実際のstage完了状態とcanonical registryがずれる問題を減らすことである。
+
+### D-02 — Mutation Meta-Verifier
+
+- critical mutationだけを対象にする
+- 目安は1〜3件
+- baseline GREEN
+- mutation適用
+- shipped oracleがexpected reasonでRED
+- mutation restore
+- baseline GREENへ復帰
+
+「REDになった」ではなく「狙った理由でREDになった」を確認する。
+
+### D-03 — Generated Execution Handoff
+
+- generate-only
+- Model / Harness / Effort / Context / Target Head / STOP条件 / required return evidence等をauthoritative metadataから可能な範囲で生成する
+- Kooが確認する
+- 人間が対象Harnessへ投入する
+- Agent自動起動、auto next-stage、Ready化、mergeはしない
+
+### D-04 — Fast Mechanical Gate
+
+初期pilotは3チェックだけにする。
+
+1. checkout identity
+2. `run.json` required-stage completeness
+3. critical artifact identity/hash
+
+warning-onlyで開始し、false warningやoperator correction、実行時間を観測する。
+
+### D-05 — Core Spec / JIT Stage Spec Minimal Pilot
+
+- Core Spec: 1件
+  - initial implementation前に作る
+  - 「今回何を作るか」を簡潔に固定する
+- JIT Stage Spec: 1件
+  - Final Synthesis → Semantic Light Review handoffだけを対象にする
+  - Final Synthesis完了、Target Head / input artifact確定後、Light Review開始直前に作る
+
+Acceptance Criteria、重要architecture / security / persistence / failure / critical oracle requirementはJITへ遅延させずCore Spec側で最初から伝える。
+
+### FND-06へ追加しないもの
+
+- D-06 minimal EOL contract
+  - 方向性はADOPTのままだがFND-06からはDEFER
+- D-07 Identity / SHA automation standalone pilot
+  - 方向性はADOPTのまま、D-03 / D-04へ統合し独立pilotにはしない
+- D-08 Branch / Archive cleanup automation
+  - 方向性はADOPTのまま、FND-06ではmanual cleanupを継続する
+- candidate数削減実験
+  - 固定3候補制の廃止方針は維持するが、FND-06でcandidate数削減まで同時に試さない
+
+FND-06の目的は、一度にprocess全体を作り直すことではない。品質を守るreview funnelは大きく変えず、人間が繰り返していたmechanical / transcription workだけを小さく減らせるか確認する。
 
 ---
 
@@ -273,7 +548,7 @@ FND-06で実際に試す変更を少数へ絞る。
 
 このsectionは、Kooが確定した開発フロー判断と、後続判断のために整理した証拠・自動化のdecision packageを記録する。
 
-Section Bはprocess変更の実装承認ではない。Section CのObservation最終判断、Section DのFND-06 experiment最終選定、およびretrospective完了前に、AGENTS.md、CI、script、test、run registryその他のprocess codeへ反映しない。
+Section Bはprocess変更の実装承認ではない。Section C / Dの判断およびretrospective本文の記録だけでは、AGENTS.md、CI、script、test、run registryその他のprocess codeへ反映する承認にならない。
 
 ### 10.1 Development Flow Decisions — Koo Approved
 
@@ -527,6 +802,9 @@ tag dereference確認
 ```yaml
 RETROSPECTIVE_DECISIONS:
   STATUS: IN_PROGRESS
+
+RETROSPECTIVE_SYNTHESIS_BODY:
+  STATUS: DRAFT_RECORDED
 
 SECTION_A_DEVELOPMENT_FLOW:
   STATUS: KOO_DECISIONS_RECORDED
@@ -1076,6 +1354,10 @@ Section DのD-01〜D-08についてKooの判断はすべて記録済みである
 
 ## 11. Next Step
 
-Section DのFND-06 experiment選定判断は完了した。次はFND-05 retrospective本文の未完了領域（What Worked Well、What Did Not Work Well、Quality Gain vs Process Cost、Candidate / Review Lessons、Keep / Simplify / Remove、Candidate Improvements for FND-06）を一次証拠と既存review結果に基づいて完成させる。
+What Worked Well、What Did Not Work Well、Quality Gain vs Process Cost、Candidate / Review Lessons、Keep / Simplify / Remove、Candidate Improvements for FND-06のsynthesis本文はdraftとして記録した。
 
-retrospectiveは`IN_PROGRESS`に維持し、PR #154をDraftのままにする。FND-06を開始せず、process変更を実装しない。
+次は、このretrospective本文がIndependent Review A / B、Narrow Synthesis、GitHub一次証拠、KooのSection A〜D判断と矛盾していないかを最終cross-checkする。
+
+cross-check後も自動的にretrospectiveをCOMPLETE、PR #154をReady、merge、またはFND-06開始へ進めない。Kooの明示判断を待つ。
+
+retrospectiveは`IN_PROGRESS`、PR #154はDraft、FND-06は`NOT_STARTED`、process変更は`NOT_AUTHORIZED`のまま維持する。
