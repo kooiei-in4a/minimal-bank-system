@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure.Persistence;
@@ -43,6 +45,16 @@ builder.Services.AddDbContext<BankDbContext>((serviceProvider, options) =>
     options.UseBankPostgreSql(connectionString);
 });
 
+// Operational liveness has no dependency checks. Readiness selects the PostgreSQL and migration
+// check explicitly, keeping an unavailable database from affecting process liveness.
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<PostgreSqlReadinessHealthCheck>(
+        HealthContract.ReadinessCheckName,
+        failureStatus: HealthStatus.Unhealthy,
+        tags: [HealthContract.ReadinessTag],
+        timeout: HealthContract.ReadinessTimeout);
+
 WebApplication app = builder.Build();
 
 app.UseMiddleware<ApiExceptionMiddleware>();
@@ -59,6 +71,10 @@ app.UseStatusCodePages(async statusCodeContext =>
             context.RequestAborted);
     }
 });
+app.MapHealthChecks(HealthContract.LivePath, HealthContract.Liveness)
+    .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
+app.MapHealthChecks(HealthContract.ReadyPath, HealthContract.Readiness)
+    .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapControllers();
 
 app.Run();

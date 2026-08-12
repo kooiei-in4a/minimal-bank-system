@@ -60,6 +60,20 @@ services:
     secrets:
       - source: database_password
         target: database_password
+    # API health is readiness, not merely a live process or an open TCP port. The shipped runtime
+    # image already contains bash, so this probe needs no extra package or helper executable.
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && IFS= read -r status <&3 && [[ $$status == "HTTP/1.1 200 "* ]]'
+      interval: 5s
+      # The probe remains alive long enough to observe the readiness check's bounded 10-second
+      # failure response instead of terminating the request before it can return 503.
+      timeout: 15s
+      retries: 3
+      start_period: 20s
 
 secrets:
   database_password:
