@@ -63,7 +63,11 @@ SECTION_D_FND06_EXPERIMENTS:
     CORE_SPEC_COUNT: 1
     JIT_STAGE_SPEC_COUNT: 1
     JIT_TARGET: FINAL_SYNTHESIS_TO_LIGHT_REVIEW_HANDOFF
-  D_06_TO_D_08:
+  D_06:
+    DECISION: DEFER_FROM_FND06
+    O_07_DIRECTION: REMAINS_ADOPTED
+    FND06_INCLUDE: false
+  D_07_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -567,7 +571,11 @@ SECTION_D_FND06_EXPERIMENTS:
     CORE_SPEC_COUNT: 1
     JIT_STAGE_SPEC_COUNT: 1
     JIT_TARGET: FINAL_SYNTHESIS_TO_LIGHT_REVIEW_HANDOFF
-  D_06_TO_D_08:
+  D_06:
+    DECISION: DEFER_FROM_FND06
+    O_07_DIRECTION: REMAINS_ADOPTED
+    FND06_INCLUDE: false
+  D_07_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -947,7 +955,40 @@ JIT_STAGE_SPEC:
 
 JIT Stage Specはrun-scopedで、FND-06終了後はexpired historical-onlyとして扱い、後続runのcurrent authorityとしてそのまま再利用しない。複雑なscoreは追加せず、初回実装に必要な情報がCore Specで十分だったか、JIT Stage Specがstage-local情報に絞れていたか、二重管理にならなかったか、実際に使いやすかったかを観測する。
 
-D-06〜D-08（minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01〜D-04の既存判断も変更しない。
+#### D-06 — minimal EOL contract
+
+```yaml
+DECISION: DEFER_FROM_FND06
+O_07_DIRECTION:
+  REMAINS_ADOPTED: true
+FND06:
+  INCLUDE: false
+FUTURE_IMPLEMENTATION:
+  TARGET: SEPARATE_PROCESS_UPDATE
+  TIMING: AFTER_FND05_RETROSPECTIVE
+  SCOPE:
+    - minimal .gitattributes
+    - lightweight EOL preflight
+MASS_NORMALIZATION:
+  ALLOWED: false
+```
+
+O-07の方向性は採用済みのまま維持するが、FND-06のpilotには含めない。FND-06にはすでにD-01〜D-05の改善を小さく試す方針が入っているため、repository hygieneであるEOL対策まで同じrunへ追加せず、変更要因を増やさない。
+
+minimal `.gitattributes`とlightweight EOL preflightは、FND-05 retrospective完了後の独立したProcess Update候補として扱う。repository全体の一括normalize、大量EOL変更、複雑なplatform別ruleは行わない。
+
+```yaml
+D_06_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+PROCESS_CHANGE_IMPLEMENTATION:
+  AUTHORIZED: false
+FND06:
+  STARTED: false
+```
+
+D-06をFND-06から外すことはO-07のREJECTを意味しない。EOL contract自体は採用方向を維持し、FND-06でのexperiment対象からのみ外す。
+
+D-07〜D-08（Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。
 
 ---
 
