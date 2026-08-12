@@ -39,7 +39,12 @@ SECTION_C_OBSERVATIONS:
     FINAL_DECISION: ADOPT
 
 SECTION_D_FND06_EXPERIMENTS:
-  STATUS: PENDING_FINAL_KOO_DECISION
+  STATUS: IN_PROGRESS
+  D_01:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_MODE: WARNING_LEVEL
+  D_02_TO_D_08:
+    STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
   STATUS: NOT_AUTHORIZED
@@ -518,7 +523,12 @@ SECTION_C_OBSERVATIONS:
     FINAL_DECISION: ADOPT
 
 SECTION_D_FND06_EXPERIMENTS:
-  STATUS: PENDING_FINAL_KOO_DECISION
+  STATUS: IN_PROGRESS
+  D_01:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_MODE: WARNING_LEVEL
+  D_02_TO_D_08:
+    STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
   STATUS: NOT_AUTHORIZED
@@ -526,6 +536,48 @@ FND06_PROCESS_CHANGES:
 FND06:
   STATUS: NOT_STARTED
 ```
+
+### 10.4 Section D — FND-06 Experiments
+
+#### D-01 — `run.json` Final Consolidation
+
+```yaml
+DECISION: ADOPT_FOR_FND06_PILOT
+PILOT_MODE: WARNING_LEVEL
+SCOPE:
+  - final run.json consolidation
+  - required-stage completeness check
+INITIAL_ENFORCEMENT:
+  MERGE_BLOCKER: false
+  WARNING_ONLY: true
+```
+
+このpilotは、stage自体は完了しているのにcanonicalな`run.json`では`not_started`のままになる状態を防ぐために試す。最終的なrun状態を見る場所を一本化し、operatorが複数branch / artifactを人手で突合する負担を減らす。FND-05で実際に観測されたprocess defectへの直接対策として、FND-06で小さく試す。
+
+最初からmerge blockerにせずwarning-levelから開始する。consolidation / completeness checker自身の誤判定で開発を止めないため、またFND-06の実runで挙動を観測してから強制gate化を判断するためである。
+
+```yaml
+D_01_MEASUREMENT:
+  REQUIRED_STAGES_DETECTED:
+    OBSERVE: true
+  MISSING_STAGE_WARNING_CORRECT:
+    OBSERVE: true
+  FINAL_RUN_JSON_MATCHES_ACTUAL_STAGE_STATE:
+    OBSERVE: true
+  MANUAL_CORRECTION_NEEDED:
+    OBSERVE: true
+
+D_01_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+PROCESS_CHANGE_IMPLEMENTATION:
+  AUTHORIZED: false
+FND06:
+  STARTED: false
+```
+
+観測するのは、必須stageを正しく認識できたか、stage欠落時に正しくwarningできたか、final `run.json`と実際のstage状態が一致したか、人間による手修正が必要だったかである。過剰なKPIやscore制度は追加しない。
+
+D-02〜D-08（Mutation Meta-Verifier、Generated Execution Handoff、Fast Mechanical Gate、O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。
 
 ---
 
