@@ -43,7 +43,11 @@ SECTION_D_FND06_EXPERIMENTS:
   D_01:
     DECISION: ADOPT_FOR_FND06_PILOT
     PILOT_MODE: WARNING_LEVEL
-  D_02_TO_D_08:
+  D_02:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: LIMITED
+    TARGET: CRITICAL_MUTATIONS_ONLY
+  D_03_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -527,7 +531,11 @@ SECTION_D_FND06_EXPERIMENTS:
   D_01:
     DECISION: ADOPT_FOR_FND06_PILOT
     PILOT_MODE: WARNING_LEVEL
-  D_02_TO_D_08:
+  D_02:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: LIMITED
+    TARGET: CRITICAL_MUTATIONS_ONLY
+  D_03_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -577,7 +585,67 @@ FND06:
 
 観測するのは、必須stageを正しく認識できたか、stage欠落時に正しくwarningできたか、final `run.json`と実際のstage状態が一致したか、人間による手修正が必要だったかである。過剰なKPIやscore制度は追加しない。
 
-D-02〜D-08（Mutation Meta-Verifier、Generated Execution Handoff、Fast Mechanical Gate、O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。
+#### D-02 — Mutation Meta-Verifier
+
+```yaml
+DECISION: ADOPT_FOR_FND06_PILOT
+PILOT_SCOPE: LIMITED
+TARGET: CRITICAL_MUTATIONS_ONLY
+FULL_FRAMEWORK: false
+INITIAL_TARGET_COUNT:
+  GUIDE: 1-3
+```
+
+FND-06では、すべてのmutationを対象とする重いframeworkにはせず、重要なfailure behavior / oracle correctnessを確認するmutationから1〜3件程度を選んで小さくpilotする。`1-3`はguideであり、無理に3件作る必要はない。
+
+FND-05では、`CI GREEN`と`Mutation KILLED`だけでは、shipped oracleが意図したfailureを検出したことを証明できないケースが確認された。mutation後にtestがREDになっても、期待した理由でREDになったとは限らないため、D-02はこのfalse assuranceへの対策として試す。
+
+```yaml
+D_02_REQUIRED_CORE:
+  BASELINE_BEFORE:
+    REQUIRED: true
+  MUTATION_APPLIED:
+    REQUIRED: true
+  SHIPPED_ORACLE_RED:
+    REQUIRED: true
+  EXPECTED_FAILURE_SIGNATURE:
+    REQUIRED: true
+  MUTATION_RESTORED:
+    REQUIRED: true
+  BASELINE_AFTER_RESTORE:
+    REQUIRED: true
+```
+
+正常状態でPASSした後にmutationを適用し、既存のshipped oracleを実行してREDになること、狙ったfailure signatureでREDになったことを確認する。その後mutationを戻し、正常状態で再度PASSする。単にtestが失敗したのではなく、狙った理由で失敗したことを確認する。
+
+`EXPECTED_FAILURE_SIGNATURE`は巨大なsnapshotや完全なログ一致を必須にせず、対象に応じてexpected exception type、error code、marker、assertion、stage、failure classificationなどから、別原因によるREDと区別できる最小限のsignatureを使う。脆い全文ログ一致は標準化しない。
+
+全mutationへの一律meta-verification義務、巨大なmutation framework、mutationごとの専用branchや独立PR、過剰な証跡package、mutation数を増やすこと自体を目的とする運用にはしない。目的は、重要なmutationについてshipped oracleが正しいfailureを検出しているかを確認することである。
+
+```yaml
+D_02_MEASUREMENT:
+  BASELINE_BEFORE_PASSED:
+    OBSERVE: true
+  MUTATION_APPLIED_CONFIRMED:
+    OBSERVE: true
+  SHIPPED_ORACLE_RED:
+    OBSERVE: true
+  EXPECTED_FAILURE_SIGNATURE_MATCHED:
+    OBSERVE: true
+  MUTATION_RESTORE_CONFIRMED:
+    OBSERVE: true
+  BASELINE_AFTER_RESTORE_PASSED:
+    OBSERVE: true
+  UNEXPECTED_RED_CAUSE_FOUND:
+    OBSERVE: true
+
+D_02_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+```
+
+最後の観測項目では、mutationはKILLEDしたが実際には期待とは別の理由でtestが落ちていたケースを検出したかを確認する。複雑なscoreや重み付けは追加しない。
+
+D-03〜D-08（Generated Execution Handoff、Fast Mechanical Gate、O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01の既存判断も変更しない。
 
 ---
 
