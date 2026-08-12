@@ -267,7 +267,7 @@ FND-05では、品質を上げた工程と、人間の作業量だけを増や�
 | manual SHA duplication | 直接の品質寄与は低い | 高い | REMOVE |
 | branchによる長期evidence保持 | 一部有効 | 高い | 後でSIMPLIFY |
 
-FND-05では、Light Review 2本（`light_l1 -> locked`、`light_l2 -> locked`）のfindingを受けて`light_fix -> locked`が実施され、`final-synthesis/light-findings-fix-result.md`が作成・lockされた後、修正後のHeadがHeavy Reviewへhandoffされたため、Light Reviewには実際の品質寄与があった。一方、mechanical checkまでReviewerに持たせていたため、次回はsemantic review 1本へ簡略化する。
+FND-05ではLight Review stageを2本実施し、`light_l1`はfinding 0、`light_l2`がMajor 1（`L2-D06-M05`）とMinor 1（`L2-D03-SECRET-MISSING`）を発見した。このL2 findingsを受けて`light_fix`が実施され、`final-synthesis/light-findings-fix-result.md`が作成・lockされた後、修正後のHeadがHeavy Reviewへhandoffされたため、Light Review stageには実際の品質寄与があった。一方、mechanical checkまでReviewerに持たせていたため、次回はsemantic review 1本へ簡略化する。
 
 ### 高いコストでも残すもの
 
