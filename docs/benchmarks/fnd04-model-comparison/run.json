@@ -7,6 +7,9 @@
   "common_base_branch": "main",
   "common_base_sha": "38c07e210fe4e8689f1d8aeabbb07b92610d1826",
   "control_branch": "agent/fnd04-benchmark-control",
+  "control_branch_active_required": false,
+  "control_archive_tag": "archive/authority/fnd04-benchmark-control",
+  "control_archive_head": "c2fb093adfcc6046a8f4ea30c81b0511498d6a16",
   "revisions": {
     "implementation_h0_prompt": "fnd04-h0-v1",
     "formal_self_review_prompt": "fnd04-sr-v1",
