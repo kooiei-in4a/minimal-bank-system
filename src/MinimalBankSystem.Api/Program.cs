@@ -1,8 +1,16 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using MinimalBankSystem.Api.Health;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure.Persistence;
+
+if (await HealthProbeCommand.TryRunAsync(args) is int healthProbeExitCode)
+{
+    return healthProbeExitCode;
+}
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +32,13 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<PostgreSqlReadinessHealthCheck>(
+        "postgresql",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"],
+        timeout: TimeSpan.FromSeconds(5));
 
 // Normal API startup never evolves the schema. The options factory runs only when persistence is
 // resolved and fails closed if the canonical PostgreSQL connection is absent.
@@ -59,8 +74,23 @@ app.UseStatusCodePages(async statusCodeContext =>
             context.RequestAborted);
     }
 });
+app.MapHealthChecks(
+    "/health/live",
+    new HealthCheckOptions
+    {
+        Predicate = _ => false,
+        ResponseWriter = HealthResponseWriter.WriteAsync,
+    });
+app.MapHealthChecks(
+    "/health/ready",
+    new HealthCheckOptions
+    {
+        Predicate = registration => registration.Tags.Contains("ready"),
+        ResponseWriter = HealthResponseWriter.WriteAsync,
+    });
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();
+return 0;
 
 public partial class Program;

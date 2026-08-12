@@ -60,6 +60,12 @@ services:
     secrets:
       - source: database_password
         target: database_password
+    healthcheck:
+      test: ["CMD", "dotnet", "MinimalBankSystem.Api.dll", "--health-probe", "/health/ready"]
+      interval: 2s
+      timeout: 12s
+      retries: 3
+      start_period: 5s
 
 secrets:
   database_password:

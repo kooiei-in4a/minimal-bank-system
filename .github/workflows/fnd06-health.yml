@@ -1,0 +1,30 @@
+name: FND-06 health verification
+
+on:
+  push:
+    branches:
+      - "agent/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  fnd06-health:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Record actual checkout SHA
+        run: |
+          echo "ACTUAL_CHECKOUT_SHA=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Run FND-06 Compose health verification
+        env:
+          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+        run: bash tests/fnd06/verify-compose.sh
