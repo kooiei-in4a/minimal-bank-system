@@ -52,7 +52,12 @@ SECTION_D_FND06_EXPERIMENTS:
     PILOT_SCOPE: GENERATE_ONLY
     HUMAN_APPROVAL: REQUIRED
     AUTOMATIC_AGENT_LAUNCH: false
-  D_04_TO_D_08:
+  D_04:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: SMALL_LOW_RISK
+    INITIAL_CHECK_COUNT: 3
+    WARNING_ONLY: true
+  D_05_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -545,7 +550,12 @@ SECTION_D_FND06_EXPERIMENTS:
     PILOT_SCOPE: GENERATE_ONLY
     HUMAN_APPROVAL: REQUIRED
     AUTOMATIC_AGENT_LAUNCH: false
-  D_04_TO_D_08:
+  D_04:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: SMALL_LOW_RISK
+    INITIAL_CHECK_COUNT: 3
+    WARNING_ONLY: true
+  D_05_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -721,7 +731,102 @@ AUTOMATIC_AGENT_EXECUTION:
 
 観測するのは、生成後も手入力が必要だった項目、metadataから生成した値の正しさ、使用前の人間による修正、SHA / Model / STOP条件などの転記問題、promptを最初から組み直さずhandoffを使えたかである。秒単位の工数計測や複雑なscore制度は追加しない。
 
-D-04〜D-08（Fast Mechanical Gate、O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01とD-02の既存判断も変更しない。
+#### D-04 — Fast Mechanical Gate
+
+```yaml
+DECISION: ADOPT_FOR_FND06_PILOT
+PILOT_SCOPE: SMALL_LOW_RISK
+INITIAL_CHECK_COUNT:
+  TARGET: 3
+ENFORCEMENT:
+  WARNING_ONLY: true
+  MERGE_BLOCKER: false
+SEMANTIC_CHECKS:
+  INCLUDED: false
+```
+
+従来候補の5〜8チェックを一度に導入せず、FND-06ではリスクの低いものを小さく試す。最初のpilotは3チェックだけとし、semantic judgmentは含めない。
+
+```yaml
+D_04_INITIAL_CHECKS:
+  CHECK_01:
+    NAME: checkout identity
+    PURPOSE: actual checkoutがexpected Headと一致していることを確認する
+  CHECK_02:
+    NAME: run.json required-stage completeness
+    PURPOSE: required stageの記録漏れを確認する
+    IMPLEMENTATION_DIRECTION:
+      REUSE_D01: true
+  CHECK_03:
+    NAME: critical artifact identity/hash
+    PURPOSE: critical artifactがexpected identityと一致していることを確認する
+```
+
+CHECK_02はD-04専用の別checkerを作るのではなく、D-01で採用したrun.json final consolidationとrequired-stage completeness checkの結果を再利用する。D-01がrun.json consolidation / completenessを担い、D-04はfast mechanical checksをまとめるgateを担う。重複実装は許可しない。
+
+```yaml
+D_04_CHECK_REQUIREMENTS:
+  FAST:
+    REQUIRED: true
+  DETERMINISTIC:
+    REQUIRED: true
+  YES_NO_DECISION:
+    REQUIRED: true
+  SEMANTIC_INTERPRETATION:
+    ALLOWED: false
+```
+
+初期pilotにはforbidden pattern check、docker compose config、EOL preflight、broad file placement rules、Docker runtime startup、integration test、full mutation suite、semantic oracle judgment、failure meaning judgmentを含めない。これらは`NOT_INCLUDED_IN_INITIAL_D04_PILOT`として扱い、REJECTとは分類しない。pattern設計によるfalse positive、repository / environment依存、D-06未決定、pilot scopeの拡大、Fast Mechanical Gateの責務外であることを理由とする。
+
+Fast Mechanical Gateへ入れるチェックは、fast、deterministic、YES / NO decisionをすべて満たし、semantic interpretationを必要としないものに限る。意味の判断が必要な確認はSemantic Light Review / Heavy Reviewに残す。
+
+```yaml
+D_04_REVIEW_FLOW:
+  ORDER:
+    - Final Synthesis
+    - Fast Mechanical Gate
+    - Semantic Light Review x1
+    - Heavy Review x2
+  ENFORCEMENT:
+    WARNING_ONLY: true
+    MERGE_BLOCKER: false
+```
+
+warning-onlyから開始するのは、checker自身の誤判定でrunを止めず、false warningを観測し、実運用で安定性を確認してから強制gate化を判断するためである。
+
+```yaml
+D_04_MEASUREMENT:
+  CHECKOUT_IDENTITY_CORRECT:
+    OBSERVE: true
+  RUN_JSON_COMPLETENESS_RESULT_CORRECT:
+    OBSERVE: true
+  CRITICAL_ARTIFACT_IDENTITY_CORRECT:
+    OBSERVE: true
+  FALSE_WARNING_OCCURRED:
+    OBSERVE: true
+  HUMAN_CORRECTION_REQUIRED:
+    OBSERVE: true
+  EXECUTION_TIME:
+    OBSERVE: true
+
+D_04_EXPANSION:
+  INITIAL_CHECK_COUNT: 3
+  AUTO_EXPAND:
+    ALLOWED: false
+  ADDITIONAL_CHECKS:
+    REQUIRE:
+      - explicit Koo decision
+      - later retrospective decision
+
+D_04_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+FAST_MECHANICAL_GATE:
+  IMPLEMENTED: false
+```
+
+execution timeは厳密なperformance benchmarkではなく、processが不必要に重くなっていないかを確認できる程度に観測する。pilot実行中に追加候補を見つけてもcurrent runへ自動追加せず、必要ならObservationとして残す。複雑なscoreや重み付けは追加しない。
+
+D-05〜D-08（O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01、D-02、D-03の既存判断も変更しない。
 
 ---
 
