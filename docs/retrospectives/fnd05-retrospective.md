@@ -21,10 +21,28 @@ SECTION_B_EVIDENCE_AUTOMATION:
   STATUS: DECISION_PACKAGE_RECORDED
 
 SECTION_C_OBSERVATIONS:
-  STATUS: PENDING_FINAL_KOO_DECISION
+  STATUS: KOO_DECISIONS_RECORDED
+  O_01:
+    FINAL_DECISION: ADOPT
+  O_02:
+    FINAL_DECISION: ADOPT
+  O_03:
+    FINAL_DECISION: ADOPT
+  O_04:
+    FINAL_DECISION: ADOPT
+  O_05:
+    FINAL_DECISION: ADOPT
+  O_06:
+    FINAL_DECISION: ADOPT
+    ADOPTION_TYPE: LIMITED_PILOT
+  O_07:
+    FINAL_DECISION: ADOPT
 
 SECTION_D_FND06_EXPERIMENTS:
   STATUS: PENDING_FINAL_KOO_DECISION
+
+FND06_PROCESS_CHANGES:
+  STATUS: NOT_AUTHORIZED
 
 FND06:
   STATUS: NOT_STARTED
@@ -113,41 +131,72 @@ Observation Ledger:
 
 `docs/retrospectives/fnd05-operational-observations.md`
 
-各Observationは後で次のいずれかに分類する。
+各ObservationはKooの最終判断に基づき、次のいずれかへ分類する。
 
 - ADOPT
 - DEFER
 - REJECT
 
-現時点では採否を決定しない。
+以下は採用方針の記録であり、このPRでprocess変更を実装する承認ではない。
 
 ### O-01 — Execution prompt + handoff contract
 
-STATUS: UNREVIEWED
+```yaml
+FINAL_DECISION: ADOPT
+```
+
+prompt本文だけでなく投入先、Model / Harness / Effort / Context、STOP条件、Coordinatorへ返すevidence、次stageを勝手に開始してよいかを明示する。簡単な作業に巨大なhandoff templateは要求せず、将来的にgenerated handoffへ寄せる。
 
 ### O-02 — Model identity authority
 
-STATUS: UNREVIEWED
+```yaml
+FINAL_DECISION: ADOPT
+```
+
+Model / Harness identityのauthorityは、Harness / platform execution metadata、machine-readable run metadata、operator attestation、Agent self-reportの順を基本とする。Agentの自己申告をauthoritative evidenceにせず、外部execution metadataがlocked identityと異なる場合はfail-closedでSTOPする。
 
 ### O-03 — Non-normative Observation Ledger
 
-STATUS: UNREVIEWED
+```yaml
+FINAL_DECISION: ADOPT
+```
+
+実行中に見つかったmeaningfulな改善は、current runへ即時反映せずObservationとして記録し、current runの条件を維持したうえでretrospectiveでADOPT / DEFER / REJECTを判断する。Observationごとのbranch、PR、重いevidence packageは必須にしない。
 
 ### O-04 — Exact Git blob handoff hash verification
 
-STATUS: UNREVIEWED
+```yaml
+FINAL_DECISION: ADOPT
+```
+
+critical handoff、canonical registry、重要review evidenceなどのcritical artifactでは、commit + pathからexact Git blobを特定し、hashを再計算してidentityを確認する。全docsやtemporary artifactには適用せず、人手転記ではなく将来的にscript化する。
 
 ### O-05 — Artifact production commit / registry lock commit separation
 
-STATUS: UNREVIEWED
+```yaml
+FINAL_DECISION: ADOPT
+```
+
+artifactを生成したidentityと、正式なstage resultとしてregistryへlockしたidentityを区別する。適用対象はcritical stage artifactに限定し、minor artifactへの一律適用、extra branch、手作業のSHA転記は要求しない。producer identity取得とregistry importは将来自動化する方向とし、B-01のfinal run.json consolidationとは別問題として扱う。
 
 ### O-06 — Just-in-Time Spec / CI Rule Check experiment
 
-STATUS: UNREVIEWED
+```yaml
+FINAL_DECISION: ADOPT
+ADOPTION_TYPE: LIMITED_PILOT
+```
+
+Full JIT Spec policyを全面採用せず、小さく試す。Core Specは「今回何を作るか」を設計方針確定後・初回実装前に記録し、run後はhistorical referenceとする。ADRは「なぜその設計にしたか」を記録するlong-livedな正本とし、明らかな矛盾は実装修正またはADR更新 / supersedeで扱う。JIT Stage Specは対象runだけで有効なrun-scoped資料として保持し、後続runで再利用しない。
+
+初回pilotはstage-local handoff instructions、stage-local artifact format、stage-specific evidence formatなどから小さく始め、Acceptance Criteria、重要なarchitecture constraint、security requirement、persistence behavior、failure behavior、critical oracle requirementは初回実装前に伝える。機械的に短時間で判定できるものはDECISION-05のFast Mechanical Gate pilotと連携可能だが、このObservation自体でprocess実装は開始しない。ADR/Core Specの複雑なdependency graph、重いversion governance、専用drift management systemは導入しない。
 
 ### O-07 — Windows / WSL Git EOL contract
 
-STATUS: UNREVIEWED
+```yaml
+FINAL_DECISION: ADOPT
+```
+
+minimal `.gitattributes`とlightweight EOL preflightにより、Windows / WSL間でEOLだけの大量偽差分を抑える方向を採用する。ただし今回のPRでは実装しない。将来もrepository全体の一括変換、全ファイルの強制normalize、複雑なplatform別ruleは最初から導入せず、大量diffを伴うnormalizeが必要なら独立cleanupとして扱う。
 
 必要に応じてLedgerに存在する追加Observationも、
 GitHub一次証拠を確認したうえでこのsectionへ追加する。
@@ -451,7 +500,22 @@ SECTION_B_EVIDENCE_AUTOMATION:
   STATUS: DECISION_PACKAGE_RECORDED
 
 SECTION_C_OBSERVATIONS:
-  STATUS: PENDING_FINAL_KOO_DECISION
+  STATUS: KOO_DECISIONS_RECORDED
+  O_01:
+    FINAL_DECISION: ADOPT
+  O_02:
+    FINAL_DECISION: ADOPT
+  O_03:
+    FINAL_DECISION: ADOPT
+  O_04:
+    FINAL_DECISION: ADOPT
+  O_05:
+    FINAL_DECISION: ADOPT
+  O_06:
+    FINAL_DECISION: ADOPT
+    ADOPTION_TYPE: LIMITED_PILOT
+  O_07:
+    FINAL_DECISION: ADOPT
 
 SECTION_D_FND06_EXPERIMENTS:
   STATUS: PENDING_FINAL_KOO_DECISION
@@ -467,6 +531,6 @@ FND06:
 
 ## 11. Next Step
 
-Coordinatorへ返却し、KooがSection CのO-01〜O-07最終採否とSection DのFND-06 experiment選定を別工程で判断する。
+Coordinatorへ返却し、KooがSection DのFND-06 experiment選定を別工程で判断する。Section CのO-01〜O-07最終判断は本sectionへ記録済みである。
 
-それまではretrospectiveを`IN_PROGRESS`に維持し、PR #154をDraftのままにする。ObservationをADOPT / DEFER / REJECTへ確定せず、FND-06を開始せず、process変更を実装しない。
+retrospectiveは`IN_PROGRESS`に維持し、PR #154をDraftのままにする。FND-06を開始せず、process変更を実装しない。
