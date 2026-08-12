@@ -4,7 +4,7 @@
 
 RETROSPECTIVE: COMPLETE
 
-FND-05 product implementation, candidate archive, pre-retrospective repository cleanup, independent retrospective review, targeted re-review, and Koo final approval are complete.
+FND-05 product implementation, candidate archive, pre-retrospective repository cleanup, independent retrospective review, targeted re-review, Koo final approval, and closure exact-head CI are complete.
 
 This document is the final record for the FND-05 retrospective.
 
@@ -28,6 +28,13 @@ FINAL_RETROSPECTIVE_REVIEW:
 KOO_FINAL_APPROVAL:
   STATUS: APPROVED
   DATE: 2026-08-12
+
+CLOSURE_COMMIT:
+  HEAD: 3248d4422aad477d0f1285d03865623bd0f277d1
+  BUILD_AND_TEST_RUN: 31577464906
+  BUILD_AND_TEST_RESULT: SUCCESS
+  FND05_COMPOSE_VERIFICATION_RUN: 31577464987
+  FND05_COMPOSE_VERIFICATION_RESULT: SUCCESS
 
 SECTION_A_DEVELOPMENT_FLOW:
   STATUS: KOO_DECISIONS_RECORDED
@@ -841,6 +848,13 @@ KOO_FINAL_APPROVAL:
   STATUS: APPROVED
   DATE: 2026-08-12
 
+CLOSURE_COMMIT:
+  HEAD: 3248d4422aad477d0f1285d03865623bd0f277d1
+  BUILD_AND_TEST_RUN: 31577464906
+  BUILD_AND_TEST_RESULT: SUCCESS
+  FND05_COMPOSE_VERIFICATION_RUN: 31577464987
+  FND05_COMPOSE_VERIFICATION_RESULT: SUCCESS
+
 SECTION_A_DEVELOPMENT_FLOW:
   STATUS: KOO_DECISIONS_RECORDED
 
@@ -1397,6 +1411,8 @@ Final Independent Consistency Reviewは`READY_FOR_KOO_FINAL_APPROVAL`、Blocker 
 
 Kooは2026-08-12に最終報告書を承認した。これによりFND-05 retrospectiveは`COMPLETE`とする。
 
+closure commit `3248d4422aad477d0f1285d03865623bd0f277d1`についても、Build and Test run `31577464906`とFND-05 Compose verification run `31577464987`がともにSUCCESSした。
+
 この完了はFND-06 process implementationの開始承認ではない。FND-06は`NOT_STARTED`、process変更は`NOT_AUTHORIZED`のまま維持する。
 
-次のoperational actionは、このclosure-only commitのexact Head CIを確認し、問題がなければPR #154をReady化してmergeすることである。FND-06開始はその後の別判断として扱う。
+次のoperational actionはPR #154をReady化してmergeすることである。FND-06開始はその後の別判断として扱う。
