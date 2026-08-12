@@ -67,7 +67,11 @@ SECTION_D_FND06_EXPERIMENTS:
     DECISION: DEFER_FROM_FND06
     O_07_DIRECTION: REMAINS_ADOPTED
     FND06_INCLUDE: false
-  D_07_TO_D_08:
+  D_07:
+    DECISION: DEFER_AS_STANDALONE_FND06_PILOT
+    DIRECTION: REMAINS_ADOPTED
+    FND06_STANDALONE_EXPERIMENT: false
+  D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -575,7 +579,11 @@ SECTION_D_FND06_EXPERIMENTS:
     DECISION: DEFER_FROM_FND06
     O_07_DIRECTION: REMAINS_ADOPTED
     FND06_INCLUDE: false
-  D_07_TO_D_08:
+  D_07:
+    DECISION: DEFER_AS_STANDALONE_FND06_PILOT
+    DIRECTION: REMAINS_ADOPTED
+    FND06_STANDALONE_EXPERIMENT: false
+  D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -988,7 +996,37 @@ FND06:
 
 D-06をFND-06から外すことはO-07のREJECTを意味しない。EOL contract自体は採用方向を維持し、FND-06でのexperiment対象からのみ外す。
 
-D-07〜D-08（Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。
+#### D-07 — Identity / SHA automation
+
+```yaml
+DECISION: DEFER_AS_STANDALONE_FND06_PILOT
+DIRECTION:
+  REMAINS_ADOPTED: true
+FND06:
+  STANDALONE_EXPERIMENT: false
+INTEGRATION_DIRECTION:
+  D_03:
+    USE_AUTHORITATIVE_IDENTITY_METADATA: true
+  D_04:
+    REUSE_IDENTITY_CHECK_LOGIC: true
+DUPLICATE_IDENTITY_SYSTEM:
+  ALLOWED: false
+```
+
+Identity / SHA automationの方向性は採用済みのまま維持するが、FND-06では独立した追加pilotとして扱わない。D-03 Generated Execution HandoffがTarget HeadやModel / Harnessなどのauthoritative identity metadataを利用し、D-04 Fast Mechanical Gateがcheckout identityやcritical artifact identity/hashの確認ロジックを利用するため、D-07専用の第三のidentity取得・転記systemは作らない。
+
+重要identityの確認自体は削らない。人間によるSHA取得・転記・重複記録を減らす方向は維持し、FND-06ではD-03 / D-04の実装で同じidentity source / logicを可能な範囲で再利用する。D-07を独立experimentから外すことはB-02 Identity / SHA AutomationのREJECTを意味しない。
+
+```yaml
+D_07_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+PROCESS_CHANGE_IMPLEMENTATION:
+  AUTHORIZED: false
+FND06:
+  STARTED: false
+```
+
+D-08（Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。
 
 ---
 
