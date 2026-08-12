@@ -47,7 +47,12 @@ SECTION_D_FND06_EXPERIMENTS:
     DECISION: ADOPT_FOR_FND06_PILOT
     PILOT_SCOPE: LIMITED
     TARGET: CRITICAL_MUTATIONS_ONLY
-  D_03_TO_D_08:
+  D_03:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: GENERATE_ONLY
+    HUMAN_APPROVAL: REQUIRED
+    AUTOMATIC_AGENT_LAUNCH: false
+  D_04_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -535,7 +540,12 @@ SECTION_D_FND06_EXPERIMENTS:
     DECISION: ADOPT_FOR_FND06_PILOT
     PILOT_SCOPE: LIMITED
     TARGET: CRITICAL_MUTATIONS_ONLY
-  D_03_TO_D_08:
+  D_03:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: GENERATE_ONLY
+    HUMAN_APPROVAL: REQUIRED
+    AUTOMATIC_AGENT_LAUNCH: false
+  D_04_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -645,7 +655,73 @@ D_02_IMPLEMENTATION:
 
 最後の観測項目では、mutationはKILLEDしたが実際には期待とは別の理由でtestが落ちていたケースを検出したかを確認する。複雑なscoreや重み付けは追加しない。
 
-D-03〜D-08（Generated Execution Handoff、Fast Mechanical Gate、O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01の既存判断も変更しない。
+#### D-03 — Generated Execution Handoff
+
+```yaml
+DECISION: ADOPT_FOR_FND06_PILOT
+PILOT_SCOPE: GENERATE_ONLY
+HUMAN_APPROVAL:
+  REQUIRED: true
+AUTOMATIC_AGENT_LAUNCH:
+  ENABLED: false
+INITIAL_SCOPE: SMALL
+```
+
+FND-06ではagent実行そのものを自動化せず、`run.json` / stage metadataなどからexecution handoffを生成し、Kooが内容を確認した後、人間が対象Harnessへ投入するところまでをpilot対象とする。目的は、stage間handoffで人間が毎回組み立てている情報の転記負担と誤りを減らすことである。
+
+```yaml
+D_03_INITIAL_FIELDS:
+  - MODEL
+  - HARNESS
+  - EFFORT
+  - CONTEXT
+  - TARGET_HEAD
+  - STOP_CONDITIONS
+  - REQUIRED_RETURN_EVIDENCE
+```
+
+必要に応じて、既存metadataから安全に得られる範囲でROLE、target artifact identity、next action / no-next-actionを含めてもよいが、pilot scopeは不必要に拡大しない。最初は1種類程度の小さなexecution handoff生成から始め、詳細formatはprocess implementation時に決める。
+
+```yaml
+D_03_EXECUTION_POLICY:
+  HANDOFF_GENERATION:
+    AUTOMATED: true
+  HUMAN_REVIEW_BEFORE_USE:
+    REQUIRED: true
+  AGENT_EXECUTION:
+    AUTOMATED: false
+  AUTO_NEXT_STAGE:
+    ENABLED: false
+```
+
+handoffの生成を自動化しても、execution開始の判断は人間に残す。生成されたhandoffをそのまま自動投入せず、automatic merge、automatic Ready化、next stageの自動開始、Harness横断の巨大なorchestrator、複雑なworkflow engineには拡張しない。prompt本文全体を毎回AIが自由生成する仕組みにもせず、既存のauthoritative metadataから小さなhandoff artifactを生成する。
+
+Model、Harness、Effort、Target Head、artifact identityなどは、可能な限りmachine-readable / externally confirmed metadataから取得する。Agent self-reportをauthoritative sourceにせず、O-02 Model Identity Authorityの原則を維持する。
+
+```yaml
+D_03_MEASUREMENT:
+  MANUAL_FIELDS_REQUIRED:
+    OBSERVE: true
+  GENERATED_FIELDS_CORRECT:
+    OBSERVE: true
+  HUMAN_CORRECTIONS_REQUIRED:
+    OBSERVE: true
+  TRANSCRIPTION_ERROR_FOUND:
+    OBSERVE: true
+  HANDOFF_USABLE_WITHOUT_REBUILD:
+    OBSERVE: true
+
+D_03_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+HANDOFF_GENERATOR:
+  IMPLEMENTED: false
+AUTOMATIC_AGENT_EXECUTION:
+  IMPLEMENTED: false
+```
+
+観測するのは、生成後も手入力が必要だった項目、metadataから生成した値の正しさ、使用前の人間による修正、SHA / Model / STOP条件などの転記問題、promptを最初から組み直さずhandoffを使えたかである。秒単位の工数計測や複雑なscore制度は追加しない。
+
+D-04〜D-08（Fast Mechanical Gate、O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01とD-02の既存判断も変更しない。
 
 ---
 
