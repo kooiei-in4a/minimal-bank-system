@@ -15,8 +15,9 @@ WORKDIR /app
 
 COPY --from=build /out/ ./
 COPY deployment/fnd05/with-database-secret.sh /usr/local/bin/with-database-secret
+COPY deployment/fnd06/http-get-status.sh /usr/local/bin/http-get-status
 
-RUN chmod 0555 /usr/local/bin/with-database-secret
+RUN chmod 0555 /usr/local/bin/with-database-secret /usr/local/bin/http-get-status
 
 ENTRYPOINT ["/usr/local/bin/with-database-secret"]
 CMD ["dotnet", "MinimalBankSystem.Api.dll"]

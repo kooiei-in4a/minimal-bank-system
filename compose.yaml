@@ -60,6 +60,12 @@ services:
     secrets:
       - source: database_password
         target: database_password
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/http-get-status", "127.0.0.1", "8080", "/health/ready"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
 
 secrets:
   database_password:
