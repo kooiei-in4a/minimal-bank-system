@@ -15,7 +15,10 @@ namespace MinimalBankSystem.IntegrationTests.PostgreSql;
 public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
     : PostgreSqlDatabaseTestBase(fixture), IClassFixture<PostgreSqlContainerFixture>
 {
+    private const int SessionSettleAttempts = 20;
+
     private static readonly TimeSpan MigrationBudget = TimeSpan.FromSeconds(120);
+    private static readonly TimeSpan SessionSettleInterval = TimeSpan.FromMilliseconds(250);
 
     [Fact]
     public async Task ReadinessRejectsAReachableButUnmigratedDatabaseWithoutTouchingTheSchema()
@@ -132,8 +135,22 @@ public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
         Assert.Equal(tables, await ReadPublicTablesAsync());
         Assert.Equal(history, await ReadMigrationHistoryAsync());
 
-        // Health probing must not leave sessions behind on the readiness database.
-        Assert.Equal(0L, await CountOtherSessionsAsync());
+        // Health probing must not leave sessions behind on the readiness database. PostgreSQL
+        // retires a backend asynchronously after the client disconnects, so this settles.
+        Assert.Equal(0L, await WaitForOtherSessionsToSettleAsync());
+    }
+
+    private async Task<long> WaitForOtherSessionsToSettleAsync()
+    {
+        long observed = await CountOtherSessionsAsync();
+
+        for (int attempt = 0; observed != 0 && attempt < SessionSettleAttempts; attempt++)
+        {
+            await Task.Delay(SessionSettleInterval);
+            observed = await CountOtherSessionsAsync();
+        }
+
+        return observed;
     }
 
     private Task<string[]> ReadPublicTablesAsync() =>
