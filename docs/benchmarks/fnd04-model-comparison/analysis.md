@@ -125,13 +125,13 @@ The following old FND-04-related auxiliary PRs were cleaned separately because t
 
 The source evidence remains available in the closed PR history.
 
-## 7. State intentionally preserved
+## 7. Historical state and archive authority
 
-Do not clean as candidate artifacts:
+The following refs remain historical evidence. After verified archive tagging, live branch presence is not required for archival recovery:
 
 - PR #140 final product PR — merged
 - `agent/issue-42-fnd-04-final-code` — final-code branch preserved
-- `agent/fnd04-benchmark-control` — benchmark evidence/control preserved
+- `agent/fnd04-benchmark-control` — historical benchmark evidence/control; immutable archive `archive/authority/fnd04-benchmark-control` at `c2fb093adfcc6046a8f4ea30c81b0511498d6a16`
 - PR #144 — final retrospective / FND-05 policy, still active
 - PR #145+ — active FND-05 preparation/review work
 
