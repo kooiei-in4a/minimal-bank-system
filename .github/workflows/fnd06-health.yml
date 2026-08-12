@@ -1,0 +1,66 @@
+name: FND-06 health contract verification
+
+on:
+  push:
+    branches:
+      - "agent/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  fnd06-health-compose-direct-head:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out direct-head revision
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Record actual direct-head checkout identity
+        run: |
+          echo "CI_TRIGGER=direct-head"
+          echo "ACTUAL_CHECKOUT_SHA=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Verify FND-06 shipped Compose health contract
+        env:
+          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+        run: bash tests/fnd06/verify-health-compose.sh
+
+      - name: Restore FND-06 mutation test dependencies
+        run: dotnet restore tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj
+
+      - name: Verify FND-06 critical mutation oracles
+        run: bash tests/fnd06/verify-health-mutations.sh
+
+  fnd06-health-compose-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out pull-request revision
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Record actual pull-request checkout identity
+        run: |
+          echo "CI_TRIGGER=pull-request"
+          echo "ACTUAL_CHECKOUT_SHA=$(git rev-parse HEAD)"
+          echo "PULL_REQUEST_HEAD_SHA=${{ github.event.pull_request.head.sha }}"
+          echo "PULL_REQUEST_MERGE_SHA=$GITHUB_SHA"
+
+      - name: Verify FND-06 shipped Compose health contract
+        env:
+          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+        run: bash tests/fnd06/verify-health-compose.sh
+
+      - name: Restore FND-06 mutation test dependencies
+        run: dotnet restore tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj
+
+      - name: Verify FND-06 critical mutation oracles
+        run: bash tests/fnd06/verify-health-mutations.sh
