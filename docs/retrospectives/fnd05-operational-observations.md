@@ -471,9 +471,11 @@ FND-06開始前に次を再検討する。
 
 ## O-07 — Windows / WSL Git EOL contract
 
-Source observation:
+Source observation (historical immutable ref):
 
-`docs/retrospectives/fnd05-operational-observation-o07-git-eol.md`
+`docs/retrospectives/fnd05-operational-observation-o07-git-eol.md@eca2d2878a2302c3b98ed29cc8a4a257432d6b33`
+
+O-07の判断に必要な内容は本Ledger内にも転記済みであり、上記refは発見時点のhistorical source evidenceとして扱う。
 
 Status: `OBSERVED / FND-06+ IMPROVEMENT CANDIDATE`
 

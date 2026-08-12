@@ -125,6 +125,15 @@ FND06:
 - Targeted Fix後のrequired targeted re-review: FIXED / COMPLETE
 - full H1/H2 rerun: NOT REQUIRED
 
+### Review identity / CI evidence
+
+- H1 Heavy Review: `GPT-5.6 Sol` / `Codex` / APPROVE / Blocker 0 / Major 0
+- H2 Heavy Review: `Claude Opus 5` / `Claude Code` / initially CHANGES_REQUIRED / Major 2
+- Conditional Judge: `Composer 2.5` / `Cursor` / H2 findings upheld 2件
+- direct-head CI: build and test run `31515332416`、FND-05 compose verification run `31515332435`
+- PR CI: build and test run `31515336318`、FND-05 compose verification run `31515336270`
+- post-merge main CI: build and test run `31520459290`
+
 製品としては、PostgreSQL、one-shot Migrator、APIのCompose実行経路、migration成功後のAPI起動、migration失敗時のAPI非起動、digest pinning、secret外部注入、named volume、reproducible lifecycle、static / runtime / mutation verificationまでmainへ統合できた。
 
 一方、process側では、後段stageの結果が存在していてもcanonicalな`docs/benchmarks/fnd05-model-comparison/run.json`へ最終集約されず、main上のregistryがpre-run相当の状態を残す問題が観測された。この点は製品品質とは別のprocess defectとして扱う。
@@ -257,6 +266,8 @@ FND-05では、品質を上げた工程と、人間の作業量だけを増や�
 | manual handoff assembly | 直接の品質寄与は低い | 高い | SIMPLIFY / generate |
 | manual SHA duplication | 直接の品質寄与は低い | 高い | REMOVE |
 | branchによる長期evidence保持 | 一部有効 | 高い | 後でSIMPLIFY |
+
+FND-05では、Light Review 2本（`light_l1 -> locked`、`light_l2 -> locked`）のfindingを受けて`light_fix -> locked`が実施され、`final-synthesis/light-findings-fix-result.md`が作成・lockされた後、修正後のHeadがHeavy Reviewへhandoffされたため、Light Reviewには実際の品質寄与があった。一方、mechanical checkまでReviewerに持たせていたため、次回はsemantic review 1本へ簡略化する。
 
 ### 高いコストでも残すもの
 
