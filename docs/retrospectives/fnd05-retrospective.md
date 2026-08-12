@@ -57,7 +57,13 @@ SECTION_D_FND06_EXPERIMENTS:
     PILOT_SCOPE: SMALL_LOW_RISK
     INITIAL_CHECK_COUNT: 3
     WARNING_ONLY: true
-  D_05_TO_D_08:
+  D_05:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: MINIMAL
+    CORE_SPEC_COUNT: 1
+    JIT_STAGE_SPEC_COUNT: 1
+    JIT_TARGET: FINAL_SYNTHESIS_TO_LIGHT_REVIEW_HANDOFF
+  D_06_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -555,7 +561,13 @@ SECTION_D_FND06_EXPERIMENTS:
     PILOT_SCOPE: SMALL_LOW_RISK
     INITIAL_CHECK_COUNT: 3
     WARNING_ONLY: true
-  D_05_TO_D_08:
+  D_05:
+    DECISION: ADOPT_FOR_FND06_PILOT
+    PILOT_SCOPE: MINIMAL
+    CORE_SPEC_COUNT: 1
+    JIT_STAGE_SPEC_COUNT: 1
+    JIT_TARGET: FINAL_SYNTHESIS_TO_LIGHT_REVIEW_HANDOFF
+  D_06_TO_D_08:
     STATUS: PENDING_KOO_DECISION
 
 FND06_PROCESS_CHANGES:
@@ -826,7 +838,116 @@ FAST_MECHANICAL_GATE:
 
 execution timeは厳密なperformance benchmarkではなく、processが不必要に重くなっていないかを確認できる程度に観測する。pilot実行中に追加候補を見つけてもcurrent runへ自動追加せず、必要ならObservationとして残す。複雑なscoreや重み付けは追加しない。
 
-D-05〜D-08（O-06 LIMITED PILOT、minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01、D-02、D-03の既存判断も変更しない。
+#### D-05 — O-06 LIMITED PILOT: Core Spec / JIT Stage Spec
+
+```yaml
+DECISION: ADOPT_FOR_FND06_PILOT
+PILOT_SCOPE: MINIMAL
+CORE_SPEC:
+  COUNT: 1
+  CREATED_BEFORE_INITIAL_IMPLEMENTATION: true
+JIT_STAGE_SPEC:
+  COUNT: 1
+  TARGET: FINAL_SYNTHESIS_TO_LIGHT_REVIEW_HANDOFF
+AUTOMATIC_ENFORCEMENT: false
+HEAVY_GOVERNANCE:
+  ENABLED: false
+```
+
+Core Specは、FND-06で何を作るかを初回実装前に簡潔に固定するためのpilot資料とする。初回実装前に必要なAcceptance Criteria、重要なarchitecture constraint、security requirement、persistence behavior、failure behavior、critical oracle requirement、明確なout-of-scopeなどを置く方向とするが、今回のdecision記録ではFND-06固有の実仕様やCore Spec自体を作成しない。
+
+```yaml
+CORE_SPEC_LIFECYCLE:
+  CREATED:
+    BEFORE_INITIAL_IMPLEMENTATION: true
+  DURING_RUN:
+    PURPOSE: implementation baseline
+  AFTER_RUN:
+    STATUS: HISTORICAL_REFERENCE
+  PERMANENT_CURRENT_AUTHORITY:
+    REQUIRED: false
+```
+
+Core Specは永久に現行authorityとして維持する重い制度にはしない。Core Specが今回何を作るかを定めるのに対し、ADRはなぜその設計にしたかを記録する。複雑なADR dependency graphやCore Spec専用dependency graphは導入しない。
+
+JIT Stage Specは、今このstageで何をするかだけを定義するrun-scoped資料として、FND-06では1種類だけ試す。対象はFinal SynthesisからSemantic Light Reviewへのhandoffであり、stage-localな情報に限定する。
+
+```yaml
+JIT_STAGE_SPEC_INITIAL_FIELDS:
+  - STAGE_ROLE
+  - TARGET_HEAD
+  - INPUT_ARTIFACT
+  - STAGE_LOCAL_REVIEW_FOCUS
+  - STOP_CONDITIONS
+  - REQUIRED_RETURN_EVIDENCE
+  - AFTER_COMPLETION_ACTION
+```
+
+JIT Stage Specは、Final Synthesis完了、review対象Head確定、入力artifact確定の後、Light Review開始直前に作成する。Acceptance Criteria、重要architecture constraint、security requirements、persistence behavior、failure behavior、critical oracle requirementsはJITへ追い出さず、Core Spec側で初回実装前に伝える。
+
+```yaml
+JIT_BOUNDARY:
+  CORE_SPEC_OWNS:
+    - acceptance_criteria
+    - critical_architecture
+    - security
+    - persistence_behavior
+    - failure_behavior
+    - critical_oracle_requirements
+  JIT_STAGE_SPEC_OWNS:
+    - stage_local_handoff
+    - target_identity
+    - stage_local_focus
+    - stage_local_stop
+    - stage_return_evidence
+
+D_03_D_05_RELATION:
+  D_05:
+    DEFINES_HANDOFF_CONTENT_BOUNDARY: true
+  D_03:
+    MAY_GENERATE_FROM_AUTHORITATIVE_METADATA: true
+  DUPLICATE_HANDOFF_SYSTEM:
+    ALLOWED: false
+```
+
+D-05はJIT Stage Specとして何を渡すかを定義し、D-03はauthoritative metadataからそのhandoffを可能な範囲で生成する。両者を重複したhandoff systemにはしない。
+
+FND-06では、Core Spec version management system、Core Spec専用dependency graph、ADR dependency graph、automatic drift detection、dedicated drift management system、全stageへのJIT Stage Spec必須化、複数種類のJIT Stage Spec、専用branch / PR、JIT Stage SpecのCI gate化、Core Specとimplementationの自動同期、Core Specを永久に最新仕様として維持する制度は導入しない。
+
+```yaml
+JIT_STAGE_SPEC_LIFECYCLE:
+  VALID_FOR:
+    FND_06_ONLY: true
+  AFTER_RUN:
+    STATUS: EXPIRED_HISTORICAL_ONLY
+  REUSE_FOR_LATER_RUN:
+    ALLOWED: false
+
+D_05_MEASUREMENT:
+  CORE_SPEC_HELPED_INITIAL_IMPLEMENTATION:
+    OBSERVE: true
+  IMPORTANT_REQUIREMENT_MISSING_FROM_CORE_SPEC:
+    OBSERVE: true
+  JIT_STAGE_SPEC_HAD_NEEDED_STAGE_INFO:
+    OBSERVE: true
+  JIT_STAGE_SPEC_REQUIRED_REBUILD:
+    OBSERVE: true
+  DUPLICATE_INFORMATION_BECAME_PROBLEM:
+    OBSERVE: true
+  OPERATOR_FOUND_STRUCTURE_USEFUL:
+    OBSERVE: true
+
+D_05_IMPLEMENTATION:
+  STATUS: NOT_STARTED
+CORE_SPEC:
+  CREATED: false
+JIT_STAGE_SPEC:
+  CREATED: false
+```
+
+JIT Stage Specはrun-scopedで、FND-06終了後はexpired historical-onlyとして扱い、後続runのcurrent authorityとしてそのまま再利用しない。複雑なscoreは追加せず、初回実装に必要な情報がCore Specで十分だったか、JIT Stage Specがstage-local情報に絞れていたか、二重管理にならなかったか、実際に使いやすかったかを観測する。
+
+D-06〜D-08（minimal EOL contract、Identity / SHA automation、Branch / Archive cleanup automation）は今回判断せず、`PENDING_KOO_DECISION`のまま維持する。D-01〜D-04の既存判断も変更しない。
 
 ---
 
