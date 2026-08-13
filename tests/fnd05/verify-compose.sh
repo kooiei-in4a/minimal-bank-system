@@ -218,7 +218,9 @@ assert_missing_secret_contract() {
 # secret and vice versa.
 run_missing_secret_probe() {
   local probe_label="$1" missing_env_var="$2"
-  local missing_project_name="${project_name}-missing-secret-${probe_label}-${RANDOM}${RANDOM}"
+  local probe_slug
+  probe_slug="$(tr '[:upper:]_' '[:lower:]-' <<<"$probe_label")"
+  local missing_project_name="${project_name}-missing-secret-${probe_slug}-${RANDOM}${RANDOM}"
   local -a missing_compose=(docker compose -p "$missing_project_name")
   local missing_up_output missing_up_exit_code
 

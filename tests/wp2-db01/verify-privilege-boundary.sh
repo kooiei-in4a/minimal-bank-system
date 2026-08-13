@@ -98,6 +98,10 @@ psql_as() {
 }
 
 expect_denied() {
+  # PostgreSQL reports privilege denials with different wording depending on the check: a GRANT-
+  # based check (schema usage/create, role administration, table DML) says "permission denied";
+  # an ownership-based check (structural ALTER on a table the role does not own, such as the
+  # Migrator-owned migration-history table) says "must be owner of". Both are genuine denials.
   local role="$1" sql="$2" label="$3" output status
   set +e
   output="$(psql_as "$role" "$sql" 2>&1)"
@@ -107,11 +111,11 @@ expect_denied() {
     printf '%s: unexpectedly succeeded; the privilege boundary was violated.\n' "$label" >&2
     return 1
   }
-  [[ "$output" == *'permission denied'* ]] || {
+  [[ "$output" == *'permission denied'* || "$output" == *'must be owner'* ]] || {
     printf '%s: failed for an unexpected reason: %s\n' "$label" "$output" >&2
     return 1
   }
-  printf '%s: DENIED (permission denied)\n' "$label"
+  printf '%s: DENIED (%s)\n' "$label" "$output"
 }
 
 assert_distinct_principals_and_credentials() {
