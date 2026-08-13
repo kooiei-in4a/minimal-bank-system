@@ -131,6 +131,8 @@ WRITE_PREFLIGHT:
   DIRECT_MAIN_WRITE_ALLOWED: false
 ```
 
+Issue comment、PR comment、Ruleset操作等のbranchless GitHub writeでは、`TARGET_BRANCH`および`EXPECTED_BASE_SHA`は`N/A`としてよい。
+
 通常運用では`main`へ直接writeしてはいけない。commit、push、GitHub file API write、その他のrepository content writeは、必ずbranchとPull Requestを経由する。`main`への直接writeが必要に見える場合は停止して報告する。
 
 ## 5.3 Review policy
