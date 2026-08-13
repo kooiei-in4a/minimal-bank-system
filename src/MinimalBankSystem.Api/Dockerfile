@@ -13,6 +13,8 @@ RUN dotnet publish src/MinimalBankSystem.Api/MinimalBankSystem.Api.csproj --conf
 FROM ${RUNTIME_IMAGE} AS runtime
 WORKDIR /app
 
+ENV MBS_DATABASE_PASSWORD_FILE=/run/secrets/api_password
+
 COPY --from=build /out/ ./
 COPY deployment/fnd05/with-database-secret.sh /usr/local/bin/with-database-secret
 

@@ -27,8 +27,12 @@ jobs:
 
       - name: Verify FND-06 shipped Compose health contract
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
-          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+          MBS_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}-bootstrap
+          MBS_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}-migrator
+          MBS_API_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}-api
+          FND06_BOOTSTRAP_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}-bootstrap
+          FND06_MIGRATOR_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}-migrator
+          FND06_API_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}-api
         run: bash tests/fnd06/verify-health-compose.sh
 
       - name: Restore FND-06 mutation test dependencies
@@ -55,8 +59,12 @@ jobs:
 
       - name: Verify FND-06 shipped Compose health contract
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
-          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+          MBS_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}-bootstrap
+          MBS_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}-migrator
+          MBS_API_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}-api
+          FND06_BOOTSTRAP_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}-bootstrap
+          FND06_MIGRATOR_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}-migrator
+          FND06_API_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}-api
         run: bash tests/fnd06/verify-health-compose.sh
 
       - name: Restore FND-06 mutation test dependencies

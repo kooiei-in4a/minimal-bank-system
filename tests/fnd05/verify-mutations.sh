@@ -3,10 +3,17 @@ set -Eeuo pipefail
 
 readonly repository_root="$(git rev-parse --show-toplevel)"
 readonly expected_migration='20260809113338_InitialFoundation'
-readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_MUTATION_SENTINEL_NOT_A_CREDENTIAL}"
+readonly bootstrap_sentinel="${FND05_BOOTSTRAP_SENTINEL:-FND05_MUTATION_BOOTSTRAP_SENTINEL_NOT_A_CREDENTIAL}"
+readonly migrator_sentinel="${FND05_MIGRATOR_SENTINEL:-FND05_MUTATION_MIGRATOR_SENTINEL_NOT_A_CREDENTIAL}"
+readonly api_sentinel="${FND05_API_SENTINEL:-FND05_MUTATION_API_SENTINEL_NOT_A_CREDENTIAL}"
 readonly run_id="${RANDOM}${RANDOM}"
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+export MBS_BOOTSTRAP_PASSWORD="${MBS_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
+export MBS_MIGRATOR_PASSWORD="${MBS_MIGRATOR_PASSWORD:-$migrator_sentinel}"
+export MBS_API_PASSWORD="${MBS_API_PASSWORD:-$api_sentinel}"
+
+# shellcheck source=../db01/lib.sh
+source "$repository_root/tests/db01/lib.sh"
 
 project_name=''
 source_root=''
@@ -16,6 +23,16 @@ declare -a temporary_worktrees=()
 compose_run() {
   docker compose --project-directory "$source_root" -p "$project_name" "${compose_files[@]}" "$@"
 }
+
+db01_postgres_exec() {
+  compose_run exec -T postgres "$@"
+}
+
+db01_api_container_id() {
+  container_id api
+}
+
+db01_require_distinct_host_secrets
 
 set_project() {
   project_name="$1"
@@ -59,20 +76,24 @@ wait_for_listener() {
     if compose_run exec -T api bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'; then
       return 0
     fi
-    [[ "$(state api)" == running ]] || return 1
+    [[ "$(state api)" == running ]] || {
+      printf 'API listener did not become reachable; container left running state.\n' >&2
+      compose_run logs --no-color --timestamps api >&2 || true
+      return 1
+    }
     sleep 1
   done
+  printf 'API listener did not become reachable.\n' >&2
+  compose_run logs --no-color --timestamps api >&2 || true
   return 1
 }
 
 history() {
-  compose_run exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
+  db01_read_history_as "$DB01_API_ROLE"
 }
 
 tables() {
-  compose_run exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+  db01_read_public_tables_as "$DB01_API_ROLE"
 }
 
 assert_residue_zero() {
@@ -171,7 +192,7 @@ secret_oracle() {
   local api_id top
   api_id="$(container_id api)"
   top="$(docker top "$api_id")"
-  [[ "$top" != *"$sentinel"* ]] || {
+  [[ "$top" != *"$api_sentinel"* ]] || {
     printf 'ORACLE_SIGNATURE=secret-in-actual-argv\n' >&2
     return 1
   }
@@ -207,11 +228,24 @@ write_override() {
   cat >"$path"
 }
 
+new_override_file() {
+  mkdir -p "$repository_root/tests/fnd05/.tmp-run"
+  mktemp "$repository_root/tests/fnd05/.tmp-run/override.XXXXXX"
+}
+
+new_worktree_dir() {
+  local parent
+  parent="$(dirname "$repository_root")/.tmp-mbs-fnd05-worktrees"
+  mkdir -p "$parent"
+  mktemp -d "$parent/worktree.XXXXXX"
+}
+
 prepare_worktree_runtime() {
   local worktree="$1"
   cp "$repository_root/.dockerignore" "$repository_root/compose.yaml" "$worktree/"
-  mkdir -p "$worktree/deployment/fnd05"
+  mkdir -p "$worktree/deployment/fnd05" "$worktree/deployment/postgres"
   cp "$repository_root/deployment/fnd05/with-database-secret.sh" "$worktree/deployment/fnd05/"
+  cp "$repository_root/deployment/postgres/init-roles.sh" "$worktree/deployment/postgres/"
   cp "$repository_root/src/MinimalBankSystem.Api/Dockerfile" "$worktree/src/MinimalBankSystem.Api/"
   cp "$repository_root/src/MinimalBankSystem.Migrator/Dockerfile" "$worktree/src/MinimalBankSystem.Migrator/"
 }
@@ -221,7 +255,7 @@ run_m01() {
   set_project "minimal-bank-system-fnd05-m01-$run_id" "$repository_root"
   baseline
   clean_current
-  override="$(mktemp)"
+  override="$(new_override_file)"
   write_override "$override" <<'YAML'
 services:
   migrator:
@@ -256,7 +290,7 @@ run_m02() {
   printf 'M-02: BASELINE_GREEN\n'
   clean_current
 
-  override="$(mktemp)"
+  override="$(new_override_file)"
   write_override "$override" <<'YAML'
 services:
   migrator:
@@ -273,7 +307,7 @@ YAML
   clean_current
   rm -f "$override"
 
-  override="$(mktemp)"
+  override="$(new_override_file)"
   write_override "$override" <<'YAML'
 services:
   migrator:
@@ -312,7 +346,7 @@ YAML
 
 run_m03() {
   local worktree migration_file program_file before_history before_tables
-  worktree="$(mktemp -d)"
+  worktree="$(new_worktree_dir)"
   git worktree add --detach "$worktree" HEAD
   temporary_worktrees+=("$worktree")
   prepare_worktree_runtime "$worktree"
@@ -365,15 +399,18 @@ CS
     }
   ' "$program_file" >"$program_file.m03" && mv "$program_file.m03" "$program_file"
   compose_run up --build --detach --no-deps --force-recreate api
-  wait_for_state api running
-  wait_for_listener
+  # Injected MigrateAsync cannot apply DDL under the API runtime privilege ceiling.
+  # The process may exit; postgres remains and the schema must stay unchanged.
+  sleep 3
   no_auto_migration_oracle() {
     [[ "$(history)" == "$before_history" && "$(tables)" == "$before_tables" ]] || {
       printf 'ORACLE_SIGNATURE=api-migration-state-delta\n' >&2
       return 1
     }
   }
-  expect_red api-migration-state-delta no_auto_migration_oracle
+  no_auto_migration_oracle
+  printf 'M-03: INJECTED_AUTO_MIGRATE_DID_NOT_MUTATE_SCHEMA\n'
+  printf 'M-03: EXPECTED_FAILURE_SIGNATURE=api-cannot-apply-migrations\n'
   clean_current
   git worktree remove --force "$worktree"
   temporary_worktrees=()
@@ -385,11 +422,11 @@ run_m04() {
   set_project "minimal-bank-system-fnd05-m04-$run_id" "$repository_root"
   baseline
   clean_current
-  override="$(mktemp)"
+  override="$(new_override_file)"
   write_override "$override" <<'YAML'
 services:
   api:
-    command: ["bash", "-ceu", "exposed=\"$$(< /run/secrets/database_password)\"; exec dotnet MinimalBankSystem.Api.dll \"$$exposed\""]
+    command: ["bash", "-ceu", "exposed=\"$$(< /run/secrets/api_password)\"; exec dotnet MinimalBankSystem.Api.dll \"$$exposed\""]
 YAML
   set_project "$project_name" "$repository_root" "$override"
   compose_run up --build --detach --remove-orphans
@@ -404,8 +441,9 @@ YAML
 
 run_m05() {
   local worktree
-  worktree="$(mktemp -d)"
+  worktree="$(new_worktree_dir)"
   git worktree add --detach "$worktree" HEAD
+  prepare_worktree_runtime "$worktree"
   temporary_worktrees+=("$worktree")
   set_project "minimal-bank-system-fnd05-m05-$run_id" "$repository_root"
   FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
@@ -437,8 +475,9 @@ run_m05() {
 
 run_m06() {
   local worktree
-  worktree="$(mktemp -d)"
+  worktree="$(new_worktree_dir)"
   git worktree add --detach "$worktree" HEAD
+  prepare_worktree_runtime "$worktree"
   temporary_worktrees+=("$worktree")
   set_project "minimal-bank-system-fnd05-m06-$run_id" "$repository_root"
   FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
@@ -471,7 +510,7 @@ run_m06() {
 
 run_m07() {
   local override
-  override="$(mktemp)"
+  override="$(new_override_file)"
   write_override "$override" <<'YAML'
 services:
   migrator:
@@ -490,7 +529,7 @@ YAML
 
 run_m08() {
   local worktree
-  worktree="$(mktemp -d)"
+  worktree="$(new_worktree_dir)"
   git worktree add --detach "$worktree" HEAD
   temporary_worktrees+=("$worktree")
   prepare_worktree_runtime "$worktree"
@@ -508,7 +547,7 @@ run_m08() {
 
 run_m09() {
   local override
-  override="$(mktemp)"
+  override="$(new_override_file)"
   write_override "$override" <<'YAML'
 services:
   api:

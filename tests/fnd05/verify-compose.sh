@@ -3,8 +3,11 @@ set -Eeuo pipefail
 
 readonly project_name="${FND05_PROJECT_NAME:-minimal-bank-system-fnd05}"
 readonly expected_migration='20260809113338_InitialFoundation'
-readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_TEST_SENTINEL_NOT_A_CREDENTIAL}"
-readonly compose=(docker compose -p "$project_name")
+readonly source_root="${FND05_SOURCE_ROOT:-$(git rev-parse --show-toplevel)}"
+readonly bootstrap_sentinel="${FND05_BOOTSTRAP_SENTINEL:-FND05_BOOTSTRAP_SENTINEL_NOT_A_CREDENTIAL}"
+readonly migrator_sentinel="${FND05_MIGRATOR_SENTINEL:-FND05_MIGRATOR_SENTINEL_NOT_A_CREDENTIAL}"
+readonly api_sentinel="${FND05_API_SENTINEL:-FND05_API_SENTINEL_NOT_A_CREDENTIAL}"
+readonly compose=(docker compose --project-directory "$source_root" -p "$project_name" -f "$source_root/compose.yaml")
 declare -a cleanup_project_names=("$project_name")
 
 require_command() {
@@ -18,7 +21,22 @@ for command_name in docker jq bash; do
   }
 done
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+export MBS_BOOTSTRAP_PASSWORD="${MBS_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
+export MBS_MIGRATOR_PASSWORD="${MBS_MIGRATOR_PASSWORD:-$migrator_sentinel}"
+export MBS_API_PASSWORD="${MBS_API_PASSWORD:-$api_sentinel}"
+
+# shellcheck source=../db01/lib.sh
+source "$source_root/tests/db01/lib.sh"
+
+db01_postgres_exec() {
+  "${compose[@]}" exec -T postgres "$@"
+}
+
+db01_api_container_id() {
+  container_id api
+}
+
+db01_require_distinct_host_secrets
 
 container_id() {
   local service_name="$1"
@@ -67,8 +85,7 @@ wait_for_api_listener() {
 }
 
 read_history() {
-  "${compose[@]}" exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
+  db01_read_history_as "$DB01_API_ROLE"
 }
 
 assert_no_project_residue() {
@@ -90,12 +107,23 @@ assert_no_project_residue_for() {
 cleanup_safety() {
   local cleanup_project_name
   for cleanup_project_name in "${cleanup_project_names[@]}"; do
-    docker compose -p "$cleanup_project_name" down --volumes --remove-orphans
+    docker compose --project-directory "$source_root" -p "$cleanup_project_name" -f "$source_root/compose.yaml" down --volumes --remove-orphans
     assert_no_project_residue_for "$cleanup_project_name"
   done
 }
 
 trap cleanup_safety EXIT
+
+assert_no_secret_disclosure() {
+  local observation_surface="$1"
+  local sentinel
+  for sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel"; do
+    [[ "$observation_surface" != *"$sentinel"* ]] || {
+      printf 'Secret sentinel was exposed by an external observation surface.\n' >&2
+      return 1
+    }
+  done
+}
 
 assert_success_contract() {
   local postgres_id migrator_id api_id migrator api history rendered logs inspect top
@@ -122,6 +150,18 @@ assert_success_contract() {
     ' <<<"$api" >/dev/null
 
   wait_for_api_listener
+  [[ "$(db01_current_user_as "$DB01_API_ROLE")" == "$DB01_API_ROLE" ]] || {
+    printf 'API runtime principal was not the designated API role.\n' >&2
+    return 1
+  }
+  [[ "$(jq --raw-output '.[0].Config.Env[] | select(startswith("POSTGRES_USERNAME=")) | split("=")[1]' <<<"$api")" == "$DB01_API_ROLE" ]] || {
+    printf 'API container is not wired to the designated API principal.\n' >&2
+    return 1
+  }
+  [[ "$(jq --raw-output '.[0].Config.Env[] | select(startswith("POSTGRES_USERNAME=")) | split("=")[1]' <<<"$migrator")" == "$DB01_MIGRATOR_ROLE" ]] || {
+    printf 'Migrator container is not wired to the designated Migrator principal.\n' >&2
+    return 1
+  }
   history="$(read_history)"
   [[ "$history" == *"$expected_migration"* ]] || {
     printf 'Expected migration history is missing.\n' >&2
@@ -133,10 +173,7 @@ assert_success_contract() {
   inspect="$(docker inspect "$postgres_id" "$migrator_id" "$api_id")"
   top="$(docker top "$api_id")"
   for observation_surface in "$rendered" "$logs" "$inspect" "$top"; do
-    [[ "$observation_surface" != *"$sentinel"* ]] || {
-      printf 'Secret sentinel was exposed by an external observation surface.\n' >&2
-      return 1
-    }
+    assert_no_secret_disclosure "$observation_surface"
   done
 }
 
@@ -157,15 +194,15 @@ assert_failure_contract() {
 }
 
 assert_missing_secret_contract() {
-  local missing_project_name="$1" missing_up_output="$2" missing_up_exit_code="$3"
+  local missing_project_name="$1" missing_up_output="$2" missing_up_exit_code="$3" missing_secret_name="$4"
   local api_id rendered inspect
   local -a container_ids=()
-  local missing_compose=(docker compose -p "$missing_project_name")
+  local missing_compose=(docker compose --project-directory "$source_root" -p "$missing_project_name" -f "$source_root/compose.yaml")
   (( missing_up_exit_code != 0 )) || {
     printf 'Missing-secret probe incorrectly returned success.\n' >&2
     return 1
   }
-  [[ "$missing_up_output" == *'MBS_DATABASE_PASSWORD'* && "$missing_up_output" == *'required by secret'* ]] || {
+  [[ "$missing_up_output" == *"$missing_secret_name"* && "$missing_up_output" == *'required by secret'* ]] || {
     printf 'Missing-secret probe did not report the required-secret configuration failure.\n' >&2
     return 1
   }
@@ -189,43 +226,46 @@ assert_missing_secret_contract() {
   else
     inspect='[]'
   fi
-  rendered="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" config --format json)"
+  set +e
+  rendered="$(env -u "$missing_secret_name" "${missing_compose[@]}" config --format json 2>/dev/null)"
+  set -e
+  rendered="${rendered:-}"
   for observation_surface in "$missing_up_output" "$rendered" "$inspect"; do
-    [[ "$observation_surface" != *"$sentinel"* ]] || {
-      printf 'Missing-secret probe exposed the sentinel.\n' >&2
-      return 1
-    }
+    assert_no_secret_disclosure "$observation_surface"
   done
 }
 
 run_missing_secret_probe() {
-  local missing_project_name="${project_name}-missing-secret-${RANDOM}${RANDOM}"
-  local -a missing_compose=(docker compose -p "$missing_project_name")
+  local missing_secret_name="$1"
+  local probe_label="$2"
+  local missing_project_name="${project_name}-${probe_label}-${RANDOM}${RANDOM}"
+  local -a missing_compose=(docker compose --project-directory "$source_root" -p "$missing_project_name" -f "$source_root/compose.yaml")
   local missing_up_output missing_up_exit_code
 
   cleanup_project_names+=("$missing_project_name")
 
   set +e
-  missing_up_output="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
+  missing_up_output="$(env -u "$missing_secret_name" "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
   missing_up_exit_code=$?
   set -e
-  assert_missing_secret_contract "$missing_project_name" "$missing_up_output" "$missing_up_exit_code"
+  assert_missing_secret_contract "$missing_project_name" "$missing_up_output" "$missing_up_exit_code" "$missing_secret_name"
   "${missing_compose[@]}" down --volumes --remove-orphans
   assert_no_project_residue_for "$missing_project_name"
-  printf 'MISSING_SECRET: NEGATIVE_PROBE_EXECUTED\n'
-  printf 'MISSING_SECRET: FAIL_CLOSED_OBSERVED\n'
-  printf 'MISSING_SECRET: EXPECTED_FAILURE_SIGNATURE=required-secret-configuration\n'
-  printf 'MISSING_SECRET: API_NOT_SERVING\n'
-  printf 'MISSING_SECRET: NO_LEAK\n'
-  printf 'MISSING_SECRET: CLEANUP\n'
-  printf 'MISSING_SECRET: RESIDUE_ZERO\n'
-  printf 'MISSING_SECRET_PROBE: PASS (compose-up-exit=%s)\n' "$missing_up_exit_code"
+  printf 'MISSING_SECRET: NEGATIVE_PROBE_EXECUTED name=%s\n' "$missing_secret_name"
+  printf 'MISSING_SECRET: FAIL_CLOSED_OBSERVED name=%s\n' "$missing_secret_name"
+  printf 'MISSING_SECRET: EXPECTED_FAILURE_SIGNATURE=required-secret-configuration name=%s\n' "$missing_secret_name"
+  printf 'MISSING_SECRET: API_NOT_SERVING name=%s\n' "$missing_secret_name"
+  printf 'MISSING_SECRET: NO_LEAK name=%s\n' "$missing_secret_name"
+  printf 'MISSING_SECRET: CLEANUP name=%s\n' "$missing_secret_name"
+  printf 'MISSING_SECRET: RESIDUE_ZERO name=%s\n' "$missing_secret_name"
+  printf 'MISSING_SECRET_PROBE: PASS name=%s (compose-up-exit=%s)\n' "$missing_secret_name" "$missing_up_exit_code"
 }
 
 "${compose[@]}" config --quiet
-bash tests/fnd05/static-gate.sh
+FND05_SOURCE_ROOT="$source_root" FND05_PROJECT_NAME="$project_name" bash "$source_root/tests/fnd05/static-gate.sh"
 
-run_missing_secret_probe
+run_missing_secret_probe MBS_API_PASSWORD runtime
+run_missing_secret_probe MBS_MIGRATOR_PASSWORD migrator
 
 "${compose[@]}" up --build --detach --remove-orphans
 wait_for_state migrator exited
@@ -257,7 +297,7 @@ assert_success_contract
 assert_no_project_residue
 
 set +e
-failure_up_output="$("${compose[@]}" -f compose.yaml -f tests/fnd05/failure-compose.yaml up --build --detach --remove-orphans 2>&1)"
+failure_up_output="$("${compose[@]}" -f "$source_root/tests/fnd05/failure-compose.yaml" up --build --detach --remove-orphans 2>&1)"
 failure_up_exit_code=$?
 set -e
 if (( failure_up_exit_code != 0 )); then
