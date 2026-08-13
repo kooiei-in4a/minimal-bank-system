@@ -13,7 +13,7 @@
 
 ## 現在のフェーズ
 
-要件定義レビュー開始前の初期基盤です。アプリケーション実装はまだ開始しません。
+Current project stateは、[Parent Issue #3](https://github.com/kooiei-in4a/minimal-bank-system/issues/3)の最新Current Authorityを参照してください。
 
 ## 正本
 

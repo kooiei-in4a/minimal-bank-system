@@ -7,10 +7,11 @@
 ## 2. 正本の優先順位
 
 1. Kooが承認した製品方針および仕様
-2. `Accepted`状態のADR
-3. GitHub Issueで定義された作業範囲
-4. コードおよび自動テスト
-5. Pull Requestの説明とコメント
+2. Kooが承認したprocess decision package（process / controlに適用）
+3. `Accepted`状態のADR
+4. GitHub Issueで定義された作業範囲
+5. コードおよび自動テスト
+6. Pull Requestの説明とコメント
 
 下位成果物が上位成果物と矛盾する場合、下位成果物を修正する。IssueまたはPRコメントだけで仕様やADRを暗黙変更してはならない。
 
@@ -26,22 +27,35 @@ Parent Issue #3は、進行、フェーズ、ゲート、Blocker、子Issueお�
 
 Parent Issue #3と、Kooが承認した仕様または`Accepted`状態のADRが矛盾する場合は、承認済み仕様またはADRを優先し、矛盾を報告して停止する。Parent Issue #3のコメントまたはチェックボックスだけで、仕様またはADRを暗黙変更してはならない。
 
-## 2.2 子Issueの追跡ルール
+## 2.2 Rolling WaveとIssueの追跡ルール
 
-各作業は、原則としてParent Issue #3から追跡可能な対象Issueを持つ。
+各作業は、原則として次のRolling Wave hierarchyから追跡可能な対象Issueを持つ。
+
+```text
+Parent / Control Issue #3
+  -> current Work Package Issue
+    -> target leaf Issue
+```
 
 対象Issueには、最低限、次を記録する。
 
 - Parent / Control Issue: #3
-- Project phase
+- Work Package Issue
+- target leaf / target Issue
+- Current Authority
 - Required gate
 - Required gate status
 
 専用の対象Issueが必要な作業であるにもかかわらず対象Issueが存在しない場合は、独断でIssueを作成したり、実装へ進んだりせず、停止して報告する。
 
-Parent Issue #3の詳細を子Issueへ複製しない。具体的な作業範囲、対象外、Acceptance Criteriaおよび操作権限は、対象となる子Issueを正本とする。
+Parent Issue #3またはWork Package Issueの詳細をleaf Issueへ複製する必要はない。具体的な作業範囲、対象外、Acceptance Criteriaおよび操作権限は、対象となるleaf Issueを正本とする。
 
-今回の統制ルール導入PRは、Parent Issue #3を対象Issueとしてよい。PR本文では`Refs #3`を使用し、Issue #3をcloseする表現を使用しない。
+## 2.3 Single Current Authority
+
+- 各control levelでCurrent Authorityは1つとする。
+- historical Current Authorityはimmutable evidenceとして保持し、書き換えない。
+- 新しいCurrent Authorityは、旧記録を明示的にsupersedeする新規recordとして追加する。
+- historical stateをcurrent stateとして使用しない。
 
 ## 3. 成果物の責任範囲
 
@@ -51,6 +65,7 @@ Parent Issue #3の詳細を子Issueへ複製しない。具体的な作業範囲
 - `docs/adr/`: 重要かつ変更コストの高い設計判断。
 - `docs/plans/`: 実行計画。仕様やADRの代替にしない。
 - `docs/benchmarks/`: AIモデル／Agent等の比較実験、評価方法、結果、再現用snapshotを記録する。製品仕様、ADR、実装Issueの正本にはしない。
+- `docs/retrospectives/`: retrospective記録、およびKoo承認済みprocess decisionを保持する。全retrospectiveがauthorityになるわけではなく、Koo承認済みdecisionのみをprocess authorityとする。
 - `docs/traceability/`: 要件、仕様、Issue、PR、テスト、リリース証拠の対応関係。
 - `docs/releases/`: リリース判定、手順、結果、既知制約。
 
@@ -91,6 +106,62 @@ Parent Issue #3の詳細を子Issueへ複製しない。具体的な作業範囲
 9. Draft PRに証拠、未検証事項、既知リスクを記録する。
 10. Agent Bの独立レビューを受ける。
 
+## 5.1 Stage Entry Check
+
+重要なstageまたはagent launchの前に、最低限、次を確認する。全コマンド実行前の巨大なチェックリストにはしない。
+
+```text
+PREVIOUS_STAGE_COMPLETE
+NEXT_STAGE_AUTHORIZED
+CONTROL_STATE_CONSISTENT
+TARGET_SHA_EXACT
+NO_UNRESOLVED_BLOCKER_MAJOR
+```
+
+## 5.2 Write Preflightとmain保護
+
+GitHubへの最初のwriteより前に、次を明示して確認する。これはmechanical preflightであり、新しいsemantic review工程ではない。
+
+```yaml
+WRITE_PREFLIGHT:
+  TARGET_REPOSITORY:
+  TARGET_BRANCH:
+  EXPECTED_BASE_SHA:
+  WRITE_SCOPE:
+  DIRECT_MAIN_WRITE_ALLOWED: false
+```
+
+通常運用では`main`へ直接writeしてはいけない。commit、push、GitHub file API write、その他のrepository content writeは、必ずbranchとPull Requestを経由する。`main`への直接writeが必要に見える場合は停止して報告する。
+
+## 5.3 Review policy
+
+- Light Reviewは1件のsemantic reviewとする。
+- Heavy Reviewは1件を既定とし、2件目はrisk-basedで判断する。risk signalの詳細はKoo承認済みprocess decision packageを参照する。
+- narrow fixは変更範囲に対するtargeted re-reviewを行い、full rerunを既定にしない。
+
+## 5.4 Critical Mutation
+
+Critical Mutationはhigh-risk leafにだけ適用し、leafあたり最大3件とする。全testをmutation対象にせず、各mutationでsemantic failure signatureを必須とする。
+
+```text
+BASELINE_GREEN
+-> mutation
+-> MUTATION_RED
+-> expected semantic failure confirmed
+-> restore
+-> RESTORE_GREEN
+```
+
+単なるREDは成功証拠ではない。
+
+## 5.5 Agent launchとJIT Handoff
+
+```yaml
+AUTOMATIC_AGENT_LAUNCH: false
+HUMAN_APPROVAL: required
+JIT_HANDOFF: GENERATE_ONLY
+```
+
 ## 6. 停止条件
 
 次の場合は推測して進めず、未決事項として報告する。
@@ -106,10 +177,11 @@ Parent Issue #3の詳細を子Issueへ複製しない。具体的な作業範囲
 - Parent Issue #3で次工程の開始が許可されていない。
 - 未承認の推奨案を実装へ反映する必要がある。
 - プロジェクト目的より機能追加自体が優先されている。
+- `main`への直接writeが必要である。
 
 ただし、ゲート再評価、Blocking Decision確定、統制文書更新など、ゲートを通過させるための作業はこの限りではない。前提ゲートが未通過の場合は、その先の工程に着手せず停止する。
 
-## 7. 初期フェーズの禁止事項
+## 7. 要件・仕様・ADR承認前の初期フェーズ禁止事項
 
 要件レビュー、仕様化、必要なADRの承認が完了するまでは、次を実施しない。
 
