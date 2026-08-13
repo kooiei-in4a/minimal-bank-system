@@ -16,6 +16,8 @@ readonly migrator_sentinel="${sentinel}_MIGRATOR"
 readonly api_sentinel="${sentinel}_API"
 readonly migrator_role='minimal_bank_migrator'
 readonly api_role='minimal_bank_api'
+readonly postgres_network_host='postgres'
+readonly wrong_password="${sentinel}_WRONG_PASSWORD_CONTROL"
 readonly fixture_table='public.wp2_db01_verification_fixture'
 readonly history_table='public."__EFMigrationsHistory"'
 readonly compose=(docker compose -p "$project_name")
@@ -31,6 +33,11 @@ done
 export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
 export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
 export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
+[[ "$wrong_password" != "$MBS_DATABASE_MIGRATOR_PASSWORD" &&
+   "$wrong_password" != "$MBS_DATABASE_API_PASSWORD" ]] || {
+  printf 'Wrong-password control unexpectedly equals a configured credential.\n' >&2
+  exit 78
+}
 declare -ar credential_materials=(
   "$MBS_DATABASE_BOOTSTRAP_PASSWORD"
   "$MBS_DATABASE_MIGRATOR_PASSWORD"
@@ -79,19 +86,90 @@ configured_api_role() {
     jq --raw-output '.[0].Config.Env[] | select(startswith("POSTGRES_USERNAME=")) | split("=")[1]'
 }
 
+# Runs psql through the PostgreSQL service's non-loopback Docker-network address. The shipped HBA
+# grants trust only to loopback; this path is therefore independently checked below to match the
+# scram-sha-256 rule before any credential, DML or privilege oracle is accepted.
+password_network_psql() {
+  local role="$1" sql="$2"
+  "${compose[@]}" exec -T postgres bash -ceu '
+      IFS= read -r PGPASSWORD || true
+      export PGPASSWORD
+      export PGSSLMODE=disable
+      exec psql -h "$1" -U "$2" -d minimal_bank --quiet --no-psqlrc \
+        -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -At -c "$3"
+    ' bash "$postgres_network_host" "$role" "$sql"
+}
+
 # Uses the credential mounted into the running API container and the principal configured on that
-# same container. The credential is streamed over stdin, never placed in argv, logs or output;
-# psql then performs TCP/password authentication rather than relying on PostgreSQL local trust.
+# same container. The credential is streamed over stdin, never placed in argv, logs or output.
 api_network_psql() {
   local sql="$1" role
   role="$(configured_api_role)"
   "${compose[@]}" exec -T api cat /run/secrets/database_password |
-    "${compose[@]}" exec -T postgres bash -ceu '
-      IFS= read -r PGPASSWORD || true
-      export PGPASSWORD
-      exec psql -h 127.0.0.1 -U "$1" -d minimal_bank --quiet --no-psqlrc \
-        -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -At -c "$2"
-    ' bash "$role" "$sql"
+    password_network_psql "$role" "$sql"
+}
+
+assert_password_authentication_controls() {
+  local role network_address ignored hba_rule hba_line hba_method hba_address
+  local wrong_output wrong_status actual_user actual_status
+  role="$(configured_api_role)"
+
+  IFS=' ' read -r network_address ignored < <(
+    "${compose[@]}" exec -T postgres getent ahostsv4 "$postgres_network_host"
+  )
+  network_address="${network_address//$'\r'/}"
+  [[ "$network_address" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ &&
+     "$network_address" != 127.* ]] || {
+    printf 'Password-authentication target did not resolve to a non-loopback IPv4 address.\n' >&2
+    return 1
+  }
+
+  [[ "$role" =~ ^[a-z_][a-z0-9_]*$ ]] || {
+    printf 'Configured API principal is not a safe PostgreSQL role identifier.\n' >&2
+    return 1
+  }
+  hba_rule="$(psql_as minimal_bank_bootstrap "
+    SELECT line_number || '|' || auth_method || '|' || address
+    FROM pg_hba_file_rules
+    WHERE error IS NULL
+      AND type IN ('host', 'hostnossl')
+      AND ('all' = ANY(database) OR 'minimal_bank' = ANY(database))
+      AND ('all' = ANY(user_name) OR '${role}' = ANY(user_name))
+      AND CASE
+            WHEN address = 'all' THEN true
+            ELSE inet('${network_address}') <<= inet(address)
+          END
+    ORDER BY line_number
+    LIMIT 1;")"
+  IFS='|' read -r hba_line hba_method hba_address <<<"$hba_rule"
+  [[ -n "$hba_line" && "$hba_method" == 'scram-sha-256' ]] || {
+    printf 'Non-loopback API network path is not governed by scram-sha-256.\n' >&2
+    return 1
+  }
+  printf 'PASSWORD_AUTH_NETWORK_PATH: non-loopback (%s)\n' "$network_address"
+  printf 'PG_HBA_AUTH_METHOD: scram-sha-256\n'
+
+  set +e
+  wrong_output="$(printf '%s\n' "$wrong_password" |
+    password_network_psql "$role" 'SELECT current_user;' 2>&1)"
+  wrong_status=$?
+  set -e
+  (( wrong_status != 0 )) &&
+    [[ "$wrong_output" == *'password authentication failed'* ]] || {
+    printf 'Wrong-password control was not rejected with PostgreSQL authentication failure.\n' >&2
+    return 1
+  }
+  printf 'WRONG_PASSWORD_CONTROL: REJECTED\n'
+
+  set +e
+  actual_user="$(api_network_psql 'SELECT current_user;' 2>&1)"
+  actual_status=$?
+  set -e
+  (( actual_status == 0 )) && [[ "$actual_user" == "$role" ]] || {
+    printf 'Actual API-mounted credential did not authenticate as the configured API principal.\n' >&2
+    return 1
+  }
+  printf 'ACTUAL_API_MOUNTED_CREDENTIAL_AUTHENTICATION: PASS\n'
 }
 
 # Compares secret bytes without returning either the bytes or a digest. The comparison target is
@@ -366,6 +444,7 @@ wait_for_state migrator exited
 wait_for_state api running
 wait_for_api_listener
 
+assert_password_authentication_controls
 assert_distinct_principals_and_credentials
 assert_positive_dml
 assert_negative_privilege
