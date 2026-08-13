@@ -18,6 +18,8 @@ Thumbs.db
 *.log
 tmp/
 temp/
+tests/db01/.tmp-db-priv-01-override.yaml
+tests/fnd05/.tmp-run/
 
 # .NET build artifacts
 bin/

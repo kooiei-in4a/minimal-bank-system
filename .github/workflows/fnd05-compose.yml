@@ -25,8 +25,12 @@ jobs:
 
       - name: Run FND-05 static and Compose runtime verification
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}
-          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}
+          MBS_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-bootstrap
+          MBS_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-migrator
+          MBS_API_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-api
+          FND05_BOOTSTRAP_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-bootstrap
+          FND05_MIGRATOR_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-migrator
+          FND05_API_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-api
         run: bash tests/fnd05/verify-compose.sh
 
   fnd05-mutations:
@@ -44,6 +48,43 @@ jobs:
 
       - name: Run FND-05 deterministic mutation verification
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation
-          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation
+          MBS_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation-bootstrap
+          MBS_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation-migrator
+          MBS_API_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation-api
+          FND05_BOOTSTRAP_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation-bootstrap
+          FND05_MIGRATOR_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation-migrator
+          FND05_API_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation-api
         run: bash tests/fnd05/verify-mutations.sh
+
+  db01-privilege-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Record actual checkout SHA
+        run: |
+          echo "ACTUAL_CHECKOUT_SHA=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Run WP2-DB-01 privilege verification
+        env:
+          MBS_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-db01-${{ github.run_id }}-bootstrap
+          MBS_MIGRATOR_PASSWORD: ${{ runner.temp }}-db01-${{ github.run_id }}-migrator
+          MBS_API_PASSWORD: ${{ runner.temp }}-db01-${{ github.run_id }}-api
+          DB01_BOOTSTRAP_SENTINEL: ${{ runner.temp }}-db01-${{ github.run_id }}-bootstrap
+          DB01_MIGRATOR_SENTINEL: ${{ runner.temp }}-db01-${{ github.run_id }}-migrator
+          DB01_API_SENTINEL: ${{ runner.temp }}-db01-${{ github.run_id }}-api
+        run: bash tests/db01/verify-privilege.sh
+
+      - name: Run DB-PRIV-01 critical mutation
+        env:
+          MBS_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-db01-${{ github.run_id }}-priv01-bootstrap
+          MBS_MIGRATOR_PASSWORD: ${{ runner.temp }}-db01-${{ github.run_id }}-priv01-migrator
+          MBS_API_PASSWORD: ${{ runner.temp }}-db01-${{ github.run_id }}-priv01-api
+          DB01_BOOTSTRAP_SENTINEL: ${{ runner.temp }}-db01-${{ github.run_id }}-priv01-bootstrap
+          DB01_MIGRATOR_SENTINEL: ${{ runner.temp }}-db01-${{ github.run_id }}-priv01-migrator
+          DB01_API_SENTINEL: ${{ runner.temp }}-db01-${{ github.run_id }}-priv01-api
+        run: bash tests/db01/verify-db-priv-01.sh
