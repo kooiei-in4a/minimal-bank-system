@@ -4,6 +4,9 @@ set -Eeuo pipefail
 readonly project_name="${FND05_PROJECT_NAME:-minimal-bank-system-fnd05}"
 readonly expected_migration='20260809113338_InitialFoundation'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_TEST_SENTINEL_NOT_A_CREDENTIAL}"
+readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
+readonly migrator_sentinel="${sentinel}_MIGRATOR"
+readonly api_sentinel="${sentinel}_API"
 readonly compose=(docker compose -p "$project_name")
 declare -a cleanup_project_names=("$project_name")
 
@@ -18,7 +21,12 @@ for command_name in docker jq bash; do
   }
 done
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+# WP2-DB-01: the bootstrap, Migrator and API runtime credentials are independent secrets. Each
+# gets its own distinguishable sentinel so a leak can be attributed to the credential path that
+# actually leaked it, and so the missing-secret probes below can unset exactly one at a time.
+export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
+export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
+export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
 
 container_id() {
   local service_name="$1"
@@ -67,7 +75,9 @@ wait_for_api_listener() {
 }
 
 read_history() {
-  "${compose[@]}" exec -T postgres psql -U minimal_bank -d minimal_bank -At \
+  # Role-aware: reads as the Migrator role, which owns the EF migration-history table under the
+  # WP2-DB-01 privilege boundary. The historical shared "minimal_bank" role no longer exists.
+  "${compose[@]}" exec -T postgres psql -U minimal_bank_migrator -d minimal_bank -At \
     -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
 }
 
@@ -133,10 +143,12 @@ assert_success_contract() {
   inspect="$(docker inspect "$postgres_id" "$migrator_id" "$api_id")"
   top="$(docker top "$api_id")"
   for observation_surface in "$rendered" "$logs" "$inspect" "$top"; do
-    [[ "$observation_surface" != *"$sentinel"* ]] || {
-      printf 'Secret sentinel was exposed by an external observation surface.\n' >&2
-      return 1
-    }
+    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel"; do
+      [[ "$observation_surface" != *"$probed_sentinel"* ]] || {
+        printf 'Secret sentinel was exposed by an external observation surface.\n' >&2
+        return 1
+      }
+    done
   done
 }
 
@@ -157,7 +169,7 @@ assert_failure_contract() {
 }
 
 assert_missing_secret_contract() {
-  local missing_project_name="$1" missing_up_output="$2" missing_up_exit_code="$3"
+  local missing_project_name="$1" missing_env_var="$2" missing_up_output="$3" missing_up_exit_code="$4"
   local api_id rendered inspect
   local -a container_ids=()
   local missing_compose=(docker compose -p "$missing_project_name")
@@ -165,7 +177,7 @@ assert_missing_secret_contract() {
     printf 'Missing-secret probe incorrectly returned success.\n' >&2
     return 1
   }
-  [[ "$missing_up_output" == *'MBS_DATABASE_PASSWORD'* && "$missing_up_output" == *'required by secret'* ]] || {
+  [[ "$missing_up_output" == *"$missing_env_var"* && "$missing_up_output" == *'required by secret'* ]] || {
     printf 'Missing-secret probe did not report the required-secret configuration failure.\n' >&2
     return 1
   }
@@ -189,43 +201,51 @@ assert_missing_secret_contract() {
   else
     inspect='[]'
   fi
-  rendered="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" config --format json)"
+  rendered="$(env -u "$missing_env_var" "${missing_compose[@]}" config --format json)"
   for observation_surface in "$missing_up_output" "$rendered" "$inspect"; do
-    [[ "$observation_surface" != *"$sentinel"* ]] || {
-      printf 'Missing-secret probe exposed the sentinel.\n' >&2
-      return 1
-    }
+    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel"; do
+      [[ "$observation_surface" != *"$probed_sentinel"* ]] || {
+        printf 'Missing-secret probe exposed the sentinel.\n' >&2
+        return 1
+      }
+    done
   done
 }
 
+# WP2-DB-01: Migrator and API runtime credential injection are independently fail-closed. Each is
+# probed on its own by unsetting exactly one of the two secret-source environment variables while
+# leaving the other populated, so a missing Migrator secret cannot be masked by a present API
+# secret and vice versa.
 run_missing_secret_probe() {
-  local missing_project_name="${project_name}-missing-secret-${RANDOM}${RANDOM}"
+  local probe_label="$1" missing_env_var="$2"
+  local missing_project_name="${project_name}-missing-secret-${probe_label}-${RANDOM}${RANDOM}"
   local -a missing_compose=(docker compose -p "$missing_project_name")
   local missing_up_output missing_up_exit_code
 
   cleanup_project_names+=("$missing_project_name")
 
   set +e
-  missing_up_output="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
+  missing_up_output="$(env -u "$missing_env_var" "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
   missing_up_exit_code=$?
   set -e
-  assert_missing_secret_contract "$missing_project_name" "$missing_up_output" "$missing_up_exit_code"
+  assert_missing_secret_contract "$missing_project_name" "$missing_env_var" "$missing_up_output" "$missing_up_exit_code"
   "${missing_compose[@]}" down --volumes --remove-orphans
   assert_no_project_residue_for "$missing_project_name"
-  printf 'MISSING_SECRET: NEGATIVE_PROBE_EXECUTED\n'
-  printf 'MISSING_SECRET: FAIL_CLOSED_OBSERVED\n'
-  printf 'MISSING_SECRET: EXPECTED_FAILURE_SIGNATURE=required-secret-configuration\n'
-  printf 'MISSING_SECRET: API_NOT_SERVING\n'
-  printf 'MISSING_SECRET: NO_LEAK\n'
-  printf 'MISSING_SECRET: CLEANUP\n'
-  printf 'MISSING_SECRET: RESIDUE_ZERO\n'
-  printf 'MISSING_SECRET_PROBE: PASS (compose-up-exit=%s)\n' "$missing_up_exit_code"
+  printf '%s: NEGATIVE_PROBE_EXECUTED\n' "$probe_label"
+  printf '%s: FAIL_CLOSED_OBSERVED\n' "$probe_label"
+  printf '%s: EXPECTED_FAILURE_SIGNATURE=required-secret-configuration\n' "$probe_label"
+  printf '%s: API_NOT_SERVING\n' "$probe_label"
+  printf '%s: NO_LEAK\n' "$probe_label"
+  printf '%s: CLEANUP\n' "$probe_label"
+  printf '%s: RESIDUE_ZERO\n' "$probe_label"
+  printf '%s_PROBE: PASS (compose-up-exit=%s)\n' "$probe_label" "$missing_up_exit_code"
 }
 
 "${compose[@]}" config --quiet
 bash tests/fnd05/static-gate.sh
 
-run_missing_secret_probe
+run_missing_secret_probe MISSING_MIGRATOR_SECRET MBS_DATABASE_MIGRATOR_PASSWORD
+run_missing_secret_probe MISSING_API_SECRET MBS_DATABASE_API_PASSWORD
 
 "${compose[@]}" up --build --detach --remove-orphans
 wait_for_state migrator exited

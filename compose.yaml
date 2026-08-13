@@ -6,13 +6,26 @@ services:
     platform: linux/amd64
     environment:
       POSTGRES_DB: minimal_bank
-      POSTGRES_USER: minimal_bank
-      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+      # The bootstrap principal is the PostgreSQL server's own initial superuser. It provisions the
+      # least-privilege Migrator and API runtime roles below and is never handed to either service.
+      POSTGRES_USER: minimal_bank_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_bootstrap_password
+      MBS_MIGRATOR_ROLE: minimal_bank_migrator
+      MBS_API_ROLE: minimal_bank_api
+      MBS_MIGRATOR_PASSWORD_FILE: /run/secrets/database_migrator_password
+      MBS_API_PASSWORD_FILE: /run/secrets/database_api_password
     secrets:
-      - source: database_password
-        target: database_password
+      - source: database_bootstrap_password
+        target: database_bootstrap_password
+      - source: database_migrator_password
+        target: database_migrator_password
+      - source: database_api_password
+        target: database_api_password
     volumes:
       - postgres_data:/var/lib/postgresql
+      # Bootstrap-only role/privilege provisioning. docker-entrypoint-initdb.d scripts run exactly
+      # once, only against an empty data directory, using the bootstrap superuser above.
+      - ./deployment/db-bootstrap:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready --username=\"$${POSTGRES_USER}\" --dbname=\"$${POSTGRES_DB}\""]
       interval: 2s
@@ -32,12 +45,15 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DATABASE: minimal_bank
-      POSTGRES_USERNAME: minimal_bank
+      POSTGRES_USERNAME: minimal_bank_migrator
+      # Requests WP2-DB-01 privilege-boundary enforcement: after each run, the Migrator narrows
+      # this role's access to the EF migration-history table down to SELECT-only.
+      MBS_API_RUNTIME_ROLE: minimal_bank_api
     depends_on:
       postgres:
         condition: service_healthy
     secrets:
-      - source: database_password
+      - source: database_migrator_password
         target: database_password
     restart: "no"
 
@@ -53,12 +69,12 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DATABASE: minimal_bank
-      POSTGRES_USERNAME: minimal_bank
+      POSTGRES_USERNAME: minimal_bank_api
     depends_on:
       migrator:
         condition: service_completed_successfully
     secrets:
-      - source: database_password
+      - source: database_api_password
         target: database_password
     # API health is readiness, not merely a live process or an open TCP port. The shipped runtime
     # image already contains bash, so this probe needs no extra package or helper executable.
@@ -76,8 +92,12 @@ services:
       start_period: 20s
 
 secrets:
-  database_password:
-    environment: MBS_DATABASE_PASSWORD
+  database_bootstrap_password:
+    environment: MBS_DATABASE_BOOTSTRAP_PASSWORD
+  database_migrator_password:
+    environment: MBS_DATABASE_MIGRATOR_PASSWORD
+  database_api_password:
+    environment: MBS_DATABASE_API_PASSWORD
 
 volumes:
   postgres_data:
