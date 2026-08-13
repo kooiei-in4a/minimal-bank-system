@@ -15,6 +15,11 @@ public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
     : PostgreSqlDatabaseTestBase(fixture), IClassFixture<PostgreSqlContainerFixture>
 {
     private static readonly TimeSpan MigrationBudget = TimeSpan.FromSeconds(120);
+    private static readonly string[] ExpectedAppliedMigrations =
+    [
+        "20260809113338_InitialFoundation",
+        "20260813181851_OperatorIdentityPersistence",
+    ];
     private const string Mut03OracleSignature =
         "ORACLE_SIGNATURE=FND06_MUT03_PENDING_MIGRATION_MUST_NOT_BE_READY";
 
@@ -56,7 +61,7 @@ public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
 
         string[] tablesBeforeProbe = await ReadPublicTablesAsync();
         string[] historyBeforeProbe = await ReadMigrationHistoryAsync();
-        Assert.Single(historyBeforeProbe);
+        Assert.Equal(ExpectedAppliedMigrations, historyBeforeProbe);
 
         using (HttpResponseMessage afterMigration = await client.GetAsync(HealthContract.ReadyPath))
         {
