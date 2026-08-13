@@ -14,6 +14,15 @@ public static class BankPersistence
     /// <summary>Environment-variable form of <c>ConnectionStrings:Database</c>.</summary>
     public const string ConnectionStringEnvironmentVariable = "ConnectionStrings__Database";
 
+    /// <summary>Bootstrap authority role used only during database provisioning.</summary>
+    public const string BootstrapRole = "mbs_bootstrap";
+
+    /// <summary>Normal EF migration principal.</summary>
+    public const string MigratorRole = "mbs_migrator";
+
+    /// <summary>Least-privilege API runtime principal.</summary>
+    public const string ApiRuntimeRole = "mbs_runtime";
+
     /// <summary>PostgreSQL default EF Core migration history table.</summary>
     public const string MigrationsHistoryTableName = "__EFMigrationsHistory";
 

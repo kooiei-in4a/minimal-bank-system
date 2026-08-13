@@ -6,11 +6,11 @@ services:
     platform: linux/amd64
     environment:
       POSTGRES_DB: minimal_bank
-      POSTGRES_USER: minimal_bank
-      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+      POSTGRES_USER: mbs_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/bootstrap_password
     secrets:
-      - source: database_password
-        target: database_password
+      - source: bootstrap_password
+        target: bootstrap_password
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -19,6 +19,35 @@ services:
       timeout: 3s
       retries: 30
       start_period: 5s
+
+  db-provisioner:
+    image: postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+    platform: linux/amd64
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DATABASE: minimal_bank
+      POSTGRES_USERNAME: mbs_bootstrap
+      MBS_BOOTSTRAP_PASSWORD_FILE: /run/secrets/bootstrap_password
+      MBS_MIGRATOR_PASSWORD_FILE: /run/secrets/migrator_password
+      MBS_RUNTIME_PASSWORD_FILE: /run/secrets/runtime_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets:
+      - source: bootstrap_password
+        target: bootstrap_password
+      - source: migrator_password
+        target: migrator_password
+      - source: runtime_password
+        target: runtime_password
+    volumes:
+      - type: bind
+        source: ./deployment/fnd05/provision-database.sh
+        target: /usr/local/bin/provision-database
+        read_only: true
+    command: ["bash", "/usr/local/bin/provision-database"]
+    restart: "no"
 
   migrator:
     build:
@@ -32,13 +61,14 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DATABASE: minimal_bank
-      POSTGRES_USERNAME: minimal_bank
+      POSTGRES_USERNAME: mbs_migrator
+      MBS_DATABASE_PASSWORD_FILE: /run/secrets/migrator_password
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-provisioner:
+        condition: service_completed_successfully
     secrets:
-      - source: database_password
-        target: database_password
+      - source: migrator_password
+        target: migrator_password
     restart: "no"
 
   api:
@@ -53,13 +83,14 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DATABASE: minimal_bank
-      POSTGRES_USERNAME: minimal_bank
+      POSTGRES_USERNAME: mbs_runtime
+      MBS_DATABASE_PASSWORD_FILE: /run/secrets/runtime_password
     depends_on:
       migrator:
         condition: service_completed_successfully
     secrets:
-      - source: database_password
-        target: database_password
+      - source: runtime_password
+        target: runtime_password
     # API health is readiness, not merely a live process or an open TCP port. The shipped runtime
     # image already contains bash, so this probe needs no extra package or helper executable.
     healthcheck:
@@ -76,8 +107,12 @@ services:
       start_period: 20s
 
 secrets:
-  database_password:
-    environment: MBS_DATABASE_PASSWORD
+  bootstrap_password:
+    environment: MBS_DATABASE_BOOTSTRAP_PASSWORD
+  migrator_password:
+    environment: MBS_DATABASE_MIGRATOR_PASSWORD
+  runtime_password:
+    environment: MBS_DATABASE_RUNTIME_PASSWORD
 
 volumes:
   postgres_data:

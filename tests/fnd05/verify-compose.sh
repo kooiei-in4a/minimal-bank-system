@@ -6,6 +6,7 @@ readonly expected_migration='20260809113338_InitialFoundation'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_TEST_SENTINEL_NOT_A_CREDENTIAL}"
 readonly compose=(docker compose -p "$project_name")
 declare -a cleanup_project_names=("$project_name")
+declare -a secret_materials=()
 
 require_command() {
   command -v "$1" >/dev/null
@@ -18,7 +19,14 @@ for command_name in docker jq bash; do
   }
 done
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-FND05_BOOTSTRAP_NOT_A_CREDENTIAL}"
+export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-FND05_MIGRATOR_NOT_A_CREDENTIAL}"
+export MBS_DATABASE_RUNTIME_PASSWORD="${MBS_DATABASE_RUNTIME_PASSWORD:-$sentinel}"
+secret_materials=(
+  "$MBS_DATABASE_BOOTSTRAP_PASSWORD"
+  "$MBS_DATABASE_MIGRATOR_PASSWORD"
+  "$MBS_DATABASE_RUNTIME_PASSWORD"
+)
 
 container_id() {
   local service_name="$1"
@@ -66,9 +74,25 @@ wait_for_api_listener() {
   return 1
 }
 
+api_username() {
+  docker inspect "$(container_id api)" |
+    jq --raw-output '.[0].Config.Env[] | select(startswith("POSTGRES_USERNAME=")) | split("=")[1]'
+}
+
+api_psql() {
+  local sql="$1"
+  local username
+  username="$(api_username)"
+  "${compose[@]}" exec -T api bash -c 'cat /run/secrets/runtime_password' |
+    "${compose[@]}" exec -T postgres bash -ceu '
+      IFS= read -r PGPASSWORD || true
+      export PGPASSWORD
+      exec psql -h 127.0.0.1 -U "$1" -d minimal_bank -v ON_ERROR_STOP=1 -At -c "$2"
+    ' bash "$username" "$sql"
+}
+
 read_history() {
-  "${compose[@]}" exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
+  api_psql 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
 }
 
 assert_no_project_residue() {
@@ -132,11 +156,17 @@ assert_success_contract() {
   logs="$("${compose[@]}" logs --no-color --timestamps)"
   inspect="$(docker inspect "$postgres_id" "$migrator_id" "$api_id")"
   top="$(docker top "$api_id")"
+  [[ "$(api_psql 'SELECT current_user;')" == 'mbs_runtime' ]] || {
+    printf 'API did not use the designated runtime principal.\n' >&2
+    return 1
+  }
   for observation_surface in "$rendered" "$logs" "$inspect" "$top"; do
-    [[ "$observation_surface" != *"$sentinel"* ]] || {
-      printf 'Secret sentinel was exposed by an external observation surface.\n' >&2
-      return 1
-    }
+    for secret_material in "${secret_materials[@]}"; do
+      [[ "$observation_surface" != *"$secret_material"* ]] || {
+        printf 'Secret material was exposed by an external observation surface.\n' >&2
+        return 1
+      }
+    done
   done
 }
 
@@ -157,59 +187,74 @@ assert_failure_contract() {
 }
 
 assert_missing_secret_contract() {
-  local missing_project_name="$1" missing_up_output="$2" missing_up_exit_code="$3"
-  local api_id rendered inspect
+  local missing_variable="$1" missing_label="$2" missing_project_name="$3" missing_up_output="$4" missing_up_exit_code="$5"
+  local api_id service_id service_name inspect
   local -a container_ids=()
   local missing_compose=(docker compose -p "$missing_project_name")
   (( missing_up_exit_code != 0 )) || {
     printf 'Missing-secret probe incorrectly returned success.\n' >&2
     return 1
   }
-  [[ "$missing_up_output" == *'MBS_DATABASE_PASSWORD'* && "$missing_up_output" == *'required by secret'* ]] || {
+  [[ "$missing_up_output" == *"$missing_variable"* && "$missing_up_output" == *'required by secret'* ]] || {
     printf 'Missing-secret probe did not report the required-secret configuration failure.\n' >&2
     return 1
   }
   api_id="$("${missing_compose[@]}" ps -aq api)"
   if [[ -n "$api_id" ]]; then
     docker inspect "$api_id" | jq --exit-status '
-      .[0].State.Status == "created" and
-      .[0].State.StartedAt == "0001-01-01T00:00:00Z"
+      .[0].State.Status != "running" and
+      (.[0].State.StartedAt == "0001-01-01T00:00:00Z" or .[0].State.ExitCode != 0)
     ' >/dev/null || {
       printf 'Missing-secret probe allowed API startup.\n' >&2
+      return 1
+    }
+  fi
+  case "$missing_label" in
+    bootstrap) service_name='db-provisioner' ;;
+    migrator) service_name='migrator' ;;
+    runtime) service_name='api' ;;
+    *)
+      printf 'Unknown missing-secret probe label: %s\n' "$missing_label" >&2
+      return 1
+      ;;
+  esac
+  service_id="$("${missing_compose[@]}" ps -aq "$service_name")"
+  if [[ -n "$service_id" ]]; then
+    docker inspect "$service_id" | jq --exit-status '.[0].State.Status != "running"' >/dev/null || {
+      printf 'Missing-secret probe left %s running before fail-closed handling.\n' "$service_name" >&2
       return 1
     }
   fi
   mapfile -t container_ids < <(docker ps -aq --filter "label=com.docker.compose.project=$missing_project_name")
   if ((${#container_ids[@]})); then
     inspect="$(docker inspect "${container_ids[@]}")"
-    jq --exit-status 'all(.[]; .State.StartedAt == "0001-01-01T00:00:00Z")' <<<"$inspect" >/dev/null || {
-      printf 'Missing-secret probe started a service before fail-closed handling.\n' >&2
-      return 1
-    }
   else
     inspect='[]'
   fi
-  rendered="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" config --format json)"
-  for observation_surface in "$missing_up_output" "$rendered" "$inspect"; do
-    [[ "$observation_surface" != *"$sentinel"* ]] || {
-      printf 'Missing-secret probe exposed the sentinel.\n' >&2
-      return 1
-    }
+  for observation_surface in "$missing_up_output" "$inspect"; do
+    for secret_material in "${secret_materials[@]}"; do
+      [[ "$observation_surface" != *"$secret_material"* ]] || {
+        printf 'Missing-secret probe exposed secret material.\n' >&2
+        return 1
+      }
+    done
   done
 }
 
 run_missing_secret_probe() {
-  local missing_project_name="${project_name}-missing-secret-${RANDOM}${RANDOM}"
+  local missing_variable="$1"
+  local missing_label="$2"
+  local missing_project_name="${project_name}-missing-${missing_label}-${RANDOM}${RANDOM}"
   local -a missing_compose=(docker compose -p "$missing_project_name")
   local missing_up_output missing_up_exit_code
 
   cleanup_project_names+=("$missing_project_name")
 
   set +e
-  missing_up_output="$(env -u MBS_DATABASE_PASSWORD "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
+  missing_up_output="$(env -u "$missing_variable" "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
   missing_up_exit_code=$?
   set -e
-  assert_missing_secret_contract "$missing_project_name" "$missing_up_output" "$missing_up_exit_code"
+  assert_missing_secret_contract "$missing_variable" "$missing_label" "$missing_project_name" "$missing_up_output" "$missing_up_exit_code"
   "${missing_compose[@]}" down --volumes --remove-orphans
   assert_no_project_residue_for "$missing_project_name"
   printf 'MISSING_SECRET: NEGATIVE_PROBE_EXECUTED\n'
@@ -219,13 +264,15 @@ run_missing_secret_probe() {
   printf 'MISSING_SECRET: NO_LEAK\n'
   printf 'MISSING_SECRET: CLEANUP\n'
   printf 'MISSING_SECRET: RESIDUE_ZERO\n'
-  printf 'MISSING_SECRET_PROBE: PASS (compose-up-exit=%s)\n' "$missing_up_exit_code"
+  printf 'MISSING_SECRET_PROBE[%s]: PASS (compose-up-exit=%s)\n' "$missing_label" "$missing_up_exit_code"
 }
 
 "${compose[@]}" config --quiet
 bash tests/fnd05/static-gate.sh
 
-run_missing_secret_probe
+run_missing_secret_probe MBS_DATABASE_BOOTSTRAP_PASSWORD bootstrap
+run_missing_secret_probe MBS_DATABASE_MIGRATOR_PASSWORD migrator
+run_missing_secret_probe MBS_DATABASE_RUNTIME_PASSWORD runtime
 
 "${compose[@]}" up --build --detach --remove-orphans
 wait_for_state migrator exited
