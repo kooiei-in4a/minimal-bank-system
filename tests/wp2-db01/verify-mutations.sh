@@ -58,6 +58,8 @@ wait_for_listener() {
   return 1
 }
 
+# Bootstrap/Migrator cleanup helper. The DB-PRIV-01 oracle itself must use the actual credential
+# mounted in the running API container, not this local-trust path.
 psql_as() {
   local role="$1" sql="$2"
   "${compose[@]}" exec -T postgres psql -U "$role" -d minimal_bank -At -c "$sql"
@@ -65,6 +67,27 @@ psql_as() {
 
 configured_api_role() {
   "${compose[@]}" exec -T api printenv POSTGRES_USERNAME | tr -d '\r'
+}
+
+# Streams the API service's actual mounted credential to psql over stdin, then authenticates over
+# TCP as the principal configured on that same service. Credential material never enters argv,
+# logs, a temporary file or verification output.
+api_network_psql() {
+  local sql="$1" role
+  role="$(configured_api_role)"
+  "${compose[@]}" exec -T api cat /run/secrets/database_password |
+    "${compose[@]}" exec -T postgres bash -ceu '
+      IFS= read -r PGPASSWORD || true
+      export PGPASSWORD
+      exec psql -h 127.0.0.1 -U "$1" -d minimal_bank --quiet --no-psqlrc \
+        -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -At -c "$2"
+    ' bash "$role" "$sql"
+}
+
+api_credential_matches() {
+  local postgres_secret_file="$1"
+  "${compose[@]}" exec -T api cat /run/secrets/database_password |
+    "${compose[@]}" exec -T postgres cmp -s - "$postgres_secret_file"
 }
 
 assert_residue_zero() {
@@ -83,46 +106,74 @@ cleanup() {
 
 trap cleanup EXIT
 
-# Asserts the DB-PRIV-01 invariant holds: the API service's actual configured principal matches
-# its designated principal, and that principal's credential path cannot perform representative
-# DDL. Returns non-zero with a combined ORACLE_SIGNATURE describing exactly which part of the
-# invariant failed, so the mutation below is killed by a semantic signature rather than a generic
-# non-zero exit.
+# Asserts the DB-PRIV-01 invariant using the API service's actual configured principal and actual
+# mounted credential over TCP/password authentication. The complete intended mutation must expose
+# principal mismatch, credential equality with the Migrator, and newly available DDL together.
 assert_boundary_intact() {
-  local actual_role ddl_status principal_mismatch=false ddl_capability_gained=false
+  local actual_role authenticated_role auth_output auth_status ddl_output ddl_status
+  local principal_mismatch=false credential_collapse=false ddl_capability_gained=false
 
   actual_role="$(configured_api_role)"
-  [[ "$actual_role" == "$designated_api_role" ]] || principal_mismatch=true
+  set +e
+  auth_output="$(api_network_psql 'SELECT current_user;' 2>&1)"
+  auth_status=$?
+  set -e
+  (( auth_status == 0 )) || {
+    printf 'ORACLE_SIGNATURE=api-runtime-network-authentication-failed\n' >&2
+    return 1
+  }
+  authenticated_role="$auth_output"
+  [[ "$actual_role" == "$designated_api_role" &&
+     "$authenticated_role" == "$designated_api_role" ]] || principal_mismatch=true
+
+  if api_credential_matches /run/secrets/database_migrator_password; then
+    credential_collapse=true
+  fi
 
   set +e
-  psql_as "$actual_role" "CREATE TABLE ${probe_table} (id integer);" >/dev/null 2>&1
+  ddl_output="$(api_network_psql \
+    "CREATE TABLE ${probe_table} (id integer); DROP TABLE ${probe_table};" 2>&1)"
   ddl_status=$?
   set -e
 
   if (( ddl_status == 0 )); then
     ddl_capability_gained=true
-    psql_as "$migrator_role" "DROP TABLE IF EXISTS ${probe_table};" >/dev/null 2>&1 || true
   fi
 
-  if $principal_mismatch && $ddl_capability_gained; then
-    printf 'ORACLE_SIGNATURE=credential-boundary-collapse:actual-role=%s:designated-role=%s:migrator-ddl-capability-gained\n' \
-      "$actual_role" "$designated_api_role" >&2
+  if $principal_mismatch && $credential_collapse && $ddl_capability_gained; then
+    printf 'ORACLE_SIGNATURE=credential-boundary-collapse\n' >&2
+    printf 'ORACLE_SIGNATURE=migrator-ddl-available-to-api-runtime-path\n' >&2
+    printf 'ACTUAL_API_RUNTIME_PRINCIPAL=%s\n' "$authenticated_role" >&2
+    printf 'DESIGNATED_API_RUNTIME_PRINCIPAL=%s\n' "$designated_api_role" >&2
     return 1
   fi
   if $principal_mismatch; then
-    printf 'ORACLE_SIGNATURE=principal-mismatch-without-ddl-capability:actual-role=%s:designated-role=%s\n' \
-      "$actual_role" "$designated_api_role" >&2
+    printf 'ORACLE_SIGNATURE=api-runtime-principal-mismatch\n' >&2
+    return 1
+  fi
+  if $credential_collapse; then
+    printf 'ORACLE_SIGNATURE=api-runtime-credential-equals-migrator-credential\n' >&2
     return 1
   fi
   if $ddl_capability_gained; then
-    printf 'ORACLE_SIGNATURE=ddl-capability-gained-without-principal-mismatch:actual-role=%s\n' "$actual_role" >&2
+    printf 'ORACLE_SIGNATURE=migrator-ddl-available-to-api-runtime-path\n' >&2
     return 1
   fi
+  [[ "$ddl_output" != *'password authentication failed'* &&
+     "$ddl_output" != *'no password supplied'* &&
+     "$ddl_output" != *'connection refused'* &&
+     ( "$ddl_output" == *'permission denied'* || "$ddl_output" == *'42501'* ) ]] || {
+    printf 'ORACLE_SIGNATURE=api-runtime-ddl-denial-not-semantic\n' >&2
+    return 1
+  }
+  api_credential_matches /run/secrets/database_api_password || {
+    printf 'ORACLE_SIGNATURE=api-mounted-credential-source-mismatch\n' >&2
+    return 1
+  }
   return 0
 }
 
 expect_red() {
-  local expected_signature="$1"
   local output status
   set +e
   output="$(assert_boundary_intact 2>&1)"
@@ -132,8 +183,17 @@ expect_red() {
     printf 'DB-PRIV-01 mutation oracle unexpectedly returned GREEN.\n' >&2
     return 1
   }
-  [[ "$output" == *"ORACLE_SIGNATURE=$expected_signature"* ]] || {
+  [[ "$output" == *'ORACLE_SIGNATURE=credential-boundary-collapse'* ]] || {
     printf 'DB-PRIV-01 mutation oracle failed with an unexpected signature: %s\n' "$output" >&2
+    return 1
+  }
+  [[ "$output" == *'ORACLE_SIGNATURE=migrator-ddl-available-to-api-runtime-path'* ]] || {
+    printf 'DB-PRIV-01 mutation oracle did not prove DDL through the API-mounted credential: %s\n' "$output" >&2
+    return 1
+  }
+  [[ "$output" == *"ACTUAL_API_RUNTIME_PRINCIPAL=${migrator_role}"* &&
+     "$output" == *"DESIGNATED_API_RUNTIME_PRINCIPAL=${designated_api_role}"* ]] || {
+    printf 'DB-PRIV-01 mutation oracle did not prove the expected principal mismatch: %s\n' "$output" >&2
     return 1
   }
 }
@@ -150,6 +210,9 @@ run_db_priv_01() {
   wait_for_listener
   assert_boundary_intact
   printf 'DB-PRIV-01: BASELINE_GREEN\n'
+  printf 'DB-PRIV-01: BASELINE_ACTUAL_PRINCIPAL=designated-api-principal\n'
+  printf 'DB-PRIV-01: BASELINE_MOUNTED_CREDENTIAL_DISTINCT_FROM_MIGRATOR\n'
+  printf 'DB-PRIV-01: BASELINE_REPRESENTATIVE_DDL_DENIED\n'
 
   override="$(mktemp)"
   write_override "$override" <<YAML
@@ -166,9 +229,13 @@ YAML
   wait_for_listener
   printf 'DB-PRIV-01: MUTATION_APPLIED\n'
 
-  expect_red 'credential-boundary-collapse:actual-role=minimal_bank_migrator:designated-role=minimal_bank_api:migrator-ddl-capability-gained'
+  expect_red
   printf 'DB-PRIV-01: MUTATION_RED\n'
-  printf 'DB-PRIV-01: SEMANTIC_SIGNATURE=credential-boundary-collapse+migrator-ddl-capability-gained\n'
+  printf 'DB-PRIV-01: MUTATION_ACTUAL_PRINCIPAL_MISMATCH\n'
+  printf 'DB-PRIV-01: MUTATION_MOUNTED_CREDENTIAL_EQUALS_MIGRATOR\n'
+  printf 'DB-PRIV-01: ACTUAL_MOUNTED_CREDENTIAL_USED\n'
+  printf 'DB-PRIV-01: NETWORK_AUTHENTICATED_DDL_SUCCEEDED\n'
+  printf 'DB-PRIV-01: SEMANTIC_FAILURE=credential-boundary-collapse+migrator-ddl-available-to-api-runtime-path\n'
   rm -f "$override"
 
   "${compose[@]}" up --build --detach --no-deps --force-recreate api

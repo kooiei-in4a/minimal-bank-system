@@ -41,6 +41,12 @@ api_password="$(<"$MBS_API_PASSWORD_FILE")"
   printf 'Bootstrap configuration error: API runtime secret file is empty.\n' >&2
   exit 78
 }
+[[ "$migrator_password" != "$api_password" ]] || {
+  unset migrator_password api_password
+  printf 'Bootstrap configuration error: Migrator and API runtime credentials must be distinct.\n' >&2
+  printf 'ORACLE_SIGNATURE=equal-database-credential-values\n' >&2
+  exit 78
+}
 
 migrator_password_literal="$(sql_literal "$migrator_password")"
 api_password_literal="$(sql_literal "$api_password")"

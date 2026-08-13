@@ -19,6 +19,7 @@ readonly api_role='minimal_bank_api'
 readonly fixture_table='public.wp2_db01_verification_fixture'
 readonly history_table='public."__EFMigrationsHistory"'
 readonly compose=(docker compose -p "$project_name")
+declare -a cleanup_project_names=("$project_name")
 
 for command_name in docker jq bash; do
   command -v "$command_name" >/dev/null || {
@@ -30,6 +31,11 @@ done
 export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
 export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
 export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
+declare -ar credential_materials=(
+  "$MBS_DATABASE_BOOTSTRAP_PASSWORD"
+  "$MBS_DATABASE_MIGRATOR_PASSWORD"
+  "$MBS_DATABASE_API_PASSWORD"
+)
 
 container_id() {
   local service_name="$1" id
@@ -68,11 +74,49 @@ wait_for_api_listener() {
   return 1
 }
 
-assert_no_project_residue() {
+configured_api_role() {
+  docker inspect "$(container_id api)" |
+    jq --raw-output '.[0].Config.Env[] | select(startswith("POSTGRES_USERNAME=")) | split("=")[1]'
+}
+
+# Uses the credential mounted into the running API container and the principal configured on that
+# same container. The credential is streamed over stdin, never placed in argv, logs or output;
+# psql then performs TCP/password authentication rather than relying on PostgreSQL local trust.
+api_network_psql() {
+  local sql="$1" role
+  role="$(configured_api_role)"
+  "${compose[@]}" exec -T api cat /run/secrets/database_password |
+    "${compose[@]}" exec -T postgres bash -ceu '
+      IFS= read -r PGPASSWORD || true
+      export PGPASSWORD
+      exec psql -h 127.0.0.1 -U "$1" -d minimal_bank --quiet --no-psqlrc \
+        -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -At -c "$2"
+    ' bash "$role" "$sql"
+}
+
+# Compares secret bytes without returning either the bytes or a digest. The comparison target is
+# a bootstrap-mounted copy inside PostgreSQL, while the input is always the API container's actual
+# mounted credential path.
+api_credential_matches() {
+  local postgres_secret_file="$1"
+  "${compose[@]}" exec -T api cat /run/secrets/database_password |
+    "${compose[@]}" exec -T postgres cmp -s - "$postgres_secret_file"
+}
+
+api_http_response() {
+  "${compose[@]}" exec -T api bash -ceu '
+    exec 3<>/dev/tcp/127.0.0.1/8080
+    printf "GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3
+    cat <&3
+  '
+}
+
+assert_no_project_residue_for() {
+  local target_project_name="$1"
   local containers volumes networks
-  containers="$(docker ps -aq --filter "label=com.docker.compose.project=$project_name")"
-  volumes="$(docker volume ls -q --filter "label=com.docker.compose.project=$project_name")"
-  networks="$(docker network ls -q --filter "label=com.docker.compose.project=$project_name")"
+  containers="$(docker ps -aq --filter "label=com.docker.compose.project=$target_project_name")"
+  volumes="$(docker volume ls -q --filter "label=com.docker.compose.project=$target_project_name")"
+  networks="$(docker network ls -q --filter "label=com.docker.compose.project=$target_project_name")"
   [[ -z "$containers" && -z "$volumes" && -z "$networks" ]] || {
     printf 'Project-scoped Docker residue remains after cleanup.\n' >&2
     return 1
@@ -80,38 +124,45 @@ assert_no_project_residue() {
 }
 
 cleanup() {
+  local cleanup_project_name
   "${compose[@]}" exec -T postgres psql -U "$migrator_role" -d minimal_bank \
     -c "DROP TABLE IF EXISTS ${fixture_table};" >/dev/null 2>&1 || true
-  "${compose[@]}" down --volumes --remove-orphans
-  assert_no_project_residue
+  for cleanup_project_name in "${cleanup_project_names[@]}"; do
+    docker compose -p "$cleanup_project_name" down --volumes --remove-orphans
+    assert_no_project_residue_for "$cleanup_project_name"
+  done
 }
 
 trap cleanup EXIT
 
-# Runs a statement as the given PostgreSQL role over the local Unix-socket connection inside the
-# postgres container (trust-authenticated for local connections, the same mechanism the existing
-# FND-05/FND-06 read_history()/tables() probes already rely on). This exercises the role's actual
-# grant/privilege boundary, independent of how the API or Migrator authenticate over the network.
+# Bootstrap/Migrator administration helper. API positive and negative proofs intentionally do not
+# use this local-trust path; they use api_network_psql above.
 psql_as() {
   local role="$1" sql="$2"
   "${compose[@]}" exec -T postgres psql -U "$role" -d minimal_bank -At -c "$sql"
 }
 
-expect_denied() {
+expect_api_denied() {
   # PostgreSQL reports privilege denials with different wording depending on the check: a GRANT-
   # based check (schema usage/create, role administration, table DML) says "permission denied";
   # an ownership-based check (structural ALTER on a table the role does not own, such as the
   # Migrator-owned migration-history table) says "must be owner of". Both are genuine denials.
-  local role="$1" sql="$2" label="$3" output status
+  local sql="$1" label="$2" output status
   set +e
-  output="$(psql_as "$role" "$sql" 2>&1)"
+  output="$(api_network_psql "$sql" 2>&1)"
   status=$?
   set -e
   (( status != 0 )) || {
     printf '%s: unexpectedly succeeded; the privilege boundary was violated.\n' "$label" >&2
     return 1
   }
-  [[ "$output" == *'permission denied'* || "$output" == *'must be owner'* ]] || {
+  [[ "$output" != *'password authentication failed'* &&
+     "$output" != *'no password supplied'* &&
+     "$output" != *'connection refused'* ]] || {
+    printf '%s: failed before the intended authenticated privilege check.\n' "$label" >&2
+    return 1
+  }
+  [[ "$output" == *'permission denied'* || "$output" == *'must be owner'* || "$output" == *'42501'* ]] || {
     printf '%s: failed for an unexpected reason: %s\n' "$label" "$output" >&2
     return 1
   }
@@ -132,8 +183,17 @@ assert_distinct_principals_and_credentials() {
     printf 'Migrator and API runtime principals/credentials are not distinct in the shipped Compose contract.\n' >&2
     return 1
   }
+  api_credential_matches /run/secrets/database_api_password || {
+    printf 'The API-mounted credential does not match the configured API credential source.\n' >&2
+    return 1
+  }
+  if api_credential_matches /run/secrets/database_migrator_password; then
+    printf 'Migrator and API runtime credential values are equal.\n' >&2
+    return 1
+  fi
   printf 'DISTINCT_PRINCIPALS: PASS\n'
-  printf 'DISTINCT_CREDENTIALS: PASS\n'
+  printf 'DISTINCT_SECRET_SOURCES: PASS\n'
+  printf 'DISTINCT_CREDENTIAL_VALUES: PASS\n'
 }
 
 assert_positive_dml() {
@@ -146,23 +206,23 @@ assert_positive_dml() {
     "CREATE TABLE ${fixture_table} (id integer PRIMARY KEY, note text);" >/dev/null
   printf 'POSITIVE_DML: FIXTURE_CREATED_BY_MIGRATOR\n'
 
-  psql_as "$api_role" \
+  api_network_psql \
     "INSERT INTO ${fixture_table} (id, note) VALUES (1, 'wp2-db01-positive-dml');" >/dev/null
   printf 'POSITIVE_DML: API_INSERT_SUCCEEDED\n'
 
-  psql_as "$api_role" \
+  api_network_psql \
     "UPDATE ${fixture_table} SET note = 'wp2-db01-positive-dml-updated' WHERE id = 1;" >/dev/null
   printf 'POSITIVE_DML: API_UPDATE_SUCCEEDED\n'
 
-  readback="$(psql_as "$api_role" "SELECT note FROM ${fixture_table} WHERE id = 1;")"
+  readback="$(api_network_psql "SELECT note FROM ${fixture_table} WHERE id = 1;")"
   [[ "$readback" == 'wp2-db01-positive-dml-updated' ]] || {
     printf 'POSITIVE_DML: readback after UPDATE did not reflect the API write (%s).\n' "$readback" >&2
     return 1
   }
   printf 'POSITIVE_DML: API_SELECT_READBACK_CONFIRMED\n'
 
-  psql_as "$api_role" "DELETE FROM ${fixture_table} WHERE id = 1;" >/dev/null
-  readback="$(psql_as "$api_role" "SELECT count(*) FROM ${fixture_table};")"
+  api_network_psql "DELETE FROM ${fixture_table} WHERE id = 1;" >/dev/null
+  readback="$(api_network_psql "SELECT count(*) FROM ${fixture_table};")"
   [[ "$readback" == '0' ]] || {
     printf 'POSITIVE_DML: fixture row remained after API DELETE.\n' >&2
     return 1
@@ -175,31 +235,66 @@ assert_positive_dml() {
 }
 
 assert_negative_privilege() {
-  expect_denied "$api_role" \
+  local actual_user api_history migrator_history schema_owner history_owner role_audit
+  actual_user="$(api_network_psql 'SELECT current_user;')"
+  [[ "$actual_user" == "$api_role" && "$(configured_api_role)" == "$api_role" ]] || {
+    printf 'API network authentication used an unexpected principal.\n' >&2
+    return 1
+  }
+  printf 'API_NETWORK_AUTHENTICATION: PASS\n'
+
+  role_audit="$(psql_as minimal_bank_bootstrap \
+    "SELECT rolname || '|' || rolsuper || '|' || rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' || rolbypassrls FROM pg_roles WHERE rolname IN ('${migrator_role}', '${api_role}') ORDER BY rolname;")"
+  [[ "$role_audit" == *"${migrator_role}|false|false|false|false|false"* &&
+     "$role_audit" == *"${api_role}|false|false|false|false|false"* ]] || {
+    printf 'Migrator/API role privilege ceiling was not enforced.\n' >&2
+    return 1
+  }
+  printf 'MIGRATOR_AND_API_PRIVILEGE_CEILING: PASS\n'
+
+  schema_owner="$(psql_as minimal_bank_bootstrap \
+    "SELECT pg_catalog.pg_get_userbyid(nspowner) FROM pg_catalog.pg_namespace WHERE nspname = 'public';")"
+  history_owner="$(psql_as minimal_bank_bootstrap \
+    "SELECT pg_catalog.pg_get_userbyid(c.relowner) FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = '__EFMigrationsHistory';")"
+  [[ "$schema_owner" != "$api_role" && "$history_owner" != "$api_role" ]] || {
+    printf 'API runtime owns a protected schema or migration-history object.\n' >&2
+    return 1
+  }
+  printf 'API_OWNERSHIP_BOUNDARY: PASS\n'
+
+  expect_api_denied \
     'CREATE TABLE public.wp2_db01_negative_ddl_probe (id integer);' \
     'NEGATIVE_PRIVILEGE: API_DDL'
-  expect_denied "$api_role" \
+  expect_api_denied \
     "CREATE ROLE wp2_db01_negative_role_probe LOGIN;" \
     'NEGATIVE_PRIVILEGE: API_ROLE_ADMINISTRATION'
-  expect_denied "$api_role" \
+  expect_api_denied \
     "ALTER TABLE ${history_table} ADD COLUMN wp2_db01_negative_probe text;" \
     'NEGATIVE_PRIVILEGE: API_MIGRATION_APPLICATION'
-  expect_denied "$api_role" \
+  expect_api_denied \
     "INSERT INTO ${history_table} (\"MigrationId\", \"ProductVersion\") VALUES ('wp2-db01-negative-probe', '0.0.0');" \
     'NEGATIVE_PRIVILEGE: API_HISTORY_MUTATION_INSERT'
-  expect_denied "$api_role" \
+  expect_api_denied \
+    "UPDATE ${history_table} SET \"ProductVersion\" = '0.0.0';" \
+    'NEGATIVE_PRIVILEGE: API_HISTORY_MUTATION_UPDATE'
+  expect_api_denied \
     "DELETE FROM ${history_table};" \
     'NEGATIVE_PRIVILEGE: API_HISTORY_MUTATION_DELETE'
 
   # The API runtime remains able to read migration history for readiness purposes: the boundary is
   # SELECT-only, not zero access.
-  psql_as "$api_role" "SELECT count(*) FROM ${history_table};" >/dev/null
+  api_history="$(api_network_psql "SELECT \"MigrationId\" FROM ${history_table} ORDER BY \"MigrationId\";")"
+  migrator_history="$(psql_as "$migrator_role" "SELECT \"MigrationId\" FROM ${history_table} ORDER BY \"MigrationId\";")"
+  [[ -n "$api_history" && "$api_history" == "$migrator_history" ]] || {
+    printf 'API and Migrator role-aware history reads diverged.\n' >&2
+    return 1
+  }
   printf 'NEGATIVE_PRIVILEGE: API_HISTORY_SELECT_STILL_ALLOWED\n'
   printf 'NEGATIVE_PRIVILEGE: PASS\n'
 }
 
 assert_non_disclosure() {
-  local rendered logs inspect top postgres_id migrator_id api_id observation_surface probed_sentinel
+  local rendered logs inspect top http_response postgres_id migrator_id api_id observation_surface credential_material
   postgres_id="$(container_id postgres)"
   migrator_id="$(container_id migrator)"
   api_id="$(container_id api)"
@@ -207,10 +302,11 @@ assert_non_disclosure() {
   logs="$("${compose[@]}" logs --no-color --timestamps)"
   inspect="$(docker inspect "$postgres_id" "$migrator_id" "$api_id")"
   top="$(docker top "$api_id"; docker top "$migrator_id" 2>/dev/null || true)"
-  for observation_surface in "$rendered" "$logs" "$inspect" "$top"; do
-    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel"; do
-      [[ "$observation_surface" != *"$probed_sentinel"* ]] || {
-        printf 'Secret sentinel was exposed by an external observation surface.\n' >&2
+  http_response="$(api_http_response)"
+  for observation_surface in "$rendered" "$logs" "$inspect" "$top" "$http_response"; do
+    for credential_material in "${credential_materials[@]}"; do
+      [[ "$observation_surface" != *"$credential_material"* ]] || {
+        printf 'Credential material was exposed by an external observation surface.\n' >&2
         return 1
       }
     done
@@ -218,15 +314,59 @@ assert_non_disclosure() {
   printf 'NON_DISCLOSURE: PASS\n'
 }
 
+run_equal_credential_probe() {
+  local equal_project_name="${project_name}-equal-credentials-${RANDOM}${RANDOM}"
+  local -a equal_compose=(docker compose -p "$equal_project_name")
+  local output status logs api_id api_state observation_surface credential_material
+  cleanup_project_names+=("$equal_project_name")
+
+  set +e
+  output="$(MBS_DATABASE_API_PASSWORD="$MBS_DATABASE_MIGRATOR_PASSWORD" \
+    "${equal_compose[@]}" up --build --detach --remove-orphans 2>&1)"
+  status=$?
+  set -e
+  (( status != 0 )) || {
+    printf 'Equal Migrator/API credential probe did not fail closed.\n' >&2
+    return 1
+  }
+  logs="$("${equal_compose[@]}" logs --no-color postgres 2>&1 || true)"
+  [[ "$logs" == *'ORACLE_SIGNATURE=equal-database-credential-values'* ]] || {
+    printf 'Equal credential probe lacked the expected semantic signature.\n' >&2
+    return 1
+  }
+  api_id="$("${equal_compose[@]}" ps -aq api)"
+  if [[ -n "$api_id" ]]; then
+    api_state="$(docker inspect "$api_id" | jq --raw-output '.[0].State.Status')"
+    [[ "$api_state" != running ]] || {
+      printf 'Equal credential probe allowed API startup.\n' >&2
+      return 1
+    }
+  fi
+  for observation_surface in "$output" "$logs"; do
+    for credential_material in "${credential_materials[@]}"; do
+      [[ "$observation_surface" != *"$credential_material"* ]] || {
+        printf 'Equal credential probe disclosed credential material.\n' >&2
+        return 1
+      }
+    done
+  done
+  "${equal_compose[@]}" down --volumes --remove-orphans
+  assert_no_project_residue_for "$equal_project_name"
+  printf 'EQUAL_CREDENTIAL_VALUES: FAIL_CLOSED\n'
+  printf 'EQUAL_CREDENTIAL_VALUES: API_NOT_SERVING\n'
+  printf 'EQUAL_CREDENTIAL_VALUES: PASS\n'
+}
+
 "${compose[@]}" config --quiet
 
-assert_distinct_principals_and_credentials
+run_equal_credential_probe
 
 "${compose[@]}" up --build --detach --remove-orphans
 wait_for_state migrator exited
 wait_for_state api running
 wait_for_api_listener
 
+assert_distinct_principals_and_credentials
 assert_positive_dml
 assert_negative_privilege
 assert_non_disclosure

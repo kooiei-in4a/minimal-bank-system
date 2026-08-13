@@ -30,6 +30,11 @@ done
 : "${MBS_DATABASE_MIGRATOR_PASSWORD:?MBS_DATABASE_MIGRATOR_PASSWORD is required for the Compose render check}"
 : "${MBS_DATABASE_API_PASSWORD:?MBS_DATABASE_API_PASSWORD is required for the Compose render check}"
 
+[[ "$MBS_DATABASE_MIGRATOR_PASSWORD" != "$MBS_DATABASE_API_PASSWORD" ]] || {
+  printf 'ORACLE_SIGNATURE=equal-database-credential-values\n' >&2
+  exit 1
+}
+
 git -C "$source_root" -c core.autocrlf=true diff --check
 
 require_literal "$postgres_image" "$source_root/compose.yaml" 'postgres-image-digest-missing'
