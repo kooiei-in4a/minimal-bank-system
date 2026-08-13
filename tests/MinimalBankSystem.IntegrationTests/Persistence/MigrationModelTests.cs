@@ -27,31 +27,35 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void OnlyTheInitialFoundationMigrationIsCommitted()
+    public void FoundationAndOperatorMigrationsAreCommitted()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
-        string migration = Assert.Single(context.GetService<IMigrationsAssembly>().Migrations.Keys);
+        string[] migrations = [.. context.GetService<IMigrationsAssembly>().Migrations.Keys];
 
-        Assert.EndsWith("_InitialFoundation", migration, StringComparison.Ordinal);
+        Assert.Equal(2, migrations.Length);
+        Assert.EndsWith("_InitialFoundation", migrations[0], StringComparison.Ordinal);
+        Assert.EndsWith("_OperatorIdentityPersistence", migrations[1], StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TheBaselineModelDeclaresNoEntityType()
+    public void TheModelDeclaresOnlyTheOperatorIdentityEntity()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
-        Assert.Empty(context.Model.GetEntityTypes());
+        Assert.Equal(
+            ["MinimalBankSystem.Domain.Operator"],
+            context.Model.GetEntityTypes().Select(entity => entity.Name).ToArray());
     }
 
     [Fact]
-    public void TheBaselineMigrationDeclaresNoSchemaOperationAtAll()
+    public void TheFoundationMigrationDeclaresNoSchemaOperationAtAll()
     {
         using BankDbContext context = CreateDesignTimeContext();
         IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
 
         Migration migration = migrations.CreateMigration(
-            migrations.Migrations.Values.Single(),
+            migrations.Migrations.Values.First(),
             ActiveProvider);
 
         Assert.Empty(migration.UpOperations);
@@ -59,7 +63,7 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void TheGeneratedBaselineSqlCreatesOnlyTheMigrationHistoryTable()
+    public void TheGeneratedSqlCreatesTheMigrationHistoryAndOperatorTables()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
@@ -74,7 +78,9 @@ public sealed class MigrationModelTests
                 .Select(match => match.Groups["table"].Value),
         ];
 
-        Assert.Equal([QualifiedHistoryTable], createdTables);
+        Assert.Contains(QualifiedHistoryTable, createdTables);
+        Assert.Contains("\"Operators\"", createdTables);
+        Assert.Equal(2, createdTables.Length);
         Assert.DoesNotContain("CREATE SEQUENCE", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CREATE TRIGGER", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CREATE INDEX", script, StringComparison.OrdinalIgnoreCase);
@@ -101,6 +107,7 @@ public sealed class MigrationModelTests
         Assert.Contains("DO $EF$", script, StringComparison.Ordinal);
         Assert.Contains("IF NOT EXISTS(SELECT 1 FROM", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("_InitialFoundation", script, StringComparison.Ordinal);
+        Assert.Contains("_OperatorIdentityPersistence", script, StringComparison.Ordinal);
     }
 
     [Fact]
