@@ -17,6 +17,11 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
     : PostgreSqlDatabaseTestBase(fixture), IClassFixture<PostgreSqlContainerFixture>
 {
     private const string SecretSentinel = "FND04_REJECTED_PASSWORD_SENTINEL_8C9314F2";
+    private static readonly string[] ExpectedLatestTables =
+    [
+        "Operators",
+        BankPersistence.MigrationsHistoryTableName,
+    ];
 
     private static readonly TimeSpan NormalRunBudget = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan BlockedRunBudget = TimeSpan.FromSeconds(180);
@@ -33,9 +38,11 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             run.ExitCode == MigratorExitCode.Success,
             $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
 
-        string appliedMigration = Assert.Single(await ReadMigrationHistoryAsync());
-        Assert.EndsWith("_InitialFoundation", appliedMigration, StringComparison.Ordinal);
-        Assert.Equal([BankPersistence.MigrationsHistoryTableName], await ReadPublicTablesAsync());
+        string[] appliedMigrations = await ReadMigrationHistoryAsync();
+        Assert.Equal(2, appliedMigrations.Length);
+        Assert.EndsWith("_InitialFoundation", appliedMigrations[0], StringComparison.Ordinal);
+        Assert.EndsWith("_OperatorIdentityPersistence", appliedMigrations[^1], StringComparison.Ordinal);
+        Assert.Equal(ExpectedLatestTables, await ReadPublicTablesAsync());
     }
 
     [Fact]
@@ -51,7 +58,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             second.ExitCode == MigratorExitCode.Success,
             $"A no-op migration must succeed. Output:\n{second.Output}");
         Assert.Equal(afterFirst, await ReadMigrationHistoryAsync());
-        Assert.Equal([BankPersistence.MigrationsHistoryTableName], await ReadPublicTablesAsync());
+        Assert.Equal(ExpectedLatestTables, await ReadPublicTablesAsync());
     }
 
     [Fact]
@@ -158,7 +165,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
 
         string[] historyAfterMigration = await ReadMigrationHistoryAsync();
         string[] tablesAfterMigration = await ReadPublicTablesAsync();
-        Assert.Single(historyAfterMigration);
+        Assert.Equal(2, historyAfterMigration.Length);
 
         await StartApiAndIssueRequestAsync();
 
