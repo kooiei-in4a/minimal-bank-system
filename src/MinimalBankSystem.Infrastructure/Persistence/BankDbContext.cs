@@ -1,13 +1,19 @@
 using Microsoft.EntityFrameworkCore;
+using MinimalBankSystem.Domain.Identity;
 
 namespace MinimalBankSystem.Infrastructure.Persistence;
 
 /// <summary>
-/// Application persistence baseline.
+/// Single application DbContext. WP2-ID-01 adds Operator identity persistence to the same
+/// EF migration history established by FND-04.
 /// </summary>
-/// <remarks>
-/// FND-04 owns migration machinery only. Business entities belong to later schema-owning Issues,
-/// so <c>InitialFoundation</c> deliberately remains empty.
-/// </remarks>
 /// <param name="options">Provider options built through <see cref="BankPersistence"/>.</param>
-public sealed class BankDbContext(DbContextOptions<BankDbContext> options) : DbContext(options);
+public sealed class BankDbContext(DbContextOptions<BankDbContext> options) : DbContext(options)
+{
+    public DbSet<Operator> Operators => Set<Operator>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(BankDbContext).Assembly);
+    }
+}
