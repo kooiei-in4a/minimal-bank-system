@@ -6,6 +6,9 @@ set -Eeuo pipefail
 
 readonly project_name="${FND06_PROJECT_NAME:-minimal-bank-system-fnd06-${RANDOM}${RANDOM}}"
 readonly sentinel="${FND06_SECRET_SENTINEL:-FND06_TEST_SENTINEL_NOT_A_CREDENTIAL}"
+readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
+readonly migrator_sentinel="${sentinel}_MIGRATOR"
+readonly api_sentinel="${sentinel}_API"
 readonly expected_migration='20260809113338_InitialFoundation'
 readonly compose=(docker compose -p "$project_name")
 
@@ -16,7 +19,9 @@ for command_name in docker jq bash; do
   }
 done
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
+export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
+export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
 
 container_id() {
   local service="$1" id
@@ -107,7 +112,8 @@ assert_health() {
     printf 'ORACLE_SIGNATURE=health-content-type:%s\n' "$path" >&2
     return 1
   }
-  for forbidden in "$sentinel" 'Password=' 'Host=' 'Username=' 'ConnectionStrings' \
+  for forbidden in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel" \
+    'Password=' 'Host=' 'Username=' 'ConnectionStrings' \
     'Exception' 'StackTrace' 'stack trace' 'database_unreachable' 'migrations_pending' \
     'dependency_failure' 'postgresql-readiness'; do
     [[ "$response" != *"$forbidden"* ]] || {
@@ -146,19 +152,22 @@ assert_api_running_without_restart() {
 }
 
 read_history() {
-  "${compose[@]}" exec -T postgres psql -U minimal_bank -d minimal_bank -At \
+  # Role-aware: reads as the Migrator role, which owns the EF migration-history table under the
+  # WP2-DB-01 privilege boundary. The historical shared "minimal_bank" role no longer exists.
+  "${compose[@]}" exec -T postgres psql -U minimal_bank_migrator -d minimal_bank -At \
     -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
 }
 
 read_public_tables() {
-  "${compose[@]}" exec -T postgres psql -U minimal_bank -d minimal_bank -At \
+  "${compose[@]}" exec -T postgres psql -U minimal_bank_migrator -d minimal_bank -At \
     -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
 }
 
 assert_no_log_disclosure() {
   local logs forbidden
   logs="$("${compose[@]}" logs --no-color --timestamps api)"
-  for forbidden in "$sentinel" 'Password=' 'ConnectionStrings__' 'StackTrace' 'stack trace' '   at '; do
+  for forbidden in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel" \
+    'Password=' 'ConnectionStrings__' 'StackTrace' 'stack trace' '   at '; do
     [[ "$logs" != *"$forbidden"* ]] || {
       printf 'ORACLE_SIGNATURE=health-log-disclosure:%s\n' "$forbidden" >&2
       return 1

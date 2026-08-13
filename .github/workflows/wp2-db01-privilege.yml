@@ -1,4 +1,4 @@
-name: FND-05 Compose verification
+name: WP2-DB-01 privilege boundary verification
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  fnd05-compose:
+  wp2-db01-privilege-boundary:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
 
@@ -23,17 +23,17 @@ jobs:
           echo "ACTUAL_CHECKOUT_SHA=$(git rev-parse HEAD)"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
-      - name: Run FND-05 static and Compose runtime verification
+      - name: Run WP2-DB-01 privilege boundary verification
         # MBS_DATABASE_BOOTSTRAP_PASSWORD / MIGRATOR / API are intentionally left unset here: the
         # script derives all three, self-consistently with its own non-disclosure sentinels, from
-        # FND05_SECRET_SENTINEL alone.
+        # WP2DB01_SECRET_SENTINEL alone.
         env:
-          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}
-        run: bash tests/fnd05/verify-compose.sh
+          WP2DB01_SECRET_SENTINEL: ${{ runner.temp }}-wp2db01-${{ github.run_id }}
+        run: bash tests/wp2-db01/verify-privilege-boundary.sh
 
-  fnd05-mutations:
+  wp2-db01-critical-mutation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 25
 
     steps:
       - name: Check out repository
@@ -44,7 +44,7 @@ jobs:
           echo "ACTUAL_CHECKOUT_SHA=$(git rev-parse HEAD)"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
-      - name: Run FND-05 deterministic mutation verification
+      - name: Run WP2-DB-01 DB-PRIV-01 critical mutation verification
         env:
-          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation
-        run: bash tests/fnd05/verify-mutations.sh
+          WP2DB01_SECRET_SENTINEL: ${{ runner.temp }}-wp2db01-${{ github.run_id }}-mutation
+        run: bash tests/wp2-db01/verify-mutations.sh

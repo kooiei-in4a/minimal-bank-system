@@ -4,9 +4,14 @@ set -Eeuo pipefail
 readonly repository_root="$(git rev-parse --show-toplevel)"
 readonly expected_migration='20260809113338_InitialFoundation'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_MUTATION_SENTINEL_NOT_A_CREDENTIAL}"
+readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
+readonly migrator_sentinel="${sentinel}_MIGRATOR"
+readonly api_sentinel="${sentinel}_API"
 readonly run_id="${RANDOM}${RANDOM}"
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
+export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
+export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
 
 project_name=''
 source_root=''
@@ -66,12 +71,14 @@ wait_for_listener() {
 }
 
 history() {
-  compose_run exec -T postgres psql -U minimal_bank -d minimal_bank -At \
+  # Role-aware: reads as the Migrator role, which owns the EF migration-history table under the
+  # WP2-DB-01 privilege boundary. The historical shared "minimal_bank" role no longer exists.
+  compose_run exec -T postgres psql -U minimal_bank_migrator -d minimal_bank -At \
     -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
 }
 
 tables() {
-  compose_run exec -T postgres psql -U minimal_bank -d minimal_bank -At \
+  compose_run exec -T postgres psql -U minimal_bank_migrator -d minimal_bank -At \
     -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
 }
 
@@ -168,10 +175,13 @@ m02_failure_oracle() {
 }
 
 secret_oracle() {
+  # WP2-DB-01: checks the credential actually used by the mutated target runtime path (the API
+  # container's own secret, not a shared secret), so this stays non-vacuous after credential
+  # separation.
   local api_id top
   api_id="$(container_id api)"
   top="$(docker top "$api_id")"
-  [[ "$top" != *"$sentinel"* ]] || {
+  [[ "$top" != *"$api_sentinel"* ]] || {
     printf 'ORACLE_SIGNATURE=secret-in-actual-argv\n' >&2
     return 1
   }
@@ -210,8 +220,9 @@ write_override() {
 prepare_worktree_runtime() {
   local worktree="$1"
   cp "$repository_root/.dockerignore" "$repository_root/compose.yaml" "$worktree/"
-  mkdir -p "$worktree/deployment/fnd05"
+  mkdir -p "$worktree/deployment/fnd05" "$worktree/deployment/db-bootstrap"
   cp "$repository_root/deployment/fnd05/with-database-secret.sh" "$worktree/deployment/fnd05/"
+  cp "$repository_root/deployment/db-bootstrap/"*.sh "$worktree/deployment/db-bootstrap/"
   cp "$repository_root/src/MinimalBankSystem.Api/Dockerfile" "$worktree/src/MinimalBankSystem.Api/"
   cp "$repository_root/src/MinimalBankSystem.Migrator/Dockerfile" "$worktree/src/MinimalBankSystem.Migrator/"
 }
@@ -311,7 +322,7 @@ YAML
 }
 
 run_m03() {
-  local worktree migration_file program_file before_history before_tables
+  local worktree migration_file program_file before_history before_tables api_logs
   worktree="$(mktemp -d)"
   git worktree add --detach "$worktree" HEAD
   temporary_worktrees+=("$worktree")
@@ -365,15 +376,27 @@ CS
     }
   ' "$program_file" >"$program_file.m03" && mv "$program_file.m03" "$program_file"
   compose_run up --build --detach --no-deps --force-recreate api
-  wait_for_state api running
-  wait_for_listener
-  no_auto_migration_oracle() {
-    [[ "$(history)" == "$before_history" && "$(tables)" == "$before_tables" ]] || {
-      printf 'ORACLE_SIGNATURE=api-migration-state-delta\n' >&2
+  # WP2-DB-01: the API runtime role now has no DDL privilege, so the injected MigrateAsync() call
+  # throws before Kestrel starts listening and the container exits instead of drifting the schema
+  # -- a stronger, privilege-layer manifestation of the same invariant. Detect either
+  # manifestation: a schema/history delta (the pre-WP2-DB-01 shape) or a startup failure whose
+  # logs show the auto-migration attempt was rejected for lack of privilege.
+  if wait_for_state api running && wait_for_listener; then
+    no_auto_migration_oracle() {
+      [[ "$(history)" == "$before_history" && "$(tables)" == "$before_tables" ]] || {
+        printf 'ORACLE_SIGNATURE=api-migration-state-delta\n' >&2
+        return 1
+      }
+    }
+    expect_red api-migration-state-delta no_auto_migration_oracle
+  else
+    api_logs="$(compose_run logs --no-color --timestamps api)"
+    [[ "$api_logs" == *'permission denied'* ]] || {
+      printf 'M-03 API failed to start, but not for the expected auto-migration privilege denial.\n' >&2
       return 1
     }
-  }
-  expect_red api-migration-state-delta no_auto_migration_oracle
+    printf 'ORACLE_SIGNATURE=api-auto-migration-blocked-by-privilege-boundary\n'
+  fi
   clean_current
   git worktree remove --force "$worktree"
   temporary_worktrees=()

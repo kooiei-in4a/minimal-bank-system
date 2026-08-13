@@ -33,4 +33,10 @@ internal static partial class MigratorLog
         Level = LogLevel.Error,
         Message = "Migration failed. The deployment must not continue.")]
     public static partial void MigrationFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Information,
+        Message = "Enforced read-only migration-history privilege boundary for API runtime role {ApiRuntimeRoleName}.")]
+    public static partial void PrivilegeBoundaryEnforced(ILogger logger, string apiRuntimeRoleName);
 }

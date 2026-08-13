@@ -26,8 +26,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
       - name: Verify FND-06 shipped Compose health contract
+        # MBS_DATABASE_BOOTSTRAP_PASSWORD / MIGRATOR / API are intentionally left unset here: the
+        # script derives all three, self-consistently with its own non-disclosure sentinels, from
+        # FND06_SECRET_SENTINEL alone.
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
           FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
         run: bash tests/fnd06/verify-health-compose.sh
 
@@ -54,8 +56,10 @@ jobs:
           echo "PULL_REQUEST_MERGE_SHA=$GITHUB_SHA"
 
       - name: Verify FND-06 shipped Compose health contract
+        # MBS_DATABASE_BOOTSTRAP_PASSWORD / MIGRATOR / API are intentionally left unset here: the
+        # script derives all three, self-consistently with its own non-disclosure sentinels, from
+        # FND06_SECRET_SENTINEL alone.
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
           FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
         run: bash tests/fnd06/verify-health-compose.sh
 

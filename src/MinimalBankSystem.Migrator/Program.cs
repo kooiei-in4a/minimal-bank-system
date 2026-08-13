@@ -64,6 +64,20 @@ try
 
     MigratorLog.MigrationCompleted(logger, appliedDescription);
 
+    // The migration-history table only exists once at least one migration has ever been applied.
+    // Enforcing the read-only boundary before that point would target a nonexistent relation.
+    if (appliedMigrations.Length > 0)
+    {
+        string? enforcedApiRuntimeRole = await MigratorPrivilegeBoundary
+            .EnforceReadOnlyMigrationHistoryAsync(context, cancellation.Token)
+            .ConfigureAwait(false);
+
+        if (enforcedApiRuntimeRole is not null)
+        {
+            MigratorLog.PrivilegeBoundaryEnforced(logger, enforcedApiRuntimeRole);
+        }
+    }
+
     return MigratorExitCode.Success;
 }
 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
