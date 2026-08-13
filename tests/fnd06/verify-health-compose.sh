@@ -16,7 +16,9 @@ for command_name in docker jq bash; do
   }
 done
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-FND06_BOOTSTRAP_NOT_A_CREDENTIAL}"
+export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-FND06_MIGRATOR_NOT_A_CREDENTIAL}"
+export MBS_DATABASE_RUNTIME_PASSWORD="${MBS_DATABASE_RUNTIME_PASSWORD:-$sentinel}"
 
 container_id() {
   local service="$1" id
@@ -145,14 +147,29 @@ assert_api_running_without_restart() {
   }
 }
 
+api_username() {
+  docker inspect "$(container_id api)" |
+    jq --raw-output '.[0].Config.Env[] | select(startswith("POSTGRES_USERNAME=")) | split("=")[1]'
+}
+
+api_psql() {
+  local sql="$1"
+  local username
+  username="$(api_username)"
+  "${compose[@]}" exec -T api bash -c 'cat /run/secrets/runtime_password' |
+    "${compose[@]}" exec -T postgres bash -ceu '
+      IFS= read -r PGPASSWORD || true
+      export PGPASSWORD
+      exec psql -h 127.0.0.1 -U "$1" -d minimal_bank -v ON_ERROR_STOP=1 -At -c "$2"
+    ' bash "$username" "$sql"
+}
+
 read_history() {
-  "${compose[@]}" exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
+  api_psql 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
 }
 
 read_public_tables() {
-  "${compose[@]}" exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+  api_psql "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
 }
 
 assert_no_log_disclosure() {

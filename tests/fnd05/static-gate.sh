@@ -26,17 +26,32 @@ for command_name in docker git jq grep; do
   }
 done
 
-: "${MBS_DATABASE_PASSWORD:?MBS_DATABASE_PASSWORD is required for the Compose render check}"
+: "${MBS_DATABASE_BOOTSTRAP_PASSWORD:?MBS_DATABASE_BOOTSTRAP_PASSWORD is required for the Compose render check}"
+: "${MBS_DATABASE_MIGRATOR_PASSWORD:?MBS_DATABASE_MIGRATOR_PASSWORD is required for the Compose render check}"
+: "${MBS_DATABASE_RUNTIME_PASSWORD:?MBS_DATABASE_RUNTIME_PASSWORD is required for the Compose render check}"
 
 git -C "$source_root" -c core.autocrlf=true diff --check
 
 require_literal "$postgres_image" "$source_root/compose.yaml" 'postgres-image-digest-missing'
 require_literal "$sdk_image" "$source_root/compose.yaml" 'sdk-image-digest-missing'
 require_literal "$runtime_image" "$source_root/compose.yaml" 'runtime-image-digest-missing'
-require_literal 'environment: MBS_DATABASE_PASSWORD' "$source_root/compose.yaml" 'secret-environment-source-missing'
-require_literal 'POSTGRES_PASSWORD_FILE: /run/secrets/database_password' "$source_root/compose.yaml" 'postgres-secret-file-configuration-missing'
+require_literal 'environment: MBS_DATABASE_BOOTSTRAP_PASSWORD' "$source_root/compose.yaml" 'bootstrap-secret-environment-source-missing'
+require_literal 'environment: MBS_DATABASE_MIGRATOR_PASSWORD' "$source_root/compose.yaml" 'migrator-secret-environment-source-missing'
+require_literal 'environment: MBS_DATABASE_RUNTIME_PASSWORD' "$source_root/compose.yaml" 'runtime-secret-environment-source-missing'
+require_literal 'POSTGRES_USER: mbs_bootstrap' "$source_root/compose.yaml" 'bootstrap-role-configuration-missing'
+require_literal 'POSTGRES_PASSWORD_FILE: /run/secrets/bootstrap_password' "$source_root/compose.yaml" 'postgres-bootstrap-secret-file-configuration-missing'
+require_literal 'MBS_DATABASE_PASSWORD_FILE: /run/secrets/migrator_password' "$source_root/compose.yaml" 'migrator-secret-file-configuration-missing'
+require_literal 'MBS_DATABASE_PASSWORD_FILE: /run/secrets/runtime_password' "$source_root/compose.yaml" 'runtime-secret-file-configuration-missing'
+require_literal 'target: bootstrap_password' "$source_root/compose.yaml" 'bootstrap-secret-target-missing'
+require_literal 'target: migrator_password' "$source_root/compose.yaml" 'migrator-secret-target-missing'
+require_literal 'target: runtime_password' "$source_root/compose.yaml" 'runtime-secret-target-missing'
 require_literal 'condition: service_completed_successfully' "$source_root/compose.yaml" 'migrator-completion-gate-missing'
 require_literal 'condition: service_healthy' "$source_root/compose.yaml" 'postgres-health-gate-missing'
+
+if grep --fixed-strings --quiet 'database_password' "$source_root/compose.yaml"; then
+  printf 'Historical single database credential path remains in Compose.\n' >&2
+  exit 1
+fi
 
 if grep --recursive --include='*.cs' --include='*.csproj' --extended-regexp 'MigrateAsync|\.Migrate\(|EnsureCreated' "$source_root/src/MinimalBankSystem.Api"; then
   printf 'API source contains a schema-evolution startup call.\n' >&2
@@ -62,9 +77,16 @@ jq --exit-status \
     .services.api.build.args.SDK_IMAGE == $sdk_image and
     .services.api.build.args.RUNTIME_IMAGE == $runtime_image and
     any(.services.postgres.volumes[]; .type == "volume" and .source == "postgres_data" and .target == "/var/lib/postgresql") and
-    .secrets.database_password.environment == "MBS_DATABASE_PASSWORD" and
-    (.services.migrator.secrets | length) == 1 and
-    (.services.api.secrets | length) == 1
+    .secrets.bootstrap_password.environment == "MBS_DATABASE_BOOTSTRAP_PASSWORD" and
+    .secrets.migrator_password.environment == "MBS_DATABASE_MIGRATOR_PASSWORD" and
+    .secrets.runtime_password.environment == "MBS_DATABASE_RUNTIME_PASSWORD" and
+    .services.postgres.environment.POSTGRES_USER == "mbs_bootstrap" and
+    (.services.postgres.secrets | map(.target)) == ["bootstrap_password"] and
+    (.services["db-provisioner"].secrets | map(.target) | sort) == ["bootstrap_password", "migrator_password", "runtime_password"] and
+    (.services.migrator.secrets | map(.target)) == ["migrator_password"] and
+    (.services.api.secrets | map(.target)) == ["runtime_password"] and
+    .services.migrator.environment.POSTGRES_USERNAME == "mbs_migrator" and
+    .services.api.environment.POSTGRES_USERNAME == "mbs_runtime"
   ' <<<"$rendered" >/dev/null
 
 if git -C "$source_root" ls-files | grep --extended-regexp '(^|/)\.env($|\.[^e])|\.local$'; then

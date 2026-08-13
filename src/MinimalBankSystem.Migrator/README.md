@@ -25,6 +25,13 @@ ConnectionStrings__Database
 No credential-bearing connection string is committed or passed as a command-line argument.
 Missing configuration fails closed; no localhost, ambient, SQLite or InMemory fallback exists.
 
+In the canonical Compose deployment, the migrator receives only
+`MBS_DATABASE_MIGRATOR_PASSWORD` through `/run/secrets/migrator_password` and connects as
+`mbs_migrator`. The API uses a separate `mbs_runtime` credential. The migrator owns schema and
+`__EFMigrationsHistory`; after a successful migration it grants the runtime role read-only access
+to migration history when that role exists. The bootstrap credential is limited to the database
+provisioning service and is not passed to either application container.
+
 ## Applying migrations
 
 ```bash

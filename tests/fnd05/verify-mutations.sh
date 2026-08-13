@@ -6,7 +6,9 @@ readonly expected_migration='20260809113338_InitialFoundation'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_MUTATION_SENTINEL_NOT_A_CREDENTIAL}"
 readonly run_id="${RANDOM}${RANDOM}"
 
-export MBS_DATABASE_PASSWORD="${MBS_DATABASE_PASSWORD:-$sentinel}"
+export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-FND05_MUTATION_BOOTSTRAP_NOT_A_CREDENTIAL}"
+export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-FND05_MUTATION_MIGRATOR_NOT_A_CREDENTIAL}"
+export MBS_DATABASE_RUNTIME_PASSWORD="${MBS_DATABASE_RUNTIME_PASSWORD:-$sentinel}"
 
 project_name=''
 source_root=''
@@ -65,14 +67,29 @@ wait_for_listener() {
   return 1
 }
 
+api_username() {
+  docker inspect "$(container_id api)" |
+    jq --raw-output '.[0].Config.Env[] | select(startswith("POSTGRES_USERNAME=")) | split("=")[1]'
+}
+
+api_psql() {
+  local sql="$1"
+  local username
+  username="$(api_username)"
+  compose_run exec -T api bash -c 'cat /run/secrets/runtime_password' |
+    compose_run exec -T postgres bash -ceu '
+      IFS= read -r PGPASSWORD || true
+      export PGPASSWORD
+      exec psql -h 127.0.0.1 -U "$1" -d minimal_bank -v ON_ERROR_STOP=1 -At -c "$2"
+    ' bash "$username" "$sql"
+}
+
 history() {
-  compose_run exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
+  api_psql 'SELECT "MigrationId" FROM public."__EFMigrationsHistory" ORDER BY "MigrationId";'
 }
 
 tables() {
-  compose_run exec -T postgres psql -U minimal_bank -d minimal_bank -At \
-    -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+  api_psql "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
 }
 
 assert_residue_zero() {
@@ -117,6 +134,10 @@ success_oracle() {
   }
   wait_for_listener || {
     printf 'ORACLE_SIGNATURE=api-listener-not-ready\n' >&2
+    return 1
+  }
+  [[ "$(api_psql 'SELECT current_user;')" == 'mbs_runtime' ]] || {
+    printf 'ORACLE_SIGNATURE=api-runtime-principal-mismatch\n' >&2
     return 1
   }
   history_value="$(history)"
@@ -167,16 +188,6 @@ m02_failure_oracle() {
   return 1
 }
 
-secret_oracle() {
-  local api_id top
-  api_id="$(container_id api)"
-  top="$(docker top "$api_id")"
-  [[ "$top" != *"$sentinel"* ]] || {
-    printf 'ORACLE_SIGNATURE=secret-in-actual-argv\n' >&2
-    return 1
-  }
-}
-
 expect_red() {
   local expected_signature="$1"
   shift
@@ -212,6 +223,7 @@ prepare_worktree_runtime() {
   cp "$repository_root/.dockerignore" "$repository_root/compose.yaml" "$worktree/"
   mkdir -p "$worktree/deployment/fnd05"
   cp "$repository_root/deployment/fnd05/with-database-secret.sh" "$worktree/deployment/fnd05/"
+  cp "$repository_root/deployment/fnd05/provision-database.sh" "$worktree/deployment/fnd05/"
   cp "$repository_root/src/MinimalBankSystem.Api/Dockerfile" "$worktree/src/MinimalBankSystem.Api/"
   cp "$repository_root/src/MinimalBankSystem.Migrator/Dockerfile" "$worktree/src/MinimalBankSystem.Migrator/"
 }
@@ -233,6 +245,7 @@ services:
 YAML
   set_project "$project_name" "$repository_root" "$override"
   compose_run up --build --detach --remove-orphans
+  compose_run logs --no-color db-provisioner || true
   wait_for_state migrator running
   wait_for_state api running
   compose_run logs --no-color migrator | grep --fixed-strings --quiet FND05_M01_BARRIER_ESTABLISHED
@@ -365,15 +378,24 @@ CS
     }
   ' "$program_file" >"$program_file.m03" && mv "$program_file.m03" "$program_file"
   compose_run up --build --detach --no-deps --force-recreate api
-  wait_for_state api running
-  wait_for_listener
-  no_auto_migration_oracle() {
-    [[ "$(history)" == "$before_history" && "$(tables)" == "$before_tables" ]] || {
-      printf 'ORACLE_SIGNATURE=api-migration-state-delta\n' >&2
+  wait_for_state api exited
+  api_runtime_ddl_oracle() {
+    local api_logs
+    [[ "$(state api)" != running ]] || {
+      printf 'ORACLE_SIGNATURE=api-runtime-ddl-not-denied\n' >&2
       return 1
     }
+    api_logs="$(compose_run logs --no-color api)"
+    [[ "$api_logs" == *'permission denied for schema public'* ]] || {
+      printf 'ORACLE_SIGNATURE=api-runtime-ddl-denial-not-observed\n' >&2
+      return 1
+    }
+    printf 'ORACLE_SIGNATURE=api-runtime-ddl-denied\n' >&2
+    return 1
   }
-  expect_red api-migration-state-delta no_auto_migration_oracle
+  expect_red api-runtime-ddl-denied api_runtime_ddl_oracle
+  printf 'M-03: RUNTIME_DDL_DENIAL_OBSERVED\n'
+  printf 'M-03: SEMANTIC_FAILURE=api-runtime-ddl-denied\n'
   clean_current
   git worktree remove --force "$worktree"
   temporary_worktrees=()
@@ -384,22 +406,48 @@ run_m04() {
   local override
   set_project "minimal-bank-system-fnd05-m04-$run_id" "$repository_root"
   baseline
+  printf 'DB-PRIV-01: BASELINE_GREEN\n'
   clean_current
   override="$(mktemp)"
   write_override "$override" <<'YAML'
 services:
   api:
-    command: ["bash", "-ceu", "exposed=\"$$(< /run/secrets/database_password)\"; exec dotnet MinimalBankSystem.Api.dll \"$$exposed\""]
+    environment:
+      POSTGRES_USERNAME: mbs_migrator
+    secrets:
+      - source: migrator_password
+        target: runtime_password
 YAML
   set_project "$project_name" "$repository_root" "$override"
   compose_run up --build --detach --remove-orphans
   wait_for_state migrator exited
   wait_for_state api running
   wait_for_listener
-  expect_red secret-in-actual-argv secret_oracle
+  credential_boundary_oracle() {
+    local actual_user ddl_output
+    actual_user="$(api_psql 'SELECT current_user;')"
+    [[ "$actual_user" != 'mbs_runtime' ]] || {
+      printf 'ORACLE_SIGNATURE=credential-boundary-collapse-principal-not-detected\n' >&2
+      return 1
+    }
+    if ! ddl_output="$(api_psql 'CREATE TABLE public."__DbPrivMutationProbe" (id integer); DROP TABLE public."__DbPrivMutationProbe";' 2>&1)"; then
+      printf 'ORACLE_SIGNATURE=credential-boundary-collapse-migrator-ddl-not-available\n' >&2
+      return 1
+    fi
+    printf 'ORACLE_SIGNATURE=credential-boundary-collapse;actual_api_principal=%s;migrator_ddl_capability=available\n' \
+      "$actual_user" >&2
+    return 1
+  }
+  expect_red credential-boundary-collapse credential_boundary_oracle
+  printf 'DB-PRIV-01: MUTATION_RED\n'
+  printf 'DB-PRIV-01: SEMANTIC_FAILURE=credential-boundary-collapse-and-migrator-ddl-capability\n'
   clean_current
   rm -f "$override"
-  printf 'M-04: KILLED\n'
+  set_project "$project_name" "$repository_root"
+  baseline
+  printf 'DB-PRIV-01: RESTORE_GREEN\n'
+  clean_current
+  printf 'DB-PRIV-01: KILLED\n'
 }
 
 run_m05() {
@@ -407,6 +455,7 @@ run_m05() {
   worktree="$(mktemp -d)"
   git worktree add --detach "$worktree" HEAD
   temporary_worktrees+=("$worktree")
+  prepare_worktree_runtime "$worktree"
   set_project "minimal-bank-system-fnd05-m05-$run_id" "$repository_root"
   FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
     bash "$repository_root/tests/fnd05/static-gate.sh"
@@ -440,6 +489,7 @@ run_m06() {
   worktree="$(mktemp -d)"
   git worktree add --detach "$worktree" HEAD
   temporary_worktrees+=("$worktree")
+  prepare_worktree_runtime "$worktree"
   set_project "minimal-bank-system-fnd05-m06-$run_id" "$repository_root"
   FND05_SOURCE_ROOT="$repository_root" FND05_PROJECT_NAME="$project_name" \
     bash "$repository_root/tests/fnd05/static-gate.sh"

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-secret_file="${MBS_DATABASE_PASSWORD_FILE:-/run/secrets/database_password}"
+secret_file="${MBS_DATABASE_PASSWORD_FILE:-}"
+
+if [[ -z "$secret_file" ]]; then
+  printf 'FND-05 configuration error: MBS_DATABASE_PASSWORD_FILE is required.\n' >&2
+  exit 78
+fi
 
 for required_name in POSTGRES_HOST POSTGRES_PORT POSTGRES_DATABASE POSTGRES_USERNAME; do
   if [[ -z "${!required_name:-}" ]]; then

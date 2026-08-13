@@ -56,6 +56,22 @@ try
 
     await context.Database.MigrateAsync(cancellation.Token).ConfigureAwait(false);
 
+    // The Migrator owns the history table. API readiness may read it, but the runtime role must
+    // never be able to mutate migration state or use the Migrator's DDL capability.
+    await context.Database.ExecuteSqlRawAsync(
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mbs_runtime') THEN
+                EXECUTE 'GRANT SELECT ON TABLE public."__EFMigrationsHistory" TO mbs_runtime';
+                EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+                    ON TABLE public."__EFMigrationsHistory" FROM mbs_runtime';
+            END IF;
+        END
+        $$;
+        """,
+        cancellation.Token).ConfigureAwait(false);
+
     string[] appliedMigrations =
     [
         .. await context.Database.GetAppliedMigrationsAsync(cancellation.Token).ConfigureAwait(false),

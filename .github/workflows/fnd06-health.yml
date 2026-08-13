@@ -27,8 +27,10 @@ jobs:
 
       - name: Verify FND-06 shipped Compose health contract
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
-          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+          MBS_DATABASE_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd06-bootstrap-${{ github.run_id }}
+          MBS_DATABASE_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd06-migrator-${{ github.run_id }}
+          MBS_DATABASE_RUNTIME_PASSWORD: ${{ runner.temp }}-fnd06-runtime-${{ github.run_id }}
+          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-sentinel-${{ github.run_id }}
         run: bash tests/fnd06/verify-health-compose.sh
 
       - name: Restore FND-06 mutation test dependencies
@@ -55,8 +57,10 @@ jobs:
 
       - name: Verify FND-06 shipped Compose health contract
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd06-${{ github.run_id }}
-          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-${{ github.run_id }}
+          MBS_DATABASE_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd06-bootstrap-${{ github.run_id }}-pr
+          MBS_DATABASE_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd06-migrator-${{ github.run_id }}-pr
+          MBS_DATABASE_RUNTIME_PASSWORD: ${{ runner.temp }}-fnd06-runtime-${{ github.run_id }}-pr
+          FND06_SECRET_SENTINEL: ${{ runner.temp }}-fnd06-sentinel-${{ github.run_id }}-pr
         run: bash tests/fnd06/verify-health-compose.sh
 
       - name: Restore FND-06 mutation test dependencies

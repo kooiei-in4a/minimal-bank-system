@@ -25,9 +25,18 @@ jobs:
 
       - name: Run FND-05 static and Compose runtime verification
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}
-          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}
+          MBS_DATABASE_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd05-bootstrap-${{ github.run_id }}
+          MBS_DATABASE_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd05-migrator-${{ github.run_id }}
+          MBS_DATABASE_RUNTIME_PASSWORD: ${{ runner.temp }}-fnd05-runtime-${{ github.run_id }}
+          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-sentinel-${{ github.run_id }}
         run: bash tests/fnd05/verify-compose.sh
+
+      - name: Run WP2-DB-01 privilege verification
+        env:
+          MBS_DATABASE_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-db01-bootstrap-${{ github.run_id }}
+          MBS_DATABASE_MIGRATOR_PASSWORD: ${{ runner.temp }}-db01-migrator-${{ github.run_id }}
+          MBS_DATABASE_RUNTIME_PASSWORD: ${{ runner.temp }}-db01-runtime-${{ github.run_id }}
+        run: bash tests/db01/verify-privileges.sh
 
   fnd05-mutations:
     runs-on: ubuntu-24.04
@@ -44,6 +53,8 @@ jobs:
 
       - name: Run FND-05 deterministic mutation verification
         env:
-          MBS_DATABASE_PASSWORD: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation
-          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-${{ github.run_id }}-mutation
+          MBS_DATABASE_BOOTSTRAP_PASSWORD: ${{ runner.temp }}-fnd05-bootstrap-${{ github.run_id }}-mutation
+          MBS_DATABASE_MIGRATOR_PASSWORD: ${{ runner.temp }}-fnd05-migrator-${{ github.run_id }}-mutation
+          MBS_DATABASE_RUNTIME_PASSWORD: ${{ runner.temp }}-fnd05-runtime-${{ github.run_id }}-mutation
+          FND05_SECRET_SENTINEL: ${{ runner.temp }}-fnd05-sentinel-${{ github.run_id }}-mutation
         run: bash tests/fnd05/verify-mutations.sh
