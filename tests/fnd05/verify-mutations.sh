@@ -322,7 +322,7 @@ YAML
 }
 
 run_m03() {
-  local worktree migration_file program_file before_history before_tables
+  local worktree migration_file program_file before_history before_tables api_logs
   worktree="$(mktemp -d)"
   git worktree add --detach "$worktree" HEAD
   temporary_worktrees+=("$worktree")
@@ -376,15 +376,27 @@ CS
     }
   ' "$program_file" >"$program_file.m03" && mv "$program_file.m03" "$program_file"
   compose_run up --build --detach --no-deps --force-recreate api
-  wait_for_state api running
-  wait_for_listener
-  no_auto_migration_oracle() {
-    [[ "$(history)" == "$before_history" && "$(tables)" == "$before_tables" ]] || {
-      printf 'ORACLE_SIGNATURE=api-migration-state-delta\n' >&2
+  # WP2-DB-01: the API runtime role now has no DDL privilege, so the injected MigrateAsync() call
+  # throws before Kestrel starts listening and the container exits instead of drifting the schema
+  # -- a stronger, privilege-layer manifestation of the same invariant. Detect either
+  # manifestation: a schema/history delta (the pre-WP2-DB-01 shape) or a startup failure whose
+  # logs show the auto-migration attempt was rejected for lack of privilege.
+  if wait_for_state api running && wait_for_listener; then
+    no_auto_migration_oracle() {
+      [[ "$(history)" == "$before_history" && "$(tables)" == "$before_tables" ]] || {
+        printf 'ORACLE_SIGNATURE=api-migration-state-delta\n' >&2
+        return 1
+      }
+    }
+    expect_red api-migration-state-delta no_auto_migration_oracle
+  else
+    api_logs="$(compose_run logs --no-color --timestamps api)"
+    [[ "$api_logs" == *'permission denied'* ]] || {
+      printf 'M-03 API failed to start, but not for the expected auto-migration privilege denial.\n' >&2
       return 1
     }
-  }
-  expect_red api-migration-state-delta no_auto_migration_oracle
+    printf 'ORACLE_SIGNATURE=api-auto-migration-blocked-by-privilege-boundary\n'
+  fi
   clean_current
   git worktree remove --force "$worktree"
   temporary_worktrees=()
