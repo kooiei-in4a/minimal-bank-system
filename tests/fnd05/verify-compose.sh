@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 
 readonly project_name="${FND05_PROJECT_NAME:-minimal-bank-system-fnd05}"
-readonly expected_migration='20260809113338_InitialFoundation'
+readonly expected_foundation_migration='20260809113338_InitialFoundation'
+readonly expected_identity_migration='20260813181449_AddOperatorIdentity'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_TEST_SENTINEL_NOT_A_CREDENTIAL}"
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
@@ -133,8 +134,12 @@ assert_success_contract() {
 
   wait_for_api_listener
   history="$(read_history)"
-  [[ "$history" == *"$expected_migration"* ]] || {
-    printf 'Expected migration history is missing.\n' >&2
+  [[ "$history" == *"$expected_foundation_migration"* ]] || {
+    printf 'Expected foundation migration history is missing.\n' >&2
+    return 1
+  }
+  [[ "$history" == *"$expected_identity_migration"* ]] || {
+    printf 'Expected operator identity migration history is missing.\n' >&2
     return 1
   }
 
