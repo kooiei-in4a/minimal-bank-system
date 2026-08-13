@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MinimalBankSystem.Infrastructure.Identity;
 
 namespace MinimalBankSystem.Infrastructure.Persistence;
 
@@ -6,8 +7,19 @@ namespace MinimalBankSystem.Infrastructure.Persistence;
 /// Application persistence baseline.
 /// </summary>
 /// <remarks>
-/// FND-04 owns migration machinery only. Business entities belong to later schema-owning Issues,
-/// so <c>InitialFoundation</c> deliberately remains empty.
+/// FND-04 established migration machinery over an intentionally empty <c>InitialFoundation</c>
+/// baseline. WP2-ID-01 is the first schema-owning leaf and adds Operator identity persistence.
+/// This remains the single <see cref="DbContext"/> and single EF migration history for the whole
+/// application; later schema-owning leaves extend this same context rather than introducing one
+/// of their own.
 /// </remarks>
 /// <param name="options">Provider options built through <see cref="BankPersistence"/>.</param>
-public sealed class BankDbContext(DbContextOptions<BankDbContext> options) : DbContext(options);
+public sealed class BankDbContext(DbContextOptions<BankDbContext> options) : DbContext(options)
+{
+    public DbSet<Operator> Operators => Set<Operator>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfiguration(new OperatorConfiguration());
+    }
+}

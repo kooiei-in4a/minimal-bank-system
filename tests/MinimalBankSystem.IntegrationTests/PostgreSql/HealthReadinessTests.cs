@@ -56,7 +56,7 @@ public sealed class HealthReadinessTests(PostgreSqlContainerFixture fixture)
 
         string[] tablesBeforeProbe = await ReadPublicTablesAsync();
         string[] historyBeforeProbe = await ReadMigrationHistoryAsync();
-        Assert.Single(historyBeforeProbe);
+        Assert.Equal(2, historyBeforeProbe.Length);
 
         using (HttpResponseMessage afterMigration = await client.GetAsync(HealthContract.ReadyPath))
         {

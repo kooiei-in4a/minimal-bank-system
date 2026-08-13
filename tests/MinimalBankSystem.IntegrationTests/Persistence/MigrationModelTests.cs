@@ -1,18 +1,35 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using MinimalBankSystem.Infrastructure.Identity;
 using MinimalBankSystem.Infrastructure.Persistence;
 
 namespace MinimalBankSystem.IntegrationTests.Persistence;
 
-/// <summary>Model and generated-SQL checks; real PostgreSQL behavior is verified separately.</summary>
+/// <summary>
+/// Model and generated-SQL checks; real PostgreSQL behavior is verified separately.
+/// </summary>
+/// <remarks>
+/// FND-04 originally fixed this baseline to an intentionally empty <c>InitialFoundation</c>
+/// migration with zero entity types. WP2-ID-01 is the first schema-owning leaf: it re-fixes this
+/// baseline to the new intended shape (<c>InitialFoundation</c> unchanged and still declaring no
+/// schema operation of its own, plus a committed <c>AddOperatorIdentity</c> migration) instead of
+/// deleting or broadly weakening these assertions.
+/// </remarks>
 public sealed class MigrationModelTests
 {
     private const string ActiveProvider = "Npgsql.EntityFrameworkCore.PostgreSQL";
+    private const string InitialFoundationSuffix = "_InitialFoundation";
+    private const string AddOperatorIdentitySuffix = "_AddOperatorIdentity";
 
     private static readonly string QualifiedHistoryTable =
         $"{BankPersistence.MigrationsHistorySchema}.\"{BankPersistence.MigrationsHistoryTableName}\"";
+
+    private const string OperatorsTable = "\"" + OperatorConfiguration.TableName + "\"";
 
     private static BankDbContext CreateDesignTimeContext() =>
         new BankDbContextFactory().CreateDbContext([]);
@@ -27,39 +44,77 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void OnlyTheInitialFoundationMigrationIsCommitted()
+    public void ExactlyTwoMigrationsAreCommittedInASingleOrderedHistory()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
-        string migration = Assert.Single(context.GetService<IMigrationsAssembly>().Migrations.Keys);
+        string[] migrationIds =
+            [.. context.GetService<IMigrationsAssembly>().Migrations.Keys.OrderBy(id => id, StringComparer.Ordinal)];
 
-        Assert.EndsWith("_InitialFoundation", migration, StringComparison.Ordinal);
+        Assert.Equal(2, migrationIds.Length);
+        Assert.EndsWith(InitialFoundationSuffix, migrationIds[0], StringComparison.Ordinal);
+        Assert.EndsWith(AddOperatorIdentitySuffix, migrationIds[1], StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TheBaselineModelDeclaresNoEntityType()
+    public void TheModelDeclaresExactlyTheOperatorEntityType()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
-        Assert.Empty(context.Model.GetEntityTypes());
+        IEntityType entityType = Assert.Single(context.Model.GetEntityTypes());
+        Assert.Equal(typeof(Operator), entityType.ClrType);
     }
 
     [Fact]
-    public void TheBaselineMigrationDeclaresNoSchemaOperationAtAll()
+    public void TheInitialFoundationMigrationStillDeclaresNoSchemaOperation()
     {
         using BankDbContext context = CreateDesignTimeContext();
-        IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
 
-        Migration migration = migrations.CreateMigration(
-            migrations.Migrations.Values.Single(),
-            ActiveProvider);
+        Migration migration = CreateCommittedMigration(context, InitialFoundationSuffix);
 
         Assert.Empty(migration.UpOperations);
         Assert.Empty(migration.DownOperations);
     }
 
     [Fact]
-    public void TheGeneratedBaselineSqlCreatesOnlyTheMigrationHistoryTable()
+    public void TheOperatorIdentityMigrationCreatesExactlyTheOperatorsTableAndItsUniqueIndex()
+    {
+        using BankDbContext context = CreateDesignTimeContext();
+
+        Migration migration = CreateCommittedMigration(context, AddOperatorIdentitySuffix);
+
+        CreateTableOperation createTable =
+            Assert.IsType<CreateTableOperation>(Assert.Single(migration.UpOperations.OfType<CreateTableOperation>()));
+        Assert.Equal(OperatorConfiguration.TableName, createTable.Name);
+        Assert.Null(createTable.Schema);
+        Assert.Equal(
+            [
+                "Id", "UserName", "NormalizedUserName", "PasswordHash", "SecurityStamp",
+                "Role", "State", "AuthorizationStateVersion", "CreatedAt", "UpdatedAt",
+            ],
+            createTable.Columns.Select(column => column.Name));
+        Assert.All(createTable.Columns, column => Assert.False(column.IsNullable));
+        Assert.Equal("timestamptz", createTable.Columns.Single(c => c.Name == "CreatedAt").ColumnType);
+        Assert.Equal("timestamptz", createTable.Columns.Single(c => c.Name == "UpdatedAt").ColumnType);
+        Assert.Equal(
+            [OperatorConfiguration.RoleCheckConstraintName, OperatorConfiguration.StateCheckConstraintName],
+            createTable.CheckConstraints.Select(c => c.Name).OrderBy(name => name, StringComparer.Ordinal));
+
+        CreateIndexOperation createIndex =
+            Assert.IsType<CreateIndexOperation>(Assert.Single(migration.UpOperations.OfType<CreateIndexOperation>()));
+        Assert.Equal(OperatorConfiguration.NormalizedUserNameIndexName, createIndex.Name);
+        Assert.Equal(OperatorConfiguration.TableName, createIndex.Table);
+        Assert.Equal(["NormalizedUserName"], createIndex.Columns);
+        Assert.True(createIndex.IsUnique);
+
+        Assert.Equal(2, migration.UpOperations.Count);
+
+        DropTableOperation dropTable = Assert.IsType<DropTableOperation>(Assert.Single(migration.DownOperations));
+        Assert.Equal(OperatorConfiguration.TableName, dropTable.Name);
+    }
+
+    [Fact]
+    public void TheGeneratedScriptCreatesOnlyTheMigrationHistoryAndOperatorsTables()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
@@ -74,11 +129,17 @@ public sealed class MigrationModelTests
                 .Select(match => match.Groups["table"].Value),
         ];
 
-        Assert.Equal([QualifiedHistoryTable], createdTables);
+        Assert.Equal([QualifiedHistoryTable, OperatorsTable], createdTables);
         Assert.DoesNotContain("CREATE SEQUENCE", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CREATE TRIGGER", script, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("CREATE INDEX", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ALTER TABLE", script, StringComparison.OrdinalIgnoreCase);
+
+        MatchCollection createdIndexes = Regex.Matches(script, @"CREATE\s+(?:UNIQUE\s+)?INDEX", RegexOptions.IgnoreCase);
+        Assert.Single(createdIndexes);
+        Assert.Contains(
+            $"CREATE UNIQUE INDEX \"{OperatorConfiguration.NormalizedUserNameIndexName}\" ON {OperatorsTable} (\"NormalizedUserName\");",
+            script,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -90,7 +151,7 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void IdempotentGenerationGuardsTheBaselineMigration()
+    public void IdempotentGenerationGuardsBothCommittedMigrations()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
@@ -100,7 +161,8 @@ public sealed class MigrationModelTests
         Assert.Contains("CREATE TABLE IF NOT EXISTS", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("DO $EF$", script, StringComparison.Ordinal);
         Assert.Contains("IF NOT EXISTS(SELECT 1 FROM", script, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("_InitialFoundation", script, StringComparison.Ordinal);
+        Assert.Contains(InitialFoundationSuffix, script, StringComparison.Ordinal);
+        Assert.Contains(AddOperatorIdentitySuffix, script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -138,6 +200,15 @@ public sealed class MigrationModelTests
         ];
 
         Assert.Empty(offenders);
+    }
+
+    private static Migration CreateCommittedMigration(BankDbContext context, string idSuffix)
+    {
+        IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
+        KeyValuePair<string, TypeInfo> entry = migrations.Migrations.Single(
+            candidate => candidate.Key.EndsWith(idSuffix, StringComparison.Ordinal));
+
+        return migrations.CreateMigration(entry.Value, ActiveProvider);
     }
 
     private static bool IsBuildOutput(FileInfo file)
