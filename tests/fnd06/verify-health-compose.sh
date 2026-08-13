@@ -9,7 +9,8 @@ readonly sentinel="${FND06_SECRET_SENTINEL:-FND06_TEST_SENTINEL_NOT_A_CREDENTIAL
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
 readonly api_sentinel="${sentinel}_API"
-readonly expected_migration='20260809113338_InitialFoundation'
+readonly expected_foundation_migration='20260809113338_InitialFoundation'
+readonly expected_identity_migration='20260813181449_AddOperatorIdentity'
 readonly compose=(docker compose -p "$project_name")
 
 for command_name in docker jq bash; do
@@ -248,8 +249,12 @@ wait_for_container_health healthy
 api_started_before_outage="$(api_started_at)"
 history_before_outage="$(read_history)"
 tables_before_outage="$(read_public_tables)"
-[[ "$history_before_outage" == *"$expected_migration"* ]] || {
+[[ "$history_before_outage" == *"$expected_foundation_migration"* ]] || {
   printf 'ORACLE_SIGNATURE=missing-canonical-migration\n' >&2
+  exit 1
+}
+[[ "$history_before_outage" == *"$expected_identity_migration"* ]] || {
+  printf 'ORACLE_SIGNATURE=missing-operator-identity-migration\n' >&2
   exit 1
 }
 

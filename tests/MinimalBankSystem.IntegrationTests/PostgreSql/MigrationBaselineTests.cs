@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using MinimalBankSystem.Infrastructure.Persistence;
+using MinimalBankSystem.Infrastructure.Persistence.Identity;
 using MinimalBankSystem.IntegrationTests.Persistence;
 using MinimalBankSystem.Migrator;
 using Npgsql;
@@ -17,6 +18,12 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
     : PostgreSqlDatabaseTestBase(fixture), IClassFixture<PostgreSqlContainerFixture>
 {
     private const string SecretSentinel = "FND04_REJECTED_PASSWORD_SENTINEL_8C9314F2";
+
+    private static readonly string[] ExpectedLatestPublicTables =
+    [
+        BankPersistence.MigrationsHistoryTableName,
+        OperatorPersistence.TableName,
+    ];
 
     private static readonly TimeSpan NormalRunBudget = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan BlockedRunBudget = TimeSpan.FromSeconds(180);
@@ -33,9 +40,31 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             run.ExitCode == MigratorExitCode.Success,
             $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
 
-        string appliedMigration = Assert.Single(await ReadMigrationHistoryAsync());
-        Assert.EndsWith("_InitialFoundation", appliedMigration, StringComparison.Ordinal);
+        Assert.Equal(
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            await ReadMigrationHistoryAsync());
+        Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
+    }
+
+    [Fact]
+    public async Task PreviousFoundationSchemaUpgradesToOperatorIdentity()
+    {
+        await using BankDbContext context = CreateContext();
+        IMigrator migrator = context.GetService<IMigrator>();
+        await migrator.MigrateAsync("20260809113338_InitialFoundation");
+
+        Assert.Equal(["20260809113338_InitialFoundation"], await ReadMigrationHistoryAsync());
         Assert.Equal([BankPersistence.MigrationsHistoryTableName], await ReadPublicTablesAsync());
+
+        MigratorRun run = await MigratorProcess.RunAsync(Database.ConnectionString, NormalRunBudget);
+        Assert.True(
+            run.ExitCode == MigratorExitCode.Success,
+            $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
+
+        Assert.Equal(
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            await ReadMigrationHistoryAsync());
+        Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
     }
 
     [Fact]
@@ -51,7 +80,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             second.ExitCode == MigratorExitCode.Success,
             $"A no-op migration must succeed. Output:\n{second.Output}");
         Assert.Equal(afterFirst, await ReadMigrationHistoryAsync());
-        Assert.Equal([BankPersistence.MigrationsHistoryTableName], await ReadPublicTablesAsync());
+        Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
     }
 
     [Fact]
@@ -158,7 +187,8 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
 
         string[] historyAfterMigration = await ReadMigrationHistoryAsync();
         string[] tablesAfterMigration = await ReadPublicTablesAsync();
-        Assert.Single(historyAfterMigration);
+        Assert.Equal(2, historyAfterMigration.Length);
+        Assert.Equal(ExpectedLatestPublicTables, tablesAfterMigration);
 
         await StartApiAndIssueRequestAsync();
 
@@ -251,6 +281,13 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
         }
 
         return [.. values];
+    }
+
+    private BankDbContext CreateContext()
+    {
+        DbContextOptionsBuilder<BankDbContext> options = new();
+        options.UseBankPostgreSql(Database.ConnectionString, BankPersistence.MigrationTimeoutSeconds);
+        return new BankDbContext(options.Options);
     }
 
     private sealed class MigrationApiFactory(string connectionString) : WebApplicationFactory<Program>

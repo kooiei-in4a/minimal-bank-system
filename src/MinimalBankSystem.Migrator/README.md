@@ -72,11 +72,13 @@ The generated SQL is review and release evidence, not the deployment mechanism.
    restore plan.
 4. Run the pending-model check and inspect the idempotent SQL.
 5. On real PostgreSQL, verify clean-to-latest and previous-to-latest with representative rows. The
-   latter starts with the first non-empty migration because `InitialFoundation` has no business row.
+   latter starts from `InitialFoundation` (empty machinery) and then applies the first non-empty
+   schema-owning migration, currently `AddOperatorIdentity`.
 6. Commit the migration, designer and updated snapshot together.
 7. Never substitute `EnsureCreated`, startup DDL, SQLite or InMemory.
 
 ## Empty foundation
 
 `InitialFoundation` has zero `Up` and `Down` operations. Applying it creates only
-`public.__EFMigrationsHistory`; the first non-empty migration belongs to its schema-owning Issue.
+`public.__EFMigrationsHistory`. `AddOperatorIdentity` is the first non-empty schema-owning
+migration and creates `public.operators`.
