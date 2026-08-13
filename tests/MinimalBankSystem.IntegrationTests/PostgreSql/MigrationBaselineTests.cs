@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
+using MinimalBankSystem.Infrastructure.Identity;
 using MinimalBankSystem.Infrastructure.Persistence;
 using MinimalBankSystem.IntegrationTests.Persistence;
 using MinimalBankSystem.Migrator;
@@ -21,6 +22,9 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
     private static readonly TimeSpan NormalRunBudget = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan BlockedRunBudget = TimeSpan.FromSeconds(180);
 
+    private static readonly string[] ExpectedTablesAtLatest =
+        [BankPersistence.MigrationsHistoryTableName, OperatorConfiguration.TableName];
+
     [Fact]
     public async Task ExplicitMigratorAppliesTheBaselineToACleanDatabase()
     {
@@ -33,9 +37,11 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             run.ExitCode == MigratorExitCode.Success,
             $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
 
-        string appliedMigration = Assert.Single(await ReadMigrationHistoryAsync());
-        Assert.EndsWith("_InitialFoundation", appliedMigration, StringComparison.Ordinal);
-        Assert.Equal([BankPersistence.MigrationsHistoryTableName], await ReadPublicTablesAsync());
+        string[] appliedMigrations = await ReadMigrationHistoryAsync();
+        Assert.Equal(2, appliedMigrations.Length);
+        Assert.Contains(appliedMigrations, id => id.EndsWith("_InitialFoundation", StringComparison.Ordinal));
+        Assert.Contains(appliedMigrations, id => id.EndsWith("_AddOperatorIdentity", StringComparison.Ordinal));
+        await AssertPublicTablesAsync(ExpectedTablesAtLatest);
     }
 
     [Fact]
@@ -51,7 +57,58 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             second.ExitCode == MigratorExitCode.Success,
             $"A no-op migration must succeed. Output:\n{second.Output}");
         Assert.Equal(afterFirst, await ReadMigrationHistoryAsync());
+        await AssertPublicTablesAsync(ExpectedTablesAtLatest);
+    }
+
+    /// <summary>
+    /// ADR-0009's "immediately previous migration to latest, with representative existing rows"
+    /// forward-validation requirement. The previous state (<c>InitialFoundation</c> only) is
+    /// staged directly through <see cref="IMigrator"/> rather than the compiled Migrator, because
+    /// the Migrator always targets latest; the upgrade step itself still goes through the real
+    /// Migrator process.
+    /// </summary>
+    [Fact]
+    public async Task UpgradingFromInitialFoundationAppliesOnlyTheOperatorIdentityMigration()
+    {
+        string initialFoundationMigrationId = await MigrateToInitialFoundationOnlyAsync();
+
+        Assert.Equal([initialFoundationMigrationId], await ReadMigrationHistoryAsync());
         Assert.Equal([BankPersistence.MigrationsHistoryTableName], await ReadPublicTablesAsync());
+
+        MigratorRun upgrade = await MigratorProcess.RunAsync(Database.ConnectionString, NormalRunBudget);
+
+        Assert.True(
+            upgrade.ExitCode == MigratorExitCode.Success,
+            $"Expected the upgrade to latest to succeed. Output:\n{upgrade.Output}");
+
+        string[] historyAfterUpgrade = await ReadMigrationHistoryAsync();
+        Assert.Equal(2, historyAfterUpgrade.Length);
+        Assert.Contains(initialFoundationMigrationId, historyAfterUpgrade);
+        Assert.Contains(historyAfterUpgrade, id => id.EndsWith("_AddOperatorIdentity", StringComparison.Ordinal));
+        await AssertPublicTablesAsync(ExpectedTablesAtLatest);
+    }
+
+    private async Task<string> MigrateToInitialFoundationOnlyAsync()
+    {
+        DbContextOptionsBuilder<BankDbContext> builder = new();
+        builder.UseBankPostgreSql(Database.ConnectionString, BankPersistence.MigrationTimeoutSeconds);
+        await using BankDbContext context = new(builder.Options);
+        IMigrationsAssembly migrationsAssembly = context.GetService<IMigrationsAssembly>();
+        string initialFoundationMigrationId = migrationsAssembly.Migrations.Keys
+            .Single(id => id.EndsWith("_InitialFoundation", StringComparison.Ordinal));
+
+        await context.GetService<IMigrator>().MigrateAsync(initialFoundationMigrationId);
+
+        return initialFoundationMigrationId;
+    }
+
+    private async Task AssertPublicTablesAsync(string[] expectedTables)
+    {
+        string[] actualTables = await ReadPublicTablesAsync();
+
+        Assert.Equal(
+            expectedTables.OrderBy(name => name, StringComparer.Ordinal),
+            actualTables.OrderBy(name => name, StringComparer.Ordinal));
     }
 
     [Fact]
@@ -158,7 +215,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
 
         string[] historyAfterMigration = await ReadMigrationHistoryAsync();
         string[] tablesAfterMigration = await ReadPublicTablesAsync();
-        Assert.Single(historyAfterMigration);
+        Assert.Equal(2, historyAfterMigration.Length);
 
         await StartApiAndIssueRequestAsync();
 
