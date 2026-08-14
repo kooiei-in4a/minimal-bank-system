@@ -1,8 +1,12 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Persistence;
+using MinimalBankSystem.Infrastructure.Persistence.Identity;
 
 namespace MinimalBankSystem.IntegrationTests.Persistence;
 
@@ -10,6 +14,7 @@ namespace MinimalBankSystem.IntegrationTests.Persistence;
 public sealed class MigrationModelTests
 {
     private const string ActiveProvider = "Npgsql.EntityFrameworkCore.PostgreSQL";
+    private const string FoundationMigration = "20260809113338_InitialFoundation";
 
     private static readonly string QualifiedHistoryTable =
         $"{BankPersistence.MigrationsHistorySchema}.\"{BankPersistence.MigrationsHistoryTableName}\"";
@@ -27,31 +32,49 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void OnlyTheInitialFoundationMigrationIsCommitted()
+    public void CommittedMigrationsAreTheEmptyFoundationThenOperatorIdentity()
     {
         using BankDbContext context = CreateDesignTimeContext();
+        string[] migrations = [.. context.GetService<IMigrationsAssembly>().Migrations.Keys];
 
-        string migration = Assert.Single(context.GetService<IMigrationsAssembly>().Migrations.Keys);
-
-        Assert.EndsWith("_InitialFoundation", migration, StringComparison.Ordinal);
+        Assert.Equal(
+            [FoundationMigration, OperatorPersistence.IdentityMigrationId],
+            migrations);
     }
 
     [Fact]
-    public void TheBaselineModelDeclaresNoEntityType()
+    public void TheModelDeclaresOnlyTheOperatorEntity()
     {
         using BankDbContext context = CreateDesignTimeContext();
+        IEntityType[] entityTypes = [.. context.Model.GetEntityTypes()];
 
-        Assert.Empty(context.Model.GetEntityTypes());
+        IEntityType operatorType = Assert.Single(entityTypes);
+        Assert.Equal(typeof(Operator), operatorType.ClrType);
+        Assert.Equal(OperatorPersistence.TableName, operatorType.GetTableName());
+        Assert.Null(operatorType.FindNavigation("Roles"));
+        Assert.Empty(operatorType.GetReferencingForeignKeys());
+        Assert.Contains(
+            operatorType.GetIndexes(),
+            index => index.IsUnique
+                && index.Properties.Count == 1
+                && index.Properties[0].Name == nameof(Operator.NormalizedUserName));
+        Assert.DoesNotContain(
+            operatorType.GetIndexes(),
+            index => index.Properties.Any(property => property.Name == nameof(Operator.UserName)));
+        Assert.DoesNotContain(
+            entityTypes,
+            entity => entity.ClrType.Name.Contains("IdentityRole", StringComparison.Ordinal)
+                || entity.GetTableName() is "AspNetRoles" or "AspNetUserRoles" or "AspNetUsers");
     }
 
     [Fact]
-    public void TheBaselineMigrationDeclaresNoSchemaOperationAtAll()
+    public void TheFoundationMigrationStillDeclaresNoSchemaOperation()
     {
         using BankDbContext context = CreateDesignTimeContext();
         IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
 
         Migration migration = migrations.CreateMigration(
-            migrations.Migrations.Values.Single(),
+            migrations.Migrations[FoundationMigration],
             ActiveProvider);
 
         Assert.Empty(migration.UpOperations);
@@ -59,7 +82,29 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void TheGeneratedBaselineSqlCreatesOnlyTheMigrationHistoryTable()
+    public void TheOperatorIdentityMigrationCreatesTheOperatorTableAndConstraints()
+    {
+        using BankDbContext context = CreateDesignTimeContext();
+        IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
+
+        Migration migration = migrations.CreateMigration(
+            migrations.Migrations[OperatorPersistence.IdentityMigrationId],
+            ActiveProvider);
+
+        CreateTableOperation createTable = Assert.Single(migration.UpOperations.OfType<CreateTableOperation>());
+        Assert.Equal(OperatorPersistence.TableName, createTable.Name);
+        Assert.Contains(createTable.CheckConstraints, constraint => constraint.Name == OperatorPersistence.StateCheckConstraint);
+        Assert.Contains(createTable.CheckConstraints, constraint => constraint.Name == OperatorPersistence.RoleCheckConstraint);
+        Assert.Contains(createTable.Columns, column => column.Name == OperatorPersistence.FixedRoleColumn && !column.IsNullable);
+        Assert.Contains(createTable.Columns, column => column.Name == OperatorPersistence.AuthorizationStateVersionColumn);
+        Assert.Contains(createTable.Columns, column => column.Name == OperatorPersistence.SecurityStampColumn);
+
+        DropTableOperation dropTable = Assert.Single(migration.DownOperations.OfType<DropTableOperation>());
+        Assert.Equal(OperatorPersistence.TableName, dropTable.Name);
+    }
+
+    [Fact]
+    public void TheGeneratedSqlCreatesHistoryAndOperatorTablesWithoutIdentityRoleSchema()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
@@ -74,11 +119,15 @@ public sealed class MigrationModelTests
                 .Select(match => match.Groups["table"].Value),
         ];
 
-        Assert.Equal([QualifiedHistoryTable], createdTables);
+        Assert.Equal([QualifiedHistoryTable, OperatorPersistence.TableName], createdTables);
+        Assert.Contains("ck_operators_state", script, StringComparison.Ordinal);
+        Assert.Contains("ck_operators_fixed_role", script, StringComparison.Ordinal);
+        Assert.Contains("timestamp with time zone", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("AspNetRoles", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("AspNetUserRoles", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("AspNetUsers", script, StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE SEQUENCE", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CREATE TRIGGER", script, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("CREATE INDEX", script, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("ALTER TABLE", script, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -90,7 +139,7 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void IdempotentGenerationGuardsTheBaselineMigration()
+    public void IdempotentGenerationGuardsFoundationAndOperatorIdentityMigrations()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
@@ -101,6 +150,7 @@ public sealed class MigrationModelTests
         Assert.Contains("DO $EF$", script, StringComparison.Ordinal);
         Assert.Contains("IF NOT EXISTS(SELECT 1 FROM", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("_InitialFoundation", script, StringComparison.Ordinal);
+        Assert.Contains("_AddOperatorIdentity", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -138,6 +188,23 @@ public sealed class MigrationModelTests
         ];
 
         Assert.Empty(offenders);
+    }
+
+    [Fact]
+    public void TheApiDoesNotInstallIdentityRoleOrAuthenticationMiddleware()
+    {
+        string apiProgram = File.ReadAllText(Path.Combine(
+            RepositoryLayout.RepositoryRoot.FullName,
+            "src",
+            "MinimalBankSystem.Api",
+            "Program.cs"));
+
+        Assert.DoesNotContain("IPasswordHasher<Operator>", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddIdentityCore", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddIdentity<", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddAuthentication", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("UseAuthentication", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("IdentityDbContext", apiProgram, StringComparison.Ordinal);
     }
 
     private static bool IsBuildOutput(FileInfo file)
