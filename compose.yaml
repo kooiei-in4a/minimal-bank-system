@@ -70,12 +70,15 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DATABASE: minimal_bank
       POSTGRES_USERNAME: minimal_bank_api
+      Authentication__Jwt__SigningKeyFile: /run/secrets/jwt_signing_key
     depends_on:
       migrator:
         condition: service_completed_successfully
     secrets:
       - source: database_api_password
         target: database_password
+      - source: jwt_signing_key
+        target: jwt_signing_key
     # API health is readiness, not merely a live process or an open TCP port. The shipped runtime
     # image already contains bash, so this probe needs no extra package or helper executable.
     healthcheck:
@@ -98,6 +101,8 @@ secrets:
     environment: MBS_DATABASE_MIGRATOR_PASSWORD
   database_api_password:
     environment: MBS_DATABASE_API_PASSWORD
+  jwt_signing_key:
+    environment: MBS_JWT_SIGNING_KEY
 
 volumes:
   postgres_data:

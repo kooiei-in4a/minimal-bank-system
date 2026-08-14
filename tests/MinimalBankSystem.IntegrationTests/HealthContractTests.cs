@@ -1,9 +1,12 @@
+extern alias api;
+
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MinimalBankSystem.Api.Runtime;
+using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.Infrastructure.Persistence;
 using Npgsql;
 
@@ -305,11 +308,12 @@ internal static class HealthConnectionStrings
 
 internal sealed class HealthApiFactory(
     string? connectionString,
-    Action<IServiceCollection>? configureServices = null) : WebApplicationFactory<Program>
+    Action<IServiceCollection>? configureServices = null) : WebApplicationFactory<api::Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
+        builder.UseSetting(JwtAuthnOptions.SigningKeyConfigurationKey, TestJwtConfiguration.SigningKey);
         builder.UseSetting($"ConnectionStrings:{BankPersistence.ConnectionStringName}", connectionString ?? string.Empty);
 
         if (configureServices is not null)

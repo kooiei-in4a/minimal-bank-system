@@ -8,6 +8,8 @@ readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_TEST_SENTINEL_NOT_A_CREDENTIAL
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
 readonly api_sentinel="${sentinel}_API"
+readonly jwt_sentinel="${sentinel}_JWT"
+readonly jwt_secret_sentinel="$(printf '%s' "$jwt_sentinel" | base64 | tr -d '\n')"
 readonly compose=(docker compose -p "$project_name")
 declare -a cleanup_project_names=("$project_name")
 
@@ -28,6 +30,7 @@ done
 export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
 export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
 export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
+export MBS_JWT_SIGNING_KEY="${MBS_JWT_SIGNING_KEY:-$jwt_secret_sentinel}"
 
 container_id() {
   local service_name="$1"
@@ -148,7 +151,7 @@ assert_success_contract() {
   inspect="$(docker inspect "$postgres_id" "$migrator_id" "$api_id")"
   top="$(docker top "$api_id")"
   for observation_surface in "$rendered" "$logs" "$inspect" "$top"; do
-    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel"; do
+    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel" "$jwt_sentinel" "$jwt_secret_sentinel"; do
       [[ "$observation_surface" != *"$probed_sentinel"* ]] || {
         printf 'Secret sentinel was exposed by an external observation surface.\n' >&2
         return 1
@@ -208,7 +211,7 @@ assert_missing_secret_contract() {
   fi
   rendered="$(env -u "$missing_env_var" "${missing_compose[@]}" config --format json)"
   for observation_surface in "$missing_up_output" "$rendered" "$inspect"; do
-    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel"; do
+    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel" "$jwt_sentinel" "$jwt_secret_sentinel"; do
       [[ "$observation_surface" != *"$probed_sentinel"* ]] || {
         printf 'Missing-secret probe exposed the sentinel.\n' >&2
         return 1
@@ -253,6 +256,7 @@ bash tests/fnd05/static-gate.sh
 
 run_missing_secret_probe MISSING_MIGRATOR_SECRET MBS_DATABASE_MIGRATOR_PASSWORD
 run_missing_secret_probe MISSING_API_SECRET MBS_DATABASE_API_PASSWORD
+run_missing_secret_probe MISSING_JWT_SECRET MBS_JWT_SIGNING_KEY
 
 "${compose[@]}" up --build --detach --remove-orphans
 wait_for_state migrator exited
