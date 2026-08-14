@@ -75,6 +75,8 @@ Parent Issue #3またはWork Package Issueの詳細をleaf Issueへ複製する�
 
 - 要件上の未決事項を決定する。
 - 仕様およびADRを承認する。
+- AIだけでは決めるべきでない重要なトレードオフやprocess decisionを決定する。
+- 既定ルールと客観的証拠から一意に決まる定型的なstage progressionを毎回semantic approvalしない。
 - 最終的なGo / No-Goを判断する。
 
 ### Agent A: Author / Implementer
@@ -158,11 +160,93 @@ BASELINE_GREEN
 
 ## 5.5 Agent launchとJIT Handoff
 
+通常のagent自動起動はまだ行わない。ただし、Agent launchの実操作を人間が行うことと、stage progressionのsemantic approvalを人間が行うことを分離する。
+
+WP2-AUTHN-01では、Issue #191および次のKoo-approved pilot contractを適用する。
+
+- `docs/retrospectives/wp2-human-decision-handoff-pilot.md`
+
 ```yaml
 AUTOMATIC_AGENT_LAUNCH: false
-HUMAN_APPROVAL: required
-JIT_HANDOFF: GENERATE_ONLY
+MANUAL_AGENT_TRANSPORT: true
+RULE_DECIDABLE_STAGE_PROGRESSION: AI_DECIDES
+HUMAN_DECISION_ESCALATION: CONDITION_BASED
+FINAL_PRODUCT_MERGE_APPROVAL: HUMAN_REQUIRED
+JIT_HANDOFF: COPY_PASTE_READY
 ```
+
+人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。
+
+## 5.6 Human Decision Escalation
+
+次の場合はAIが独断で進めず、人間へ意思決定を要求する。
+
+- 要求に複数の合理的解釈があり、承認済み正本から一意に決まらない。
+- Accepted ADRにない新しい重要設計判断が必要である。
+- Issueの承認済みscopeを変更または拡張する必要がある。
+- 複数案に実質的なメリット／デメリットがあり、客観的証拠だけでは決着しない。
+- 戻せない、または重大な影響を持つ操作・判断が必要である。
+- 独立したAI間の結論が割れ、追加検証でも解消しない。
+- 既存の承認済み製品方針、仕様、ADR、process decisionを変更する必要がある。
+
+逆に、Gate PASS、Blocker / Major 0、required CI PASS、exact SHA一致、dependency completion等、既定ルールと証拠から一意に判定できる事項だけを理由に人間へ「進めてよいか」と質問してはならない。
+
+人間判断が必要な場合は、判断事項、選択肢、メリット、デメリット、影響、AI推奨、推奨理由を整理してから要求する。詳細形式はpilot contractを参照する。
+
+## 5.7 Agent Handoff Output
+
+WP2-AUTHN-01 pilotで次のAgentが必要な場合、前stageは最低限次を含むcopy-paste-ready handoffを出力する。
+
+```yaml
+AGENT_HANDOFF:
+  RESULT:
+  TARGET:
+    ISSUE:
+    LEAF_ID:
+    STAGE:
+    BASE_SHA:
+    HEAD_SHA:
+  EVIDENCE:
+    REQUIRED_GATES:
+    REQUIRED_CI:
+    BLOCKER:
+    MAJOR:
+    UNVERIFIED:
+  HUMAN_DECISION:
+    REQUIRED:
+    REASON:
+  NEXT:
+    ACTION:
+    AGENT_ROLE:
+  LOCAL_AGENT_REQUEST:
+    REQUIRED:
+    MODEL:
+    HARNESS:
+    PROMPT:
+  COPY_PASTE_READY: true
+```
+
+ローカルAgentを依頼する場合は、`MODEL`を明示し、人間が編集せずそのまま投入できる完成promptを`PROMPT`へ含める。
+
+次AgentがGitHubから取得できる情報を、人間に手作業で再構成させてはならない。
+
+## 5.8 Final Approval Packet
+
+正式反映前の最終human approvalでは、大量の会話履歴やAgent報告を人間に再調査させない。
+
+最低限、次を一つのFinal Approval Packetとして提示する。
+
+- target Issue / PR / reviewed Head / merge target;
+- Acceptance Criteria達成状況;
+- required tests / CI結果;
+- Blocker / Major / 未解決finding;
+- reviewed Headとmerge対象の同一性;
+- known risks / unverified items;
+- rollback方法;
+- 今この時点で人間判断が必要な事項;
+- AIのMERGE / DO_NOT_MERGE推奨と理由。
+
+必要な詳細はGitHub evidence pointerとして追跡可能にし、人間がFinal Approval Packet以外の長い履歴を読み返さなくても判断できる状態を目指す。
 
 ## 6. 停止条件
 
@@ -180,6 +264,7 @@ JIT_HANDOFF: GENERATE_ONLY
 - 未承認の推奨案を実装へ反映する必要がある。
 - プロジェクト目的より機能追加自体が優先されている。
 - `main`への直接writeが必要である。
+- `HUMAN_DECISION_REQUIRED`に該当する未決事項が残っている。
 
 ただし、ゲート再評価、Blocking Decision確定、統制文書更新など、ゲートを通過させるための作業はこの限りではない。前提ゲートが未通過の場合は、その先の工程に着手せず停止する。
 
