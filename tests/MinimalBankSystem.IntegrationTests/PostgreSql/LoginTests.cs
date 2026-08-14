@@ -3,10 +3,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.Infrastructure.Persistence;
@@ -216,29 +217,22 @@ public sealed class LoginTests(PostgreSqlContainerFixture fixture)
     }
 
     /// <summary>
-    /// ASP.NET Core Identity's legacy IdentityV2 hash format: 1-byte format marker (0x00) +
-    /// 16-byte salt + 32-byte PBKDF2-HMACSHA1 subkey (1000 iterations). <c>PasswordHasher&lt;T&gt;</c>
-    /// recognizes this format and reports SuccessRehashNeeded under the default IdentityV3 mode.
+    /// ASP.NET Core Identity's IdentityV2 hash, produced by the real <see cref="PasswordHasher{TUser}"/>.
+    /// Under the default IdentityV3 compatibility mode this verifies as SuccessRehashNeeded.
     /// </summary>
     private static string LegacyFormatHashV2(string password)
     {
-        const int saltSize = 16;
-        const int subkeySize = 32;
-        const int iterations = 1000;
-
-        byte[] salt = RandomNumberGenerator.GetBytes(saltSize);
-        byte[] subkey = Rfc2898DeriveBytes.Pbkdf2(
-            Encoding.Unicode.GetBytes(password),
-            salt,
-            iterations,
-            HashAlgorithmName.SHA1,
-            subkeySize);
-
-        byte[] outputBytes = new byte[1 + saltSize + subkeySize];
-        outputBytes[0] = 0x00;
-        Buffer.BlockCopy(salt, 0, outputBytes, 1, saltSize);
-        Buffer.BlockCopy(subkey, 0, outputBytes, 1 + saltSize, subkeySize);
-        return Convert.ToBase64String(outputBytes);
+        Operator probe = OperatorFactory.Create(
+            "rehash.probe",
+            password,
+            OperatorRole.Viewer,
+            DateTimeOffset.UnixEpoch,
+            "rehash-probe-stamp");
+        PasswordHasher<Operator> legacyHasher = new(Options.Create(new PasswordHasherOptions
+        {
+            CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2,
+        }));
+        return legacyHasher.HashPassword(probe, password);
     }
 
     private static async Task AssertAuthenticationRequiredAsync(HttpResponseMessage response)
