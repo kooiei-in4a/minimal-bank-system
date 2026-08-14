@@ -38,9 +38,9 @@ public sealed class OperatorPersistenceTests(PostgreSqlContainerFixture fixture)
         ApplicationTime time = new(new FrozenTimeProvider(FrozenUtc));
         DateTimeOffset utcNow = time.GetUtcNow();
         string securityStamp = Guid.NewGuid().ToString();
-        Operator created = Operator.Create(
+        Operator created = OperatorFactory.Create(
             userName: $"id01.roundtrip.{userNameSuffix}",
-            passwordHash: IdentityPassword.Hash(SeedPlaintextPassword),
+            plaintextPassword: SeedPlaintextPassword,
             role,
             utcNow: utcNow,
             securityStamp: securityStamp);
@@ -204,9 +204,9 @@ public sealed class OperatorPersistenceTests(PostgreSqlContainerFixture fixture)
     }
 
     private static Operator CreateSeededOperator(string userName, OperatorRole role) =>
-        Operator.Create(
+        OperatorFactory.Create(
             userName,
-            IdentityPassword.Hash(SeedPlaintextPassword),
+            SeedPlaintextPassword,
             role,
             FrozenUtc,
             Guid.NewGuid().ToString());

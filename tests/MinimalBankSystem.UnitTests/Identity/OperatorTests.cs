@@ -1,3 +1,4 @@
+using System.Reflection;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Domain.Identity;
 
@@ -8,19 +9,22 @@ public sealed class OperatorTests
     private static readonly DateTimeOffset FrozenUtc =
         new(2031, 2, 3, 4, 5, 6, TimeSpan.Zero);
 
-    [Fact]
-    public void CreateAssignsApplicationGeneratedUuidV7AndExactlyOneRole()
+    [Theory]
+    [InlineData(OperatorRole.Administrator)]
+    [InlineData(OperatorRole.Teller)]
+    [InlineData(OperatorRole.Viewer)]
+    public void CreateAssignsApplicationGeneratedUuidV7AndExactlyOneRole(OperatorRole role)
     {
         ApplicationTime time = new(new FrozenTimeProvider(FrozenUtc));
         Operator created = Operator.Create(
             "teller.one",
-            "identity-hashed-password",
-            OperatorRole.Teller,
+            new OperatorPasswordHash("identity-hashed-password"),
+            role,
             time.GetUtcNow(),
             "security-stamp");
 
         Assert.Equal(7, created.Id.Version);
-        Assert.Equal(OperatorRole.Teller, created.Role);
+        Assert.Equal(role, created.Role);
         Assert.Equal(OperatorState.Active, created.State);
         Assert.Equal(FrozenUtc, created.CreatedAt);
         Assert.Equal(1, created.AuthorizationStateVersion);
@@ -29,11 +33,39 @@ public sealed class OperatorTests
     }
 
     [Fact]
+    public void DefaultRoleIsUnassignedAndRejectedByConstruction()
+    {
+        Assert.NotEqual(OperatorRole.Administrator, default(OperatorRole));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => Operator.Create(
+            "operator.one",
+            new OperatorPasswordHash("identity-hashed-password"),
+            default,
+            FrozenUtc,
+            "security-stamp"));
+    }
+
+    [Fact]
+    public void OperatorCreateDoesNotAcceptRawPasswordHashStrings()
+    {
+        MethodInfo create = typeof(Operator)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(method => method.Name == nameof(Operator.Create));
+
+        ParameterInfo passwordHash = create.GetParameters()
+            .Single(parameter => parameter.Name == "passwordHash");
+
+        Assert.Equal(typeof(OperatorPasswordHash), passwordHash.ParameterType);
+        Assert.NotEqual(typeof(string), passwordHash.ParameterType);
+        Assert.Empty(typeof(OperatorPasswordHash).GetConstructors(BindingFlags.Public | BindingFlags.Instance));
+    }
+
+    [Fact]
     public void CreateRejectsBlankUserName()
     {
         Assert.Throws<ArgumentException>(() => Operator.Create(
             "  ",
-            "hash",
+            new OperatorPasswordHash("hash"),
             OperatorRole.Viewer,
             FrozenUtc,
             "stamp"));

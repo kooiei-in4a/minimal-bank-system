@@ -42,13 +42,13 @@ public sealed class Operator
 
     public static Operator Create(
         string userName,
-        string passwordHash,
+        OperatorPasswordHash passwordHash,
         OperatorRole role,
         DateTimeOffset utcNow,
         string securityStamp)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
+        ArgumentNullException.ThrowIfNull(passwordHash);
         ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
 
         string trimmedName = userName.Trim();
@@ -57,7 +57,7 @@ public sealed class Operator
             throw new ArgumentOutOfRangeException(nameof(userName));
         }
 
-        if (!Enum.IsDefined(role))
+        if (role is not (OperatorRole.Administrator or OperatorRole.Teller or OperatorRole.Viewer))
         {
             throw new ArgumentOutOfRangeException(nameof(role));
         }
@@ -69,7 +69,7 @@ public sealed class Operator
             Id = Guid.CreateVersion7(createdAt),
             UserName = trimmedName,
             NormalizedUserName = trimmedName.ToUpperInvariant(),
-            PasswordHash = passwordHash,
+            PasswordHash = passwordHash.Value,
             SecurityStamp = securityStamp,
             State = OperatorState.Active,
             Role = role,

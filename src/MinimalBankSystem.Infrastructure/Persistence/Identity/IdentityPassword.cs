@@ -10,18 +10,18 @@ public static class IdentityPassword
 {
     public static IPasswordHasher<Operator> CreateHasher() => new PasswordHasher<Operator>();
 
-    public static string Hash(string plaintextPassword)
+    public static OperatorPasswordHash Hash(string plaintextPassword)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(plaintextPassword);
 
         Operator probe = Operator.Create(
             userName: "identity-password-probe",
-            passwordHash: "probe",
+            passwordHash: new OperatorPasswordHash("probe"),
             role: OperatorRole.Viewer,
             utcNow: DateTimeOffset.UnixEpoch,
             securityStamp: "probe");
 
-        return CreateHasher().HashPassword(probe, plaintextPassword);
+        return new OperatorPasswordHash(CreateHasher().HashPassword(probe, plaintextPassword));
     }
 
     public static PasswordVerificationResult Verify(Operator operatorEntity, string plaintextPassword)
