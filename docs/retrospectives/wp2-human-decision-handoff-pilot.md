@@ -85,6 +85,35 @@ AIは、人間へ問題の発見・調査・整理を丸投げしてはならな
 
 最終承認は大量の履歴を人間に再調査させる工程ではない。AI側がFinal Approval Packetを作り、判断に必要な情報を圧縮して提示する。
 
+### 2.4 Authorityは省略しない — bounded autonomous execution
+
+人間のsemantic approvalを減らしても、Current Authority、Issue Ready gate、scope authorization等の正式な統制記録を省略してはならない。
+
+このpilotでは、**人間の都度承認を、事前に承認された限定範囲の中でAIがmechanicalにauthorityをmaterializeする方式へ置き換える**。
+
+WP2-AUTHN-01で自律進行を開始できるのは、次の両方が成立した後だけである。
+
+1. このpilotを導入するprocess PRが独立レビューを通過し、人間の最終承認で`main`へ正式反映されている。
+2. Parent #3およびWP-2 #34のCurrent Authorityに、WP2-AUTHN-01限定の`AUTONOMOUS_EXECUTION_SCOPE: ACTIVE`が明示されている。
+
+Activeになった後、Coordinator AIはWP2-AUTHN-01に限り、既定ルールから一意に導ける次のauthority recordを、人間の追加semantic approvalなしで記録できる。
+
+例:
+
+- Individual Issue Readyを一次証拠から評価し、PASS / FAIL / STOPを記録する。
+- Issue ReadyがPASSで、Human Decision Escalationがなく、他の開始条件も満たす場合、WP2-AUTHN-01限定のimplementation authorizationをCurrent Authorityへmaterializeする。
+- review / targeted fix / targeted re-reviewの完了条件が機械的に満たされた場合、次stageのCurrent Authorityを更新する。
+
+ただしCoordinator AIは次を行ってはならない。
+
+- 自分自身で`AUTONOMOUS_EXECUTION_SCOPE`を初回ACTIVEにする。
+- WP2-AUTHN-01以外へscopeを広げる。
+- IssueのAcceptance Criteria、仕様、ADR、process decisionを変更する。
+- Human Decision Escalation対象を「mechanical」とみなして回避する。
+- 最終mergeを自動承認する。
+
+`AUTONOMOUS_EXECUTION_SCOPE`がACTIVEになる前は、現在の`WP2_AUTHN_01.PRODUCT_IMPLEMENTATION: NOT_AUTHORIZED`を維持する。
+
 ---
 
 ## 3. Human Decision Escalation
@@ -295,7 +324,10 @@ WP2-AUTHN-01では、このpilotにより**人間介在方法だけ**を変更�
 
 ### Change in pilot
 
-- Individual Issue Ready等のrule-decidableなPASSから次工程へ進む際、別のsemantic human approvalを自動的に追加しない。
+- このprocess pilotのmerge後、Parent #3 / WP-2 #34にWP2-AUTHN-01限定`AUTONOMOUS_EXECUTION_SCOPE: ACTIVE`を明示してpilotを起動する。
+- pilot activation自体は、人間の最終承認を経たprocess decisionのformalizationとして扱い、AIが自己承認してはならない。
+- activation後は、Individual Issue Ready等のrule-decidableなPASSから次工程へ進む際、別のsemantic human approvalを自動的に追加しない。
+- 必要なCurrent Authority / implementation authorization recordは省略せず、Coordinator AIが既定ルールに従ってmaterializeする。
 - Agent launchの実操作は人間が行ってよいが、人間のsemantic approvalと同一視しない。
 - 次Agent向けpromptは前stageがcopy-paste-readyで生成する。
 - 人間判断が必要になった場合だけHuman Decision Request Contractを使う。
@@ -369,6 +401,7 @@ MCPや特定Agent製品をワークフローの中心には置かない。
 次の場合はpilotによる自動的なstage progressionを停止する。
 
 - pilot contract自体が既存のKoo-approved process decisionと矛盾する。
+- `AUTONOMOUS_EXECUTION_SCOPE`がACTIVEでない、対象leafが一致しない、またはscope外のauthorityをmaterializeしようとしている。
 - AIが製品仕様・ADR・Issue scopeを「定型判断」として変更しようとする。
 - Human Decision Escalationを回避するために、曖昧な事項をAIが独断決定する。
 - handoff contractの不足により人間の意味的な再構成が必要になる。
