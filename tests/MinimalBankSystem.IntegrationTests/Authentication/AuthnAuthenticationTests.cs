@@ -114,8 +114,15 @@ public sealed class AuthnAuthenticationTests
         using ConsoleCapture capture = new();
         using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
-        string token = CreateToken();
-        using HttpResponseMessage invalidTokenResponse = await SendProbeAsync(client, token[..^1] + (token[^1] == 'a' ? 'b' : 'a'));
+        string validJwt = CreateToken();
+        using HttpResponseMessage validTokenResponse = await SendProbeAsync(client, validJwt);
+        string validBody = await validTokenResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, validTokenResponse.StatusCode);
+        using JsonDocument validDocument = JsonDocument.Parse(validBody);
+        Assert.True(validDocument.RootElement.GetProperty("handlerReached").GetBoolean());
+
+        string invalidJwt = validJwt[..^1] + (validJwt[^1] == 'a' ? 'b' : 'a');
+        using HttpResponseMessage invalidTokenResponse = await SendProbeAsync(client, invalidJwt);
         using HttpResponseMessage unrelatedResponse = await client.GetAsync("/__contract/does-not-exist");
 
         string invalidBody = await invalidTokenResponse.Content.ReadAsStringAsync();
@@ -129,8 +136,11 @@ public sealed class AuthnAuthenticationTests
             Assert.DoesNotContain(material, capture.Content, StringComparison.Ordinal);
         }
 
-        Assert.DoesNotContain(token, invalidBody, StringComparison.Ordinal);
-        Assert.DoesNotContain(token, unrelatedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(validJwt, invalidBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(validJwt, unrelatedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(validJwt, capture.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain(invalidJwt, invalidBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(invalidJwt, capture.Content, StringComparison.Ordinal);
     }
 
     [Fact]
