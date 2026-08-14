@@ -191,7 +191,7 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void TheApiDoesNotInstallIdentityRoleOrAuthenticationMiddleware()
+    public void TheApiDoesNotInstallAspNetCoreIdentityOrIdentityRole()
     {
         string apiProgram = File.ReadAllText(Path.Combine(
             RepositoryLayout.RepositoryRoot.FullName,
@@ -202,9 +202,14 @@ public sealed class MigrationModelTests
         Assert.DoesNotContain("IPasswordHasher<Operator>", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("AddIdentityCore", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("AddIdentity<", apiProgram, StringComparison.Ordinal);
-        Assert.DoesNotContain("AddAuthentication", apiProgram, StringComparison.Ordinal);
-        Assert.DoesNotContain("UseAuthentication", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("IdentityDbContext", apiProgram, StringComparison.Ordinal);
+
+        // WP2-AUTHN-01 installs JWT bearer authentication only. Full ASP.NET Core Identity
+        // (cookie sign-in, SignInManager, Identity role infrastructure) remains out of scope.
+        Assert.Contains("AddJwtBearer", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddCookie", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("SignInManager", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddIdentityCookies", apiProgram, StringComparison.Ordinal);
     }
 
     private static bool IsBuildOutput(FileInfo file)
