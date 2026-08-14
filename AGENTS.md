@@ -170,10 +170,18 @@ WP2-AUTHN-01では、Issue #191および次のKoo-approved pilot contractを適�
 AUTOMATIC_AGENT_LAUNCH: false
 MANUAL_AGENT_TRANSPORT: true
 RULE_DECIDABLE_STAGE_PROGRESSION: AI_DECIDES
+AUTHORITY_RECORDS: REQUIRED
+AUTONOMOUS_EXECUTION_SCOPE: ACTIVE_REQUIRED
+DERIVED_AUTHORITY_WITHIN_ACTIVE_SCOPE: AI_MAY_MATERIALIZE
+SCOPE_EXTENSION: HUMAN_DECISION_REQUIRED
 HUMAN_DECISION_ESCALATION: CONDITION_BASED
 FINAL_PRODUCT_MERGE_APPROVAL: HUMAN_REQUIRED
 JIT_HANDOFF: COPY_PASTE_READY
 ```
+
+`AUTONOMOUS_EXECUTION_SCOPE`の初回ACTIVE化は、process pilotの独立レビューと人間の最終承認後に、Parent #3 / WP-2 #34 Current Authorityで対象leafを限定して行う。Coordinator AIが自己承認してACTIVEにしてはならない。
+
+ACTIVEな対象leafの内部では、Issue Ready PASS、Blocker / Major 0、required CI PASS等から一意に導けるCurrent Authority / implementation authorizationをCoordinator AIがmaterializeしてよい。正式なauthority record自体は省略しない。
 
 人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。
 
@@ -265,6 +273,7 @@ AGENT_HANDOFF:
 - プロジェクト目的より機能追加自体が優先されている。
 - `main`への直接writeが必要である。
 - `HUMAN_DECISION_REQUIRED`に該当する未決事項が残っている。
+- pilot対象leafで`AUTONOMOUS_EXECUTION_SCOPE`がACTIVEでない、または対象leaf/scopeが一致しない。
 
 ただし、ゲート再評価、Blocking Decision確定、統制文書更新など、ゲートを通過させるための作業はこの限りではない。前提ゲートが未通過の場合は、その先の工程に着手せず停止する。
 
