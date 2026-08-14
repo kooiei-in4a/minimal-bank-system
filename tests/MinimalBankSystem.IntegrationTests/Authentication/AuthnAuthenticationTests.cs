@@ -121,8 +121,9 @@ public sealed class AuthnAuthenticationTests
         using JsonDocument validDocument = JsonDocument.Parse(validBody);
         Assert.True(validDocument.RootElement.GetProperty("handlerReached").GetBoolean());
 
-        string invalidJwt = validJwt[..^1] + (validJwt[^1] == 'a' ? 'b' : 'a');
+        string invalidJwt = CreateToken(signingKey: CreateOtherSigningKey());
         using HttpResponseMessage invalidTokenResponse = await SendProbeAsync(client, invalidJwt);
+        await AssertRejectedBeforeProbeHandlerAsync(invalidTokenResponse, "AUTHN-JWT-01");
         using HttpResponseMessage unrelatedResponse = await client.GetAsync("/__contract/does-not-exist");
 
         string invalidBody = await invalidTokenResponse.Content.ReadAsStringAsync();
