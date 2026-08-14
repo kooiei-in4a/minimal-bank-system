@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.IdentityModel.Tokens;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.Infrastructure.Persistence;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -26,6 +29,34 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+builder.Services.AddSingleton<JwtTokenIssuer>();
+
+// WP2-AUTHN-01: JWT bearer authentication. Every control below is a required Acceptance
+// Criterion (signature, issuer, audience, expiry, allowed algorithm) and must not be weakened.
+// The signing key is resolved once at startup from an externally-injected value; it is never
+// logged, defaulted, or committed.
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            // Resolved lazily, only while validating a presented token's signature, so requests
+            // without an Authorization header (health checks, unauthenticated endpoints) never
+            // require the signing key to be configured.
+            IssuerSigningKeyResolver = (_, _, _, _) => [JwtSigningKeyProvider.Resolve(builder.Configuration)],
+            ValidateIssuer = true,
+            ValidIssuer = JwtTokenSettings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = JwtTokenSettings.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
+            ValidAlgorithms = [JwtTokenSettings.SigningAlgorithm],
+        };
+    });
+builder.Services.AddAuthorization();
 
 // Normal API startup never evolves the schema. The options factory runs only when persistence is
 // resolved and fails closed if the canonical PostgreSQL connection is absent.
@@ -75,6 +106,8 @@ app.MapHealthChecks(HealthContract.LivePath, HealthContract.Liveness)
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapHealthChecks(HealthContract.ReadyPath, HealthContract.Readiness)
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();

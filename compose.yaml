@@ -76,6 +76,8 @@ services:
     secrets:
       - source: database_api_password
         target: database_password
+      - source: jwt_signing_key
+        target: jwt_signing_key
     # API health is readiness, not merely a live process or an open TCP port. The shipped runtime
     # image already contains bash, so this probe needs no extra package or helper executable.
     healthcheck:
@@ -98,6 +100,9 @@ secrets:
     environment: MBS_DATABASE_MIGRATOR_PASSWORD
   database_api_password:
     environment: MBS_DATABASE_API_PASSWORD
+  # WP2-AUTHN-01: externally-injected JWT signing key. Only the api service mounts it.
+  jwt_signing_key:
+    environment: MBS_JWT_SIGNING_KEY
 
 volumes:
   postgres_data:
