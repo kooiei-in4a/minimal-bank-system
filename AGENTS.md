@@ -76,7 +76,7 @@ Parent Issue #3またはWork Package Issueの詳細をleaf Issueへ複製する�
 - 要件上の未決事項を決定する。
 - 仕様およびADRを承認する。
 - AIだけでは決めるべきでない重要なトレードオフやprocess decisionを決定する。
-- 既定ルールと客観的証拠から一意に決まる定型的なstage progressionを毎回semantic approvalしない。
+- WP2-AUTHN-01 pilot適用範囲内に限り、既定ルールと客観的証拠から一意に決まる定型的なstage progressionを毎回semantic approvalしない。pilot適用範囲外では、既定の`HUMAN_APPROVAL: required`を維持する。
 - 最終的なGo / No-Goを判断する。
 
 ### Agent A: Author / Implementer
@@ -167,6 +167,7 @@ WP2-AUTHN-01では、Issue #191および次のKoo-approved pilot contractを適�
 - `docs/retrospectives/wp2-human-decision-handoff-pilot.md`
 
 ```yaml
+PILOT_SCOPE: WP2-AUTHN-01_ONLY
 AUTOMATIC_AGENT_LAUNCH: false
 MANUAL_AGENT_TRANSPORT: true
 RULE_DECIDABLE_STAGE_PROGRESSION: AI_DECIDES
@@ -179,11 +180,19 @@ FINAL_PRODUCT_MERGE_APPROVAL: HUMAN_REQUIRED
 JIT_HANDOFF: COPY_PASTE_READY
 ```
 
-`AUTONOMOUS_EXECUTION_SCOPE`の初回ACTIVE化は、process pilotの独立レビューと人間の最終承認後に、Parent #3 / WP-2 #34 Current Authorityで対象leafを限定して行う。Coordinator AIが自己承認してACTIVEにしてはならない。
+```yaml
+OUTSIDE_PILOT_SCOPE:
+  HUMAN_APPROVAL: required
+  JIT_HANDOFF: GENERATE_ONLY
+```
 
-ACTIVEな対象leafの内部では、Issue Ready PASS、Blocker / Major 0、required CI PASS等から一意に導けるCurrent Authority / implementation authorizationをCoordinator AIがmaterializeしてよい。正式なauthority record自体は省略しない。
+WP2-AUTHN-01以外（WP2-AUTHZ-01以降を含む）では、`OUTSIDE_PILOT_SCOPE`が既定であり、本pilotは自動適用されない。次leafで同様の仕組みを使う場合は、新しいhuman activationとscope拡張の決定が必要である。
 
-人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。
+`AUTONOMOUS_EXECUTION_SCOPE`の初回ACTIVE化は、process pilotの独立レビューと人間の最終承認後に、Parent #3 / WP-2 #34 Current Authorityで対象leafを限定して行う。Coordinator AIが自己承認してACTIVEにしてはならない。`AUTONOMOUS_EXECUTION_SCOPE`の正準スキーマは`docs/retrospectives/wp2-human-decision-handoff-pilot.md`を唯一の正本とし、本書では複製しない。
+
+ACTIVEな対象leafの内部では、Independent Issue Ready Reviewが確定したverdict（PASS）、Blocker / Major 0、required CI PASS等から一意に導けるCurrent Authority / implementation authorizationを、Coordinator AIがGate / Current Authorityとして形式化(materialize)してよい。Coordinator AI自身がIssue Readyをsemantic評価することは含まない。正式なauthority record自体は省略しない。rule-decidableかsemantic decisionかの分類自体に合理的な迷いがある場合は`HUMAN_DECISION_REQUIRED`とする。
+
+人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。受領Agentは、handoffのpromptをauthorityとして信用しない。着手前にGitHub一次証拠（Parent #3 Current Authority、WP-2 #34 Current Authority、target Issue、exact identity、write/operation authorization）を再確認し、promptと一次証拠が矛盾する場合はSTOPする。
 
 ## 5.6 Human Decision Escalation
 
@@ -203,40 +212,19 @@ ACTIVEな対象leafの内部では、Issue Ready PASS、Blocker / Major 0、requ
 
 ## 5.7 Agent Handoff Output
 
-WP2-AUTHN-01 pilotで次のAgentが必要な場合、前stageは最低限次を含むcopy-paste-ready handoffを出力する。
+WP2-AUTHN-01 pilotで次のAgentが必要な場合、前stageはcopy-paste-ready handoffを出力する。
 
-```yaml
-AGENT_HANDOFF:
-  RESULT:
-  TARGET:
-    ISSUE:
-    LEAF_ID:
-    STAGE:
-    BASE_SHA:
-    HEAD_SHA:
-  EVIDENCE:
-    REQUIRED_GATES:
-    REQUIRED_CI:
-    BLOCKER:
-    MAJOR:
-    UNVERIFIED:
-  HUMAN_DECISION:
-    REQUIRED:
-    REASON:
-  NEXT:
-    ACTION:
-    AGENT_ROLE:
-  LOCAL_AGENT_REQUEST:
-    REQUIRED:
-    MODEL:
-    HARNESS:
-    PROMPT:
-  COPY_PASTE_READY: true
-```
+Agent Handoff schemaの正本は`docs/retrospectives/wp2-human-decision-handoff-pilot.md`（Agent Handoff Contract節）のみとする。本書ではschema全文を複製しない。
 
-ローカルAgentを依頼する場合は、`MODEL`を明示し、人間が編集せずそのまま投入できる完成promptを`PROMPT`へ含める。
+最低限、次を必須原則とする。
 
-次AgentがGitHubから取得できる情報を、人間に手作業で再構成させてはならない。
+- `TARGET`は次のAgentが会話履歴なしでもexact targetを特定できること。
+- `EVIDENCE`はGitHub一次証拠または実行結果を優先すること。
+- ローカルAgentを依頼する場合は、モデル名＋バージョンを明示した`MODEL`と、実行基盤名を明示した`HARNESS`を指定し、人間が編集せずそのまま投入できる完成promptを`PROMPT`へ含めること。
+- `PROMPT`には最低限、`MODE`、`WRITE_SCOPE`、`PROHIBITED_OPERATIONS`、`EXPECTED_BASE`、`EXPECTED_HEAD`（またはそのstageに必要なexact identity）を含めること。
+- `COPY_PASTE_READY`は自己申告値にしない。`LOCAL_AGENT_REQUEST.REQUIRED: true`の場合、`MODEL` / `HARNESS` / `PROMPT`がすべて非空であるときだけ`true`とし、1つでも欠ければ`false`とする。
+- 実際に投入した完成prompt全文は、対象Issueのhandoff commentへ記録し追跡可能にすること。
+- 次AgentがGitHubから取得できる情報を、人間に手作業で再構成させないこと。
 
 ## 5.8 Final Approval Packet
 
