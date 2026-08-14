@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using MinimalBankSystem.Api.Authentication;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure.Persistence;
@@ -26,6 +28,17 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+builder.Services.AddSingleton(serviceProvider =>
+    JwtTokenParameters.Create(serviceProvider.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<JwtTokenIssuer>();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<JwtTokenParameters>((options, parameters) => parameters.ConfigureBearer(options));
+builder.Services.AddAuthorization();
 
 // Normal API startup never evolves the schema. The options factory runs only when persistence is
 // resolved and fails closed if the canonical PostgreSQL connection is absent.
@@ -71,6 +84,8 @@ app.UseStatusCodePages(async statusCodeContext =>
             context.RequestAborted);
     }
 });
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapHealthChecks(HealthContract.LivePath, HealthContract.Liveness)
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapHealthChecks(HealthContract.ReadyPath, HealthContract.Readiness)

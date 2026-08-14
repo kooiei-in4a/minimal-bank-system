@@ -29,6 +29,7 @@ done
 : "${MBS_DATABASE_BOOTSTRAP_PASSWORD:?MBS_DATABASE_BOOTSTRAP_PASSWORD is required for the Compose render check}"
 : "${MBS_DATABASE_MIGRATOR_PASSWORD:?MBS_DATABASE_MIGRATOR_PASSWORD is required for the Compose render check}"
 : "${MBS_DATABASE_API_PASSWORD:?MBS_DATABASE_API_PASSWORD is required for the Compose render check}"
+: "${MBS_JWT_SIGNING_KEY:?MBS_JWT_SIGNING_KEY is required for the Compose render check}"
 
 [[ "$MBS_DATABASE_MIGRATOR_PASSWORD" != "$MBS_DATABASE_API_PASSWORD" ]] || {
   printf 'ORACLE_SIGNATURE=equal-database-credential-values\n' >&2
@@ -43,7 +44,9 @@ require_literal "$runtime_image" "$source_root/compose.yaml" 'runtime-image-dige
 require_literal 'environment: MBS_DATABASE_BOOTSTRAP_PASSWORD' "$source_root/compose.yaml" 'bootstrap-secret-environment-source-missing'
 require_literal 'environment: MBS_DATABASE_MIGRATOR_PASSWORD' "$source_root/compose.yaml" 'migrator-secret-environment-source-missing'
 require_literal 'environment: MBS_DATABASE_API_PASSWORD' "$source_root/compose.yaml" 'api-secret-environment-source-missing'
+require_literal 'environment: MBS_JWT_SIGNING_KEY' "$source_root/compose.yaml" 'jwt-secret-environment-source-missing'
 require_literal 'POSTGRES_PASSWORD_FILE: /run/secrets/database_bootstrap_password' "$source_root/compose.yaml" 'postgres-secret-file-configuration-missing'
+require_literal 'MBS_JWT_SIGNING_KEY_FILE: /run/secrets/jwt_signing_key' "$source_root/compose.yaml" 'jwt-secret-file-configuration-missing'
 require_literal 'condition: service_completed_successfully' "$source_root/compose.yaml" 'migrator-completion-gate-missing'
 require_literal 'condition: service_healthy' "$source_root/compose.yaml" 'postgres-health-gate-missing'
 
@@ -74,8 +77,9 @@ jq --exit-status \
     .secrets.database_bootstrap_password.environment == "MBS_DATABASE_BOOTSTRAP_PASSWORD" and
     .secrets.database_migrator_password.environment == "MBS_DATABASE_MIGRATOR_PASSWORD" and
     .secrets.database_api_password.environment == "MBS_DATABASE_API_PASSWORD" and
+    .secrets.jwt_signing_key.environment == "MBS_JWT_SIGNING_KEY" and
     (.services.migrator.secrets | length) == 1 and
-    (.services.api.secrets | length) == 1
+    (.services.api.secrets | length) == 2
   ' <<<"$rendered" >/dev/null
 
 # WP2-DB-01: the bootstrap, Migrator and API runtime principals and credentials must all be
@@ -83,12 +87,15 @@ jq --exit-status \
 jq --exit-status '
     .services.migrator.secrets[0].source == "database_migrator_password" and
     .services.migrator.secrets[0].target == "database_password" and
-    .services.api.secrets[0].source == "database_api_password" and
-    .services.api.secrets[0].target == "database_password" and
-    .services.migrator.secrets[0].source != .services.api.secrets[0].source and
+    ([.services.api.secrets[] | {source, target}] | sort_by(.source)) ==
+      [
+        {source: "database_api_password", target: "database_password"},
+        {source: "jwt_signing_key", target: "jwt_signing_key"}
+      ] and
     (.services.postgres.secrets | map(.source) | sort) ==
       ["database_api_password", "database_bootstrap_password", "database_migrator_password"] and
-    ([.services.migrator.secrets[0].source, .services.api.secrets[0].source] | all(. as $s | (["database_bootstrap_password"] | index($s)) == null))
+    (.services.migrator.secrets[0].source != "database_bootstrap_password") and
+    (.services.api.secrets | map(.source) | index("database_bootstrap_password") == null)
   ' <<<"$rendered" >/dev/null || {
   printf 'ORACLE_SIGNATURE=credential-boundary-not-distinct\n' >&2
   exit 1
