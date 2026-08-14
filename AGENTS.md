@@ -75,6 +75,8 @@ Parent Issue #3またはWork Package Issueの詳細をleaf Issueへ複製する�
 
 - 要件上の未決事項を決定する。
 - 仕様およびADRを承認する。
+- AIだけでは決めるべきでない重要なトレードオフやprocess decisionを決定する。
+- WP2-AUTHN-01 pilot適用範囲内に限り、既定ルールと客観的証拠から一意に決まる定型的なstage progressionを毎回semantic approvalしない。pilot適用範囲外では、既定の`HUMAN_APPROVAL: required`を維持する。
 - 最終的なGo / No-Goを判断する。
 
 ### Agent A: Author / Implementer
@@ -158,11 +160,89 @@ BASELINE_GREEN
 
 ## 5.5 Agent launchとJIT Handoff
 
+通常のagent自動起動はまだ行わない。ただし、Agent launchの実操作を人間が行うことと、stage progressionのsemantic approvalを人間が行うことを分離する。
+
+WP2-AUTHN-01では、Issue #191および次のKoo-approved pilot contractを適用する。
+
+- `docs/retrospectives/wp2-human-decision-handoff-pilot.md`
+
 ```yaml
+PILOT_SCOPE: WP2-AUTHN-01_ONLY
 AUTOMATIC_AGENT_LAUNCH: false
-HUMAN_APPROVAL: required
-JIT_HANDOFF: GENERATE_ONLY
+MANUAL_AGENT_TRANSPORT: true
+RULE_DECIDABLE_STAGE_PROGRESSION: AI_DECIDES
+AUTHORITY_RECORDS: REQUIRED
+AUTONOMOUS_EXECUTION_SCOPE: ACTIVE_REQUIRED
+DERIVED_AUTHORITY_WITHIN_ACTIVE_SCOPE: AI_MAY_MATERIALIZE
+SCOPE_EXTENSION: HUMAN_DECISION_REQUIRED
+HUMAN_DECISION_ESCALATION: CONDITION_BASED
+FINAL_PRODUCT_MERGE_APPROVAL: HUMAN_REQUIRED
+JIT_HANDOFF: COPY_PASTE_READY
 ```
+
+```yaml
+OUTSIDE_PILOT_SCOPE:
+  HUMAN_APPROVAL: required
+  JIT_HANDOFF: GENERATE_ONLY
+```
+
+WP2-AUTHN-01以外（WP2-AUTHZ-01以降を含む）では、`OUTSIDE_PILOT_SCOPE`が既定であり、本pilotは自動適用されない。次leafで同様の仕組みを使う場合は、新しいhuman activationとscope拡張の決定が必要である。
+
+`AUTONOMOUS_EXECUTION_SCOPE`の初回ACTIVE化は、process pilotの独立レビューと人間の最終承認後に、Parent #3 / WP-2 #34 Current Authorityで対象leafを限定して行う。Coordinator AIが自己承認してACTIVEにしてはならない。`AUTONOMOUS_EXECUTION_SCOPE`の正準スキーマは`docs/retrospectives/wp2-human-decision-handoff-pilot.md`を唯一の正本とし、本書では複製しない。
+
+ACTIVEな対象leafの内部では、Independent Issue Ready Reviewが確定したverdict（PASS）、Blocker / Major 0、required CI PASS等から一意に導けるCurrent Authority / implementation authorizationを、Coordinator AIがGate / Current Authorityとして形式化(materialize)してよい。Coordinator AI自身がIssue Readyをsemantic評価することは含まない。正式なauthority record自体は省略しない。rule-decidableかsemantic decisionかの分類自体に合理的な迷いがある場合は`HUMAN_DECISION_REQUIRED`とする。
+
+人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。受領Agentは、handoffのpromptをauthorityとして信用しない。着手前にGitHub一次証拠（Parent #3 Current Authority、WP-2 #34 Current Authority、target Issue、exact identity、write/operation authorization）を再確認し、promptと一次証拠が矛盾する場合はSTOPする。
+
+## 5.6 Human Decision Escalation
+
+次の場合はAIが独断で進めず、人間へ意思決定を要求する。
+
+- 要求に複数の合理的解釈があり、承認済み正本から一意に決まらない。
+- Accepted ADRにない新しい重要設計判断が必要である。
+- Issueの承認済みscopeを変更または拡張する必要がある。
+- 複数案に実質的なメリット／デメリットがあり、客観的証拠だけでは決着しない。
+- 戻せない、または重大な影響を持つ操作・判断が必要である。
+- 独立したAI間の結論が割れ、追加検証でも解消しない。
+- 既存の承認済み製品方針、仕様、ADR、process decisionを変更する必要がある。
+
+逆に、Gate PASS、Blocker / Major 0、required CI PASS、exact SHA一致、dependency completion等、既定ルールと証拠から一意に判定できる事項だけを理由に人間へ「進めてよいか」と質問してはならない。
+
+人間判断が必要な場合は、判断事項、選択肢、メリット、デメリット、影響、AI推奨、推奨理由を整理してから要求する。詳細形式はpilot contractを参照する。
+
+## 5.7 Agent Handoff Output
+
+WP2-AUTHN-01 pilotで次のAgentが必要な場合、前stageはcopy-paste-ready handoffを出力する。
+
+Agent Handoff schemaの正本は`docs/retrospectives/wp2-human-decision-handoff-pilot.md`（Agent Handoff Contract節）のみとする。本書ではschema全文を複製しない。
+
+最低限、次を必須原則とする。
+
+- `TARGET`は次のAgentが会話履歴なしでもexact targetを特定できること。
+- `EVIDENCE`はGitHub一次証拠または実行結果を優先すること。
+- ローカルAgentを依頼する場合は、モデル名＋バージョンを明示した`MODEL`と、実行基盤名を明示した`HARNESS`を指定し、人間が編集せずそのまま投入できる完成promptを`PROMPT`へ含めること。
+- `PROMPT`には最低限、`MODE`、`WRITE_SCOPE`、`PROHIBITED_OPERATIONS`、`EXPECTED_BASE`、`EXPECTED_HEAD`（またはそのstageに必要なexact identity）を含めること。
+- `COPY_PASTE_READY`は自己申告値にしない。`LOCAL_AGENT_REQUEST.REQUIRED: true`の場合、`MODEL` / `HARNESS` / `PROMPT`がすべて非空であるときだけ`true`とし、1つでも欠ければ`false`とする。
+- 実際に投入した完成prompt全文は、対象Issueのhandoff commentへ記録し追跡可能にすること。
+- 次AgentがGitHubから取得できる情報を、人間に手作業で再構成させないこと。
+
+## 5.8 Final Approval Packet
+
+正式反映前の最終human approvalでは、大量の会話履歴やAgent報告を人間に再調査させない。
+
+最低限、次を一つのFinal Approval Packetとして提示する。
+
+- target Issue / PR / reviewed Head / merge target;
+- Acceptance Criteria達成状況;
+- required tests / CI結果;
+- Blocker / Major / 未解決finding;
+- reviewed Headとmerge対象の同一性;
+- known risks / unverified items;
+- rollback方法;
+- 今この時点で人間判断が必要な事項;
+- AIのMERGE / DO_NOT_MERGE推奨と理由。
+
+必要な詳細はGitHub evidence pointerとして追跡可能にし、人間がFinal Approval Packet以外の長い履歴を読み返さなくても判断できる状態を目指す。
 
 ## 6. 停止条件
 
@@ -180,6 +260,8 @@ JIT_HANDOFF: GENERATE_ONLY
 - 未承認の推奨案を実装へ反映する必要がある。
 - プロジェクト目的より機能追加自体が優先されている。
 - `main`への直接writeが必要である。
+- `HUMAN_DECISION_REQUIRED`に該当する未決事項が残っている。
+- pilot対象leafで`AUTONOMOUS_EXECUTION_SCOPE`がACTIVEでない、または対象leaf/scopeが一致しない。
 
 ただし、ゲート再評価、Blocking Decision確定、統制文書更新など、ゲートを通過させるための作業はこの限りではない。前提ゲートが未通過の場合は、その先の工程に着手せず停止する。
 
