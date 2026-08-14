@@ -4,6 +4,9 @@ public sealed record ApiErrorEnvelope(string Code, string Message)
 {
     public static ApiErrorEnvelope ValidationFailed { get; } =
         new("validation_failed", "The request is invalid.");
+
+    public static ApiErrorEnvelope AuthenticationRequired { get; } =
+        new("authentication_required", "Authentication is required.");
 }
 
 public sealed record ApiErrorMapping(int StatusCode, string Code, string Message)
