@@ -1,5 +1,3 @@
-using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
@@ -43,7 +41,6 @@ builder.Services
         "The JWT access-token lifetime must be between 1 and 900 seconds.")
     .ValidateOnStart();
 
-builder.Services.AddScoped<IAuthnOperatorStore, EfAuthnOperatorStore>();
 builder.Services.AddScoped<AuthnLoginService>();
 builder.Services.AddSingleton<IJwtAccessTokenIssuer, JwtAccessTokenIssuer>();
 builder.Services
@@ -120,18 +117,6 @@ app.MapHealthChecks(HealthContract.LivePath, HealthContract.Liveness)
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapHealthChecks(HealthContract.ReadyPath, HealthContract.Readiness)
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
-if (app.Environment.IsEnvironment("Testing"))
-{
-    app.MapGet(
-            "/__authn/probe",
-            (ClaimsPrincipal principal) => Results.Ok(new
-            {
-                AuthenticationHandlerReached = true,
-                Subject = principal.FindFirstValue(JwtRegisteredClaimNames.Sub),
-                AuthorizationStateVersion = principal.FindFirstValue(AuthnClaimTypes.AuthorizationStateVersion),
-            }))
-        .RequireAuthorization();
-}
 app.MapControllers();
 
 app.Run();

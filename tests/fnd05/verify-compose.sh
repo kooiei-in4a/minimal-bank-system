@@ -220,6 +220,44 @@ assert_missing_secret_contract() {
   done
 }
 
+assert_missing_jwt_secret_contract() {
+  local missing_project_name="$1" missing_up_output="$2"
+  local api_id api_state rendered inspect serving
+  local -a container_ids=()
+  local missing_compose=(docker compose -p "$missing_project_name")
+
+  # FS-03: the required fail-closed oracle is that the API is not serving. PostgreSQL or
+  # Migrator may start without a JWT secret. Do not require that no service ever started.
+  api_id="$("${missing_compose[@]}" ps -aq api)"
+  serving=0
+  if [[ -n "$api_id" ]]; then
+    api_state="$(docker inspect "$api_id" | jq --raw-output '.[0].State.Status')"
+    if [[ "$api_state" == running ]] && "${missing_compose[@]}" exec -T api bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'; then
+      serving=1
+    fi
+  fi
+  (( serving == 0 )) || {
+    printf 'Missing JWT secret allowed the API to serve.\n' >&2
+    return 1
+  }
+
+  mapfile -t container_ids < <(docker ps -aq --filter "label=com.docker.compose.project=$missing_project_name")
+  if ((${#container_ids[@]})); then
+    inspect="$(docker inspect "${container_ids[@]}")"
+  else
+    inspect='[]'
+  fi
+  rendered="$(env -u MBS_JWT_SIGNING_KEY "${missing_compose[@]}" config --format json 2>/dev/null || printf '{}')"
+  for observation_surface in "$missing_up_output" "$rendered" "$inspect"; do
+    for probed_sentinel in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel" "$jwt_sentinel" "$jwt_secret_sentinel"; do
+      [[ "$observation_surface" != *"$probed_sentinel"* ]] || {
+        printf 'Missing JWT secret probe exposed the sentinel.\n' >&2
+        return 1
+      }
+    done
+  done
+}
+
 # WP2-DB-01: Migrator and API runtime credential injection are independently fail-closed. Each is
 # probed on its own by unsetting exactly one of the two secret-source environment variables while
 # leaving the other populated, so a missing Migrator secret cannot be masked by a present API
@@ -251,12 +289,36 @@ run_missing_secret_probe() {
   printf '%s_PROBE: PASS (compose-up-exit=%s)\n' "$probe_label" "$missing_up_exit_code"
 }
 
+run_missing_jwt_secret_probe() {
+  local missing_project_name="${project_name}-missing-secret-jwt-${RANDOM}${RANDOM}"
+  local -a missing_compose=(docker compose -p "$missing_project_name")
+  local missing_up_output missing_up_exit_code
+
+  cleanup_project_names+=("$missing_project_name")
+
+  set +e
+  missing_up_output="$(env -u MBS_JWT_SIGNING_KEY "${missing_compose[@]}" up --build --detach --remove-orphans 2>&1)"
+  missing_up_exit_code=$?
+  set -e
+  assert_missing_jwt_secret_contract "$missing_project_name" "$missing_up_output"
+  "${missing_compose[@]}" down --volumes --remove-orphans
+  assert_no_project_residue_for "$missing_project_name"
+  printf 'MISSING_JWT_SECRET: NEGATIVE_PROBE_EXECUTED\n'
+  printf 'MISSING_JWT_SECRET: FAIL_CLOSED_OBSERVED\n'
+  printf 'MISSING_JWT_SECRET: EXPECTED_FAILURE_SIGNATURE=api-not-serving\n'
+  printf 'MISSING_JWT_SECRET: API_NOT_SERVING\n'
+  printf 'MISSING_JWT_SECRET: NO_LEAK\n'
+  printf 'MISSING_JWT_SECRET: CLEANUP\n'
+  printf 'MISSING_JWT_SECRET: RESIDUE_ZERO\n'
+  printf 'MISSING_JWT_SECRET_PROBE: PASS (compose-up-exit=%s)\n' "$missing_up_exit_code"
+}
+
 "${compose[@]}" config --quiet
 bash tests/fnd05/static-gate.sh
 
 run_missing_secret_probe MISSING_MIGRATOR_SECRET MBS_DATABASE_MIGRATOR_PASSWORD
 run_missing_secret_probe MISSING_API_SECRET MBS_DATABASE_API_PASSWORD
-run_missing_secret_probe MISSING_JWT_SECRET MBS_JWT_SIGNING_KEY
+run_missing_jwt_secret_probe
 
 "${compose[@]}" up --build --detach --remove-orphans
 wait_for_state migrator exited

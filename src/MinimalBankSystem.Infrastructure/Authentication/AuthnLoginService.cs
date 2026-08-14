@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using MinimalBankSystem.Domain.Identity;
+using MinimalBankSystem.Infrastructure.Persistence;
 using MinimalBankSystem.Infrastructure.Persistence.Identity;
 
 namespace MinimalBankSystem.Infrastructure.Authentication;
 
-public sealed class AuthnLoginService(IAuthnOperatorStore operatorStore)
+public sealed class AuthnLoginService(BankDbContext dbContext)
 {
     public async Task<AuthnLoginResult?> TryAuthenticateAsync(
         string? userName,
@@ -17,17 +19,19 @@ public sealed class AuthnLoginService(IAuthnOperatorStore operatorStore)
         }
 
         string normalizedUserName = userName.Trim().ToUpperInvariant();
-        AuthnOperatorCredential? candidate =
-            await operatorStore.FindByNormalizedUserNameAsync(normalizedUserName, cancellationToken)
-                .ConfigureAwait(false);
+        Operator? candidate = await dbContext.Operators
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                operatorEntity => operatorEntity.NormalizedUserName == normalizedUserName,
+                cancellationToken)
+            .ConfigureAwait(false);
 
         if (candidate is null)
         {
             return null;
         }
 
-        PasswordVerificationResult verification =
-            IdentityPassword.VerifyHash(candidate.PersistedPasswordHash, plaintextPassword);
+        PasswordVerificationResult verification = IdentityPassword.Verify(candidate, plaintextPassword);
 
         if (verification is not (PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded) ||
             candidate.State is not OperatorState.Active)

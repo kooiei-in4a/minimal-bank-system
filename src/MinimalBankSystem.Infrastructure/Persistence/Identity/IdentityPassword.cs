@@ -34,19 +34,4 @@ public static class IdentityPassword
             operatorEntity.PasswordHash,
             plaintextPassword);
     }
-
-    public static PasswordVerificationResult VerifyHash(string persistedPasswordHash, string plaintextPassword)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(persistedPasswordHash);
-        ArgumentException.ThrowIfNullOrWhiteSpace(plaintextPassword);
-
-        Operator probe = Operator.Create(
-            userName: "identity-password-probe",
-            passwordHash: new OperatorPasswordHash("probe"),
-            role: OperatorRole.Viewer,
-            utcNow: DateTimeOffset.UnixEpoch,
-            securityStamp: "probe");
-
-        return CreateHasher().VerifyHashedPassword(probe, persistedPasswordHash, plaintextPassword);
-    }
 }

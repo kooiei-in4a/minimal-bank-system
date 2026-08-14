@@ -1,133 +1,57 @@
-extern alias api;
-
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Authentication;
-using MinimalBankSystem.Infrastructure.Persistence.Identity;
+using MinimalBankSystem.IntegrationTests.Persistence;
 
 namespace MinimalBankSystem.IntegrationTests.Authentication;
 
+/// <summary>
+/// Verification Requirements 5-10 and 13-14: the authentication-only test-host probe proves the
+/// JWT bearer gate (signature, issuer, audience, expiry, algorithm) using a positive
+/// handler-reached signal, without depending on any AUTHZ current-Operator-state authority.
+/// </summary>
 [Collection(TestExecutionCollections.ConsoleSensitive)]
 public sealed class AuthnAuthenticationTests
 {
-    private const string ActiveUserName = "active.operator";
-    private const string ActivePassword = "active-password";
-    private static readonly Guid ActiveOperatorId =
+    private static readonly Guid SubjectOperatorId =
         Guid.Parse("018f4d25-8f93-7b48-8d85-7d0e7bb4ef01");
 
     [Fact]
-    public async Task ActiveLoginReturnsJwtClaimsAndAuthenticationOnlyProbeIsReached()
+    public async Task ValidJwtReachesTheAuthenticationOnlyProbeHandler()
     {
-        FixtureOperatorStore store = new();
-        store.Add(
-            ActiveUserName,
-            ActivePassword,
-            OperatorState.Active,
-            authorizationStateVersion: 7,
-            ActiveOperatorId);
-
-        using AuthnWebApplicationFactory factory = new(store);
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
+        string token = CreateToken();
 
-        using HttpResponseMessage login = await LoginAsync(client, ActiveUserName, ActivePassword);
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        string token = await ReadAccessTokenAsync(login);
-
-        JwtSecurityToken decoded = new JwtSecurityTokenHandler().ReadJwtToken(token);
-        Assert.Equal(ActiveOperatorId.ToString("D"), decoded.Subject);
-        Assert.Equal("7", decoded.Claims.Single(claim => claim.Type == AuthnClaimTypes.AuthorizationStateVersion).Value);
-        Assert.True(decoded.ValidTo > DateTime.UtcNow);
-        Assert.DoesNotContain(TestJwtConfiguration.SigningKey, token, StringComparison.Ordinal);
-
-        using HttpResponseMessage probe = await SendProbeAsync(client, token);
-        Assert.Equal(HttpStatusCode.OK, probe.StatusCode);
-        string probeBody = await probe.Content.ReadAsStringAsync();
-        Assert.Contains("authenticationHandlerReached", probeBody, StringComparison.Ordinal);
-        Assert.Contains(ActiveOperatorId.ToString("D"), probeBody, StringComparison.Ordinal);
-        Assert.Contains("\"authorizationStateVersion\":\"7\"", probeBody, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task InvalidCredentialReturns401WithoutIssuingOrReturningJwt()
-    {
-        FixtureOperatorStore store = new();
-        store.Add(ActiveUserName, ActivePassword, OperatorState.Active, 1, ActiveOperatorId);
-        CountingTokenIssuer issuer = new();
-
-        using AuthnWebApplicationFactory factory = new(store, issuer);
-        using HttpClient client = factory.CreateClient();
-
-        using HttpResponseMessage response = await LoginAsync(client, ActiveUserName, "wrong-password");
+        using HttpResponseMessage response = await SendProbeAsync(client, token);
         string body = await response.Content.ReadAsStringAsync();
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        AssertErrorEnvelope(body);
-        Assert.Equal(0, issuer.IssueCount);
-        Assert.DoesNotContain("accessToken", body, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(TestJwtConfiguration.SigningKey, body, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task DisabledCredentialReturns401WithoutIssuingOrReturningJwt()
-    {
-        FixtureOperatorStore store = new();
-        store.Add(ActiveUserName, ActivePassword, OperatorState.Disabled, 3, ActiveOperatorId);
-        CountingTokenIssuer issuer = new();
-
-        using AuthnWebApplicationFactory factory = new(store, issuer);
-        using HttpClient client = factory.CreateClient();
-
-        using HttpResponseMessage response = await LoginAsync(client, ActiveUserName, ActivePassword);
-        string body = await response.Content.ReadAsStringAsync();
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        AssertErrorEnvelope(body);
-        Assert.Equal(0, issuer.IssueCount);
-        Assert.DoesNotContain("accessToken", body, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(TestJwtConfiguration.SigningKey, body, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task SuccessRehashNeededAuthenticatesWithoutWritingThePasswordHash()
-    {
-        const string password = "rehash-password";
-        FixtureOperatorStore store = new();
-        string legacyHash = CreateLegacyIdentityV2Hash(password);
-        store.AddHash(
-            "rehash.operator",
-            legacyHash,
-            OperatorState.Active,
-            authorizationStateVersion: 4,
-            ActiveOperatorId);
-
-        using AuthnWebApplicationFactory factory = new(store);
-        using HttpClient client = factory.CreateClient();
-
-        using HttpResponseMessage response = await LoginAsync(client, "rehash.operator", password);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(legacyHash, store.GetHash("rehash.operator"));
-        Assert.NotEmpty(await ReadAccessTokenAsync(response));
+        using JsonDocument document = JsonDocument.Parse(body);
+        Assert.True(document.RootElement.GetProperty("handlerReached").GetBoolean());
+        Assert.Equal(SubjectOperatorId.ToString("D"), document.RootElement.GetProperty("subject").GetString());
+    }
+
+    [Fact]
+    public async Task MissingBearerTokenDoesNotReachTheProbeHandler()
+    {
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync(AuthenticationProbeController.ProbePath);
+
+        await AssertRejectedBeforeProbeHandlerAsync(response, "MISSING");
     }
 
     [Fact]
     public async Task InvalidSignatureIsRejectedBeforeTheProbeHandler()
     {
-        using AuthnWebApplicationFactory factory = new(new FixtureOperatorStore());
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
         string token = CreateToken(signingKey: CreateOtherSigningKey());
 
@@ -139,7 +63,7 @@ public sealed class AuthnAuthenticationTests
     [Fact]
     public async Task WrongIssuerIsRejectedBeforeTheProbeHandler()
     {
-        using AuthnWebApplicationFactory factory = new(new FixtureOperatorStore());
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
         string token = CreateToken(issuer: "wrong-issuer");
 
@@ -151,7 +75,7 @@ public sealed class AuthnAuthenticationTests
     [Fact]
     public async Task WrongAudienceIsRejectedBeforeTheProbeHandler()
     {
-        using AuthnWebApplicationFactory factory = new(new FixtureOperatorStore());
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
         string token = CreateToken(audience: "wrong-audience");
 
@@ -163,7 +87,7 @@ public sealed class AuthnAuthenticationTests
     [Fact]
     public async Task ExpiredTokenIsRejectedBeforeTheProbeHandler()
     {
-        using AuthnWebApplicationFactory factory = new(new FixtureOperatorStore());
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
         string token = CreateToken(expires: DateTime.UtcNow.AddMinutes(-1));
 
@@ -175,7 +99,7 @@ public sealed class AuthnAuthenticationTests
     [Fact]
     public async Task DisallowedSigningAlgorithmIsRejectedBeforeTheProbeHandler()
     {
-        using AuthnWebApplicationFactory factory = new(new FixtureOperatorStore());
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
         string token = CreateToken(signingAlgorithm: SecurityAlgorithms.HmacSha384);
 
@@ -187,14 +111,10 @@ public sealed class AuthnAuthenticationTests
     [Fact]
     public async Task JwtAndSigningKeyAreAbsentFromErrorUnrelatedResponseAndLogs()
     {
-        FixtureOperatorStore store = new();
-        store.Add(ActiveUserName, ActivePassword, OperatorState.Active, 1, ActiveOperatorId);
         using ConsoleCapture capture = new();
-
-        using AuthnWebApplicationFactory factory = new(store);
+        using AuthenticationProbeApiFactory factory = new(TestJwtConfiguration.SigningKey);
         using HttpClient client = factory.CreateClient();
-        using HttpResponseMessage login = await LoginAsync(client, ActiveUserName, ActivePassword);
-        string token = await ReadAccessTokenAsync(login);
+        string token = CreateToken();
         using HttpResponseMessage invalidTokenResponse = await SendProbeAsync(client, token[..^1] + (token[^1] == 'a' ? 'b' : 'a'));
         using HttpResponseMessage unrelatedResponse = await client.GetAsync("/__contract/does-not-exist");
 
@@ -214,41 +134,54 @@ public sealed class AuthnAuthenticationTests
     }
 
     [Fact]
-    public async Task AuthenticationProbeDoesNotResolveCurrentOperatorStateOrRole()
+    public void TheProbeControllerDoesNotReferenceOperatorPersistenceOrAuthorizationState()
     {
-        FixtureOperatorStore store = new();
-        store.Add(ActiveUserName, ActivePassword, OperatorState.Active, 9, ActiveOperatorId);
+        string controllerSource = File.ReadAllText(Path.Combine(
+            RepositoryLayout.RepositoryRoot.FullName,
+            "tests",
+            "MinimalBankSystem.IntegrationTests",
+            "Authentication",
+            "AuthenticationProbeSupport.cs"));
+        string programSource = File.ReadAllText(Path.Combine(
+            RepositoryLayout.RepositoryRoot.FullName,
+            "src",
+            "MinimalBankSystem.Api",
+            "Program.cs"));
 
-        using AuthnWebApplicationFactory factory = new(store);
-        using HttpClient client = factory.CreateClient();
-        using HttpResponseMessage login = await LoginAsync(client, ActiveUserName, ActivePassword);
-        string token = await ReadAccessTokenAsync(login);
-
-        store.Clear();
-        using HttpResponseMessage probe = await SendProbeAsync(client, token);
-
-        Assert.Equal(HttpStatusCode.OK, probe.StatusCode);
-        Assert.Contains("authenticationHandlerReached", await probe.Content.ReadAsStringAsync(), StringComparison.Ordinal);
-        Assert.Equal(1, store.LookupCount);
+        Assert.DoesNotContain("BankDbContext", controllerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Operators", controllerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("AuthorizationStateVersion", controllerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("OperatorState", controllerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("/__authn/probe", programSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsEnvironment(\"Testing\")", programSource, StringComparison.Ordinal);
+        Assert.DoesNotContain(AuthenticationProbeController.ProbePath, programSource, StringComparison.Ordinal);
     }
 
-    private static async Task<HttpResponseMessage> LoginAsync(
-        HttpClient client,
-        string? userName,
-        string? password) =>
-        await client.PostAsJsonAsync("/auth/login", new { userName, password });
-
-    private static async Task<string> ReadAccessTokenAsync(HttpResponseMessage response)
+    [Fact]
+    public void IssuanceAndValidationUseTheSameCentralizedJwtParameters()
     {
-        using JsonDocument document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        string? token = document.RootElement.GetProperty("accessToken").GetString();
-        Assert.False(string.IsNullOrWhiteSpace(token));
-        return token!;
+        JwtAuthnOptions options = new()
+        {
+            SigningKey = TestJwtConfiguration.SigningKey,
+        };
+        Microsoft.IdentityModel.Tokens.TokenValidationParameters parameters = options.CreateValidationParameters();
+
+        Assert.Equal("minimal-bank-system", options.Issuer);
+        Assert.Equal("minimal-bank-system-api", options.Audience);
+        Assert.Equal(300, options.AccessTokenLifetimeSeconds);
+        Assert.Equal(options.Issuer, parameters.ValidIssuer);
+        Assert.Equal(options.Audience, parameters.ValidAudience);
+        Assert.Contains(SecurityAlgorithms.HmacSha256, parameters.ValidAlgorithms!);
+        Assert.True(parameters.ValidateIssuerSigningKey);
+        Assert.True(parameters.ValidateIssuer);
+        Assert.True(parameters.ValidateAudience);
+        Assert.True(parameters.ValidateLifetime);
+        Assert.Equal(TimeSpan.Zero, parameters.ClockSkew);
     }
 
     private static async Task<HttpResponseMessage> SendProbeAsync(HttpClient client, string token)
     {
-        using HttpRequestMessage request = new(HttpMethod.Get, "/__authn/probe");
+        using HttpRequestMessage request = new(HttpMethod.Get, AuthenticationProbeController.ProbePath);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return await client.SendAsync(request);
     }
@@ -265,7 +198,10 @@ public sealed class AuthnAuthenticationTests
         }
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        AssertErrorEnvelope(body);
+        Assert.DoesNotContain("handlerReached", body, StringComparison.OrdinalIgnoreCase);
+        using JsonDocument document = JsonDocument.Parse(body);
+        Assert.Equal("authentication_required", document.RootElement.GetProperty("code").GetString());
+        Assert.Equal("Authentication is required.", document.RootElement.GetProperty("message").GetString());
     }
 
     private static string CreateToken(
@@ -284,7 +220,7 @@ public sealed class AuthnAuthenticationTests
             issuer,
             audience,
             [
-                new Claim(JwtRegisteredClaimNames.Sub, ActiveOperatorId.ToString("D")),
+                new Claim(JwtRegisteredClaimNames.Sub, SubjectOperatorId.ToString("D")),
                 new Claim(AuthnClaimTypes.AuthorizationStateVersion, "1"),
             ],
             notBefore,
@@ -298,120 +234,4 @@ public sealed class AuthnAuthenticationTests
 
     private static byte[] CreateOtherSigningKey() =>
         Enumerable.Repeat((byte)0x5A, 32).ToArray();
-
-    private static string CreateLegacyIdentityV2Hash(string password)
-    {
-        Operator probe = OperatorFactory.Create(
-            "rehash.probe",
-            password,
-            OperatorRole.Viewer,
-            DateTimeOffset.UnixEpoch,
-            "rehash-probe-stamp");
-        PasswordHasher<Operator> legacyHasher = new(Options.Create(new PasswordHasherOptions
-        {
-            CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2,
-        }));
-        return legacyHasher.HashPassword(probe, password);
-    }
-
-    private static void AssertErrorEnvelope(string body)
-    {
-        using JsonDocument document = JsonDocument.Parse(body);
-        Assert.Equal("authentication_required", document.RootElement.GetProperty("code").GetString());
-        Assert.Equal("Authentication is required.", document.RootElement.GetProperty("message").GetString());
-    }
-
-    private sealed class FixtureOperatorStore : IAuthnOperatorStore
-    {
-        private readonly Dictionary<string, AuthnOperatorCredential> credentials = new(StringComparer.Ordinal);
-
-        public int LookupCount { get; private set; }
-
-        public void Add(
-            string userName,
-            string password,
-            OperatorState state,
-            int authorizationStateVersion,
-            Guid id) =>
-            AddHash(
-                userName,
-                OperatorFactory.Create(
-                    userName,
-                    password,
-                    OperatorRole.Viewer,
-                    DateTimeOffset.UnixEpoch,
-                    "fixture-security-stamp").PasswordHash,
-                state,
-                authorizationStateVersion,
-                id);
-
-        public void AddHash(
-            string userName,
-            string passwordHash,
-            OperatorState state,
-            int authorizationStateVersion,
-            Guid id)
-        {
-            credentials[userName.Trim().ToUpperInvariant()] = new AuthnOperatorCredential(
-                id,
-                passwordHash,
-                state,
-                authorizationStateVersion);
-        }
-
-        public string GetHash(string userName) => credentials[userName.Trim().ToUpperInvariant()].PersistedPasswordHash;
-
-        public void Clear() => credentials.Clear();
-
-        public Task<AuthnOperatorCredential?> FindByNormalizedUserNameAsync(
-            string normalizedUserName,
-            CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            LookupCount++;
-            credentials.TryGetValue(normalizedUserName, out AuthnOperatorCredential? credential);
-            return Task.FromResult(credential);
-        }
-    }
-
-    private sealed class CountingTokenIssuer : IJwtAccessTokenIssuer
-    {
-        public int IssueCount { get; private set; }
-
-        public string Issue(AuthnLoginResult login)
-        {
-            _ = login;
-            IssueCount++;
-            return "test-issued-token";
-        }
-    }
-}
-
-internal sealed class AuthnWebApplicationFactory(
-    IAuthnOperatorStore store,
-    IJwtAccessTokenIssuer? tokenIssuer = null,
-    TimeProvider? timeProvider = null) : WebApplicationFactory<api::Program>
-{
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Testing");
-        builder.UseSetting(JwtAuthnOptions.SigningKeyConfigurationKey, TestJwtConfiguration.SigningKey);
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<IAuthnOperatorStore>();
-            services.AddSingleton(store);
-
-            if (tokenIssuer is not null)
-            {
-                services.RemoveAll<IJwtAccessTokenIssuer>();
-                services.AddSingleton(tokenIssuer);
-            }
-
-            if (timeProvider is not null)
-            {
-                services.RemoveAll<TimeProvider>();
-                services.AddSingleton(timeProvider);
-            }
-        });
-    }
 }

@@ -9,6 +9,8 @@ readonly sentinel="${FND06_SECRET_SENTINEL:-FND06_TEST_SENTINEL_NOT_A_CREDENTIAL
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
 readonly api_sentinel="${sentinel}_API"
+readonly jwt_sentinel="${sentinel}_JWT"
+readonly jwt_secret_sentinel="$(printf '%s' "$jwt_sentinel" | base64 | tr -d '\n')"
 readonly expected_foundation_migration='20260809113338_InitialFoundation'
 readonly expected_identity_migration='20260813181449_AddOperatorIdentity'
 readonly compose=(docker compose -p "$project_name")
@@ -23,6 +25,7 @@ done
 export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
 export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
 export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
+export MBS_JWT_SIGNING_KEY="${MBS_JWT_SIGNING_KEY:-$jwt_secret_sentinel}"
 
 container_id() {
   local service="$1" id
@@ -114,6 +117,7 @@ assert_health() {
     return 1
   }
   for forbidden in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel" \
+    "$jwt_sentinel" "$jwt_secret_sentinel" \
     'Password=' 'Host=' 'Username=' 'ConnectionStrings' \
     'Exception' 'StackTrace' 'stack trace' 'database_unreachable' 'migrations_pending' \
     'dependency_failure' 'postgresql-readiness'; do
@@ -168,6 +172,7 @@ assert_no_log_disclosure() {
   local logs forbidden
   logs="$("${compose[@]}" logs --no-color --timestamps api)"
   for forbidden in "$bootstrap_sentinel" "$migrator_sentinel" "$api_sentinel" \
+    "$jwt_sentinel" "$jwt_secret_sentinel" \
     'Password=' 'ConnectionStrings__' 'StackTrace' 'stack trace' '   at '; do
     [[ "$logs" != *"$forbidden"* ]] || {
       printf 'ORACLE_SIGNATURE=health-log-disclosure:%s\n' "$forbidden" >&2

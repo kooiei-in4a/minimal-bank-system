@@ -78,13 +78,22 @@ jq --exit-status \
     .secrets.database_bootstrap_password.environment == "MBS_DATABASE_BOOTSTRAP_PASSWORD" and
     .secrets.database_migrator_password.environment == "MBS_DATABASE_MIGRATOR_PASSWORD" and
     .secrets.database_api_password.environment == "MBS_DATABASE_API_PASSWORD" and
+    .secrets.jwt_signing_key.environment == "MBS_JWT_SIGNING_KEY" and
     (.services.migrator.secrets | length) == 1 and
-    (.services.api.secrets | length) == 2 and
-    any(.services.api.secrets[]; .source == "database_api_password" and .target == "database_password") and
-    any(.services.api.secrets[]; .source == "jwt_signing_key" and .target == "jwt_signing_key") and
-    (.services.postgres.secrets | map(.source) | index("jwt_signing_key")) == null and
-    (.services.migrator.secrets | map(.source) | index("jwt_signing_key")) == null
+    (.services.api.secrets | length) == 2
   ' <<<"$rendered" >/dev/null
+
+# WP2-AUTHN-01: JWT signing-key assertions are an independent block. DB credential-boundary
+# assertions below remain verbatim from main and are not rewritten to accommodate JWT.
+jq --exit-status '
+    any(.services.api.secrets[]; .source == "jwt_signing_key" and .target == "jwt_signing_key") and
+    .services.api.environment.Authentication__Jwt__SigningKeyFile == "/run/secrets/jwt_signing_key" and
+    (.services.migrator.secrets | map(.source) | index("jwt_signing_key")) == null and
+    (.services.postgres.secrets | map(.source) | index("jwt_signing_key")) == null
+  ' <<<"$rendered" >/dev/null || {
+  printf 'ORACLE_SIGNATURE=jwt-signing-key-secret-not-api-scoped\n' >&2
+  exit 1
+}
 
 # WP2-DB-01: the bootstrap, Migrator and API runtime principals and credentials must all be
 # distinct, and the bootstrap credential must never be wired into the Migrator or API service.
