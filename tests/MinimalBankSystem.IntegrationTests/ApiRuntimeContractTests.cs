@@ -1,3 +1,5 @@
+extern alias api;
+
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Net;
@@ -14,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Authentication;
 
 namespace MinimalBankSystem.IntegrationTests;
 
@@ -678,11 +681,12 @@ public sealed record ValidationRequest([Required] string? Name);
 
 internal sealed class ContractWebApplicationFactory(
     Action<IServiceCollection>? configureServices = null,
-    TimeProvider? timeProvider = null) : WebApplicationFactory<Program>
+    TimeProvider? timeProvider = null) : WebApplicationFactory<api::Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
+        builder.UseSetting(JwtAuthnOptions.SigningKeyConfigurationKey, TestJwtConfiguration.SigningKey);
         builder.ConfigureServices(services =>
         {
             services
@@ -699,6 +703,12 @@ internal sealed class ContractWebApplicationFactory(
             configureServices?.Invoke(services);
         });
     }
+}
+
+internal static class TestJwtConfiguration
+{
+    public const string SigningKey =
+        "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVm";
 }
 
 internal sealed class ContractProbeExceptionMapper : IApiExceptionMapper

@@ -8,6 +8,10 @@ set -Eeuo pipefail
 readonly repository_root="$(git rev-parse --show-toplevel)"
 readonly source_file="$repository_root/src/MinimalBankSystem.Api/Runtime/HealthContract.cs"
 readonly test_project="$repository_root/tests/MinimalBankSystem.IntegrationTests/MinimalBankSystem.IntegrationTests.csproj"
+readonly sentinel="${FND06_SECRET_SENTINEL:-FND06_TEST_SENTINEL_NOT_A_CREDENTIAL}"
+readonly jwt_sentinel="${sentinel}_JWT"
+readonly jwt_secret_sentinel="$(printf '%s' "$jwt_sentinel" | base64 | tr -d '\n')"
+export MBS_JWT_SIGNING_KEY="${MBS_JWT_SIGNING_KEY:-$jwt_secret_sentinel}"
 
 if command -v dotnet >/dev/null; then
   readonly dotnet_host="$(command -v dotnet)"

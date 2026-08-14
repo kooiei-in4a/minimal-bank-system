@@ -8,11 +8,14 @@ readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_MUTATION_SENTINEL_NOT_A_CREDEN
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
 readonly api_sentinel="${sentinel}_API"
+readonly jwt_sentinel="${sentinel}_JWT"
+readonly jwt_secret_sentinel="$(printf '%s' "$jwt_sentinel" | base64 | tr -d '\n')"
 readonly run_id="${RANDOM}${RANDOM}"
 
 export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
 export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
 export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
+export MBS_JWT_SIGNING_KEY="${MBS_JWT_SIGNING_KEY:-$jwt_secret_sentinel}"
 
 project_name=''
 source_root=''

@@ -23,7 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/MinimalBankSystem.Api/MinimalBankSystem.Api.csproj" />
+    <ProjectReference Include="../../src/MinimalBankSystem.Api/MinimalBankSystem.Api.csproj">
+      <Aliases>global,api</Aliases>
+    </ProjectReference>
     <ProjectReference Include="../../src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj" />
     <ProjectReference Include="../../src/MinimalBankSystem.Migrator/MinimalBankSystem.Migrator.csproj" />
   </ItemGroup>

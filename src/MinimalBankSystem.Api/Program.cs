@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.Infrastructure.Persistence;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -26,6 +29,43 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+
+builder.Services
+    .AddOptions<JwtAuthnOptions>()
+    .BindConfiguration(JwtAuthnOptions.SectionName)
+    .Validate(
+        options => options.TryGetSigningKeyBytes(out _),
+        "An external JWT signing key must be configured as a base64 secret or secret file.")
+    .Validate(
+        options => options.AccessTokenLifetimeSeconds is > 0 and <= 900,
+        "The JWT access-token lifetime must be between 1 and 900 seconds.")
+    .ValidateOnStart();
+
+builder.Services.AddScoped<AuthnLoginService>();
+builder.Services.AddSingleton<IJwtAccessTokenIssuer, JwtAccessTokenIssuer>();
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtAuthnOptions>>((options, jwtOptions) =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = jwtOptions.Value.CreateValidationParameters();
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(
+                    ApiErrorEnvelope.AuthenticationRequired,
+                    context.HttpContext.RequestAborted);
+            },
+        };
+    });
+builder.Services.AddAuthorization();
 
 // Normal API startup never evolves the schema. The options factory runs only when persistence is
 // resolved and fails closed if the canonical PostgreSQL connection is absent.
@@ -59,6 +99,8 @@ WebApplication app = builder.Build();
 
 app.UseMiddleware<ApiExceptionMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseStatusCodePages(async statusCodeContext =>
 {
     HttpContext context = statusCodeContext.HttpContext;

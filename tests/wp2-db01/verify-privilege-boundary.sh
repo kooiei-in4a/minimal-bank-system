@@ -14,6 +14,8 @@ readonly sentinel="${WP2DB01_SECRET_SENTINEL:-WP2DB01_TEST_SENTINEL_NOT_A_CREDEN
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
 readonly api_sentinel="${sentinel}_API"
+readonly jwt_sentinel="${sentinel}_JWT"
+readonly jwt_secret_sentinel="$(printf '%s' "$jwt_sentinel" | base64 | tr -d '\n')"
 readonly migrator_role='minimal_bank_migrator'
 readonly api_role='minimal_bank_api'
 readonly postgres_network_host='postgres'
@@ -33,6 +35,7 @@ done
 export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-$bootstrap_sentinel}"
 export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-$migrator_sentinel}"
 export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-$api_sentinel}"
+export MBS_JWT_SIGNING_KEY="${MBS_JWT_SIGNING_KEY:-$jwt_secret_sentinel}"
 [[ "$wrong_password" != "$MBS_DATABASE_MIGRATOR_PASSWORD" &&
    "$wrong_password" != "$MBS_DATABASE_API_PASSWORD" ]] || {
   printf 'Wrong-password control unexpectedly equals a configured credential.\n' >&2
@@ -42,6 +45,8 @@ declare -ar credential_materials=(
   "$MBS_DATABASE_BOOTSTRAP_PASSWORD"
   "$MBS_DATABASE_MIGRATOR_PASSWORD"
   "$MBS_DATABASE_API_PASSWORD"
+  "$jwt_sentinel"
+  "$MBS_JWT_SIGNING_KEY"
 )
 
 container_id() {

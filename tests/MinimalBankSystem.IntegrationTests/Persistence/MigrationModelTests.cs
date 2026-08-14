@@ -191,7 +191,7 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void TheApiDoesNotInstallIdentityRoleOrAuthenticationMiddleware()
+    public void TheApiDoesNotInstallIdentityRoleOrSecondIdentityPersistenceModel()
     {
         string apiProgram = File.ReadAllText(Path.Combine(
             RepositoryLayout.RepositoryRoot.FullName,
@@ -202,9 +202,9 @@ public sealed class MigrationModelTests
         Assert.DoesNotContain("IPasswordHasher<Operator>", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("AddIdentityCore", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("AddIdentity<", apiProgram, StringComparison.Ordinal);
-        Assert.DoesNotContain("AddAuthentication", apiProgram, StringComparison.Ordinal);
-        Assert.DoesNotContain("UseAuthentication", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("IdentityDbContext", apiProgram, StringComparison.Ordinal);
+        Assert.Contains("AddAuthentication", apiProgram, StringComparison.Ordinal);
+        Assert.Contains("UseAuthentication", apiProgram, StringComparison.Ordinal);
     }
 
     private static bool IsBuildOutput(FileInfo file)

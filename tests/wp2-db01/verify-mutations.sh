@@ -20,9 +20,12 @@ readonly postgres_network_host='postgres'
 readonly wrong_password="${sentinel}_WRONG_PASSWORD_CONTROL"
 readonly probe_table='public.db_priv_01_probe'
 
+readonly jwt_sentinel="${sentinel}_JWT"
+readonly jwt_secret_sentinel="$(printf '%s' "$jwt_sentinel" | base64 | tr -d '\n')"
 export MBS_DATABASE_BOOTSTRAP_PASSWORD="${MBS_DATABASE_BOOTSTRAP_PASSWORD:-${sentinel}_BOOTSTRAP}"
 export MBS_DATABASE_MIGRATOR_PASSWORD="${MBS_DATABASE_MIGRATOR_PASSWORD:-${sentinel}_MIGRATOR}"
 export MBS_DATABASE_API_PASSWORD="${MBS_DATABASE_API_PASSWORD:-${sentinel}_API}"
+export MBS_JWT_SIGNING_KEY="${MBS_JWT_SIGNING_KEY:-$jwt_secret_sentinel}"
 [[ "$wrong_password" != "$MBS_DATABASE_MIGRATOR_PASSWORD" &&
    "$wrong_password" != "$MBS_DATABASE_API_PASSWORD" ]] || {
   printf 'Wrong-password control unexpectedly equals a configured credential.\n' >&2

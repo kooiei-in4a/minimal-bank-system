@@ -1,3 +1,5 @@
+extern alias api;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using MinimalBankSystem.Infrastructure.Persistence;
 using MinimalBankSystem.Infrastructure.Persistence.Identity;
+using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.IntegrationTests.Persistence;
 using MinimalBankSystem.Migrator;
 using Npgsql;
@@ -290,11 +293,12 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
         return new BankDbContext(options.Options);
     }
 
-    private sealed class MigrationApiFactory(string connectionString) : WebApplicationFactory<Program>
+    private sealed class MigrationApiFactory(string connectionString) : WebApplicationFactory<api::Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Production");
+            builder.UseSetting(JwtAuthnOptions.SigningKeyConfigurationKey, TestJwtConfiguration.SigningKey);
             builder.UseSetting(
                 $"ConnectionStrings:{BankPersistence.ConnectionStringName}",
                 connectionString);
