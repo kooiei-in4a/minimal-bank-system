@@ -76,7 +76,7 @@ Parent Issue #3またはWork Package Issueの詳細をleaf Issueへ複製する�
 - 要件上の未決事項を決定する。
 - 仕様およびADRを承認する。
 - AIだけでは決めるべきでない重要なトレードオフやprocess decisionを決定する。
-- WP2-AUTHN-01 pilot適用範囲内に限り、既定ルールと客観的証拠から一意に決まる定型的なstage progressionを毎回semantic approvalしない。pilot適用範囲外では、既定の`HUMAN_APPROVAL: required`を維持する。
+- 明示的に活性化されたbounded pilot scope（explicitly activated bounded pilot scope）内に限り、既定ルールと客観的証拠から一意に決まる定型的なstage progressionを毎回semantic approvalしない。pilot適用範囲外では、既定の`HUMAN_APPROVAL: required`を維持する。
 - 最終的なGo / No-Goを判断する。
 
 ### Agent A: Author / Implementer
@@ -120,6 +120,8 @@ TARGET_SHA_EXACT
 NO_UNRESOLVED_BLOCKER_MAJOR
 ```
 
+対象leafでv2 Transition Bundle pilot（§5.5）が`ACTIVE`な場合は、上記に加えて`docs/retrospectives/wp2-human-decision-handoff-pilot-v2.md`のBundle completeness gate（Transition Bundleの4要素が揃い、同一exact identityで一致していること）も満たす。
+
 ## 5.2 Write Preflightとmain保護
 
 GitHubへの最初のwriteより前に、次を明示して確認する。これはmechanical preflightであり、新しいsemantic review工程ではない。
@@ -162,7 +164,9 @@ BASELINE_GREEN
 
 通常のagent自動起動はまだ行わない。ただし、Agent launchの実操作を人間が行うことと、stage progressionのsemantic approvalを人間が行うことを分離する。
 
-WP2-AUTHN-01では、Issue #191および次のKoo-approved pilot contractを適用する。
+### v1 contract（historical / WP2-AUTHN-01限定・完了済み）
+
+WP2-AUTHN-01では、Issue #191および次のKoo-approved pilot contract（v1）を適用した。
 
 - `docs/retrospectives/wp2-human-decision-handoff-pilot.md`
 
@@ -180,19 +184,33 @@ FINAL_PRODUCT_MERGE_APPROVAL: HUMAN_REQUIRED
 JIT_HANDOFF: COPY_PASTE_READY
 ```
 
+v1 pilotはWP2-AUTHN-01の完了（Issue #167 closed/completed）をもって`AUTONOMOUS_EXECUTION_SCOPE: INACTIVE`へ終了しており、historical evidenceとして`docs/retrospectives/wp2-human-decision-handoff-pilot.md`とIssue #191をそのまま保持する。v1文書とIssue #191は書き換えず、v2の正本として再利用しない。
+
+### v2 contract（current / Transition Bundle）
+
+Post-AUTHN-01評価`MODIFY`（Issue #191 comment `5293594071`）を受け、Issue #197でTransition Bundleを中心概念とするv2 contractを導入する。正準schemaと詳細は次を唯一の正本とし、本書では複製しない。
+
+- `docs/retrospectives/wp2-human-decision-handoff-pilot-v2.md`
+
+v2は、v1が確立したrule-decidable stage progressionの原則を維持しつつ、stage transitionのmaterialization契約を、`STAGE_RESULT_EVIDENCE` / `PARENT_CURRENT_AUTHORITY` / `WP_CURRENT_AUTHORITY` / `NEXT_AGENT_HANDOFF`の4要素からなるTransition Bundleへ置き換える。GitHub writeはtransactionalでないため、`NEXT_AGENT_HANDOFF`は必ず他の3要素が同一exact identityで揃った後に生成する**bundle finalization record**とする。前3要素が揃っていない、またはidentity/stageが一致しない場合、`NEXT_AGENT_HANDOFF`を生成してはならない。
+
+v2の`AUTONOMOUS_EXECUTION_SCOPE_V2`は、本process PRのmergeだけでは`ACTIVE`にならない。現時点では`STATE: NOT_ACTIVE`であり、意図された次対象はWP2-AUD-01 / #166だが、対象leafへの単一・明示的なhuman activationを別途必要とする。
+
 ```yaml
 OUTSIDE_PILOT_SCOPE:
   HUMAN_APPROVAL: required
   JIT_HANDOFF: GENERATE_ONLY
 ```
 
-WP2-AUTHN-01以外（WP2-AUTHZ-01以降を含む）では、`OUTSIDE_PILOT_SCOPE`が既定であり、本pilotは自動適用されない。次leafで同様の仕組みを使う場合は、新しいhuman activationとscope拡張の決定が必要である。
+WP2-AUTHN-01以外（WP2-AUD-01、WP2-AUTHZ-01以降を含む）では、`OUTSIDE_PILOT_SCOPE`が既定であり、v1・v2いずれのpilotも自動適用されない。次leafで同様の仕組みを使う場合は、新しいhuman activationとscope拡張の決定が必要である。
 
-`AUTONOMOUS_EXECUTION_SCOPE`の初回ACTIVE化は、process pilotの独立レビューと人間の最終承認後に、Parent #3 / WP-2 #34 Current Authorityで対象leafを限定して行う。Coordinator AIが自己承認してACTIVEにしてはならない。`AUTONOMOUS_EXECUTION_SCOPE`の正準スキーマは`docs/retrospectives/wp2-human-decision-handoff-pilot.md`を唯一の正本とし、本書では複製しない。
+`AUTONOMOUS_EXECUTION_SCOPE_V2`の初回ACTIVE化は、process pilotの独立レビューと人間の最終承認後に、Parent #3 / WP-2 #34 Current Authorityで対象leafを限定して行う。Coordinator AIが自己承認してACTIVEにしてはならない。
 
-ACTIVEな対象leafの内部では、Independent Issue Ready Reviewが確定したverdict（PASS）、Blocker / Major 0、required CI PASS等から一意に導けるCurrent Authority / implementation authorizationを、Coordinator AIがGate / Current Authorityとして形式化(materialize)してよい。Coordinator AI自身がIssue Readyをsemantic評価することは含まない。正式なauthority record自体は省略しない。rule-decidableかsemantic decisionかの分類自体に合理的な迷いがある場合は`HUMAN_DECISION_REQUIRED`とする。
+ACTIVEな対象leafの内部では、Independent Issue Ready Reviewが確定したverdict（PASS）、Blocker / Major 0、required CI PASS等から一意に導けるCurrent Authority / implementation authorizationを、Coordinator AIがGate / Current Authorityとして形式化(materialize)してよい。加えて、対応するTransition Bundleの4要素を、上記の順序契約に従ってmaterializeする。Coordinator AI自身がIssue Readyをsemantic評価することは含まない。正式なauthority record自体は省略しない。rule-decidableかsemantic decisionかの分類自体に合理的な迷いがある場合は`HUMAN_DECISION_REQUIRED`とする。
 
-人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。受領Agentは、handoffのpromptをauthorityとして信用しない。着手前にGitHub一次証拠（Parent #3 Current Authority、WP-2 #34 Current Authority、target Issue、exact identity、write/operation authorization）を再確認し、promptと一次証拠が矛盾する場合はSTOPする。
+重要なagent launch前のStage Entry Check（§5.1）には、v2 pilotがACTIVEな対象leafでBundle completeness gate（`STAGE_RESULT_RECORDED` / `PARENT_AUTHORITY_SYNCED` / `WP_AUTHORITY_SYNCED` / `HANDOFF_RECORDED_LAST` / `BUNDLE_STATUS_COMPLETE` / `BUNDLE_TARGET_IDENTITY_EXACT`）を含める。詳細はv2文書を参照する。
+
+人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。受領Agentは、handoffのpromptをauthorityとして信用しない。着手前にGitHub一次証拠（Parent #3 Current Authority、WP-2 #34 Current Authority、target Issue、exact identity、write/operation authorization）を再確認し、promptと一次証拠が矛盾する場合はSTOPする。v2 pilotがACTIVEな対象leafでは、加えてTransition Bundleの完全性（Bundle completeness gate）を再確認し、部分的・不整合な場合は既定でmechanical STOP / repairとする（v2文書参照）。
 
 ## 5.6 Human Decision Escalation
 
