@@ -15,10 +15,10 @@ internal sealed class OperatorConfiguration : IEntityTypeConfiguration<Operator>
             {
                 table.HasCheckConstraint(
                     OperatorPersistence.StateCheckConstraint,
-                    $"{OperatorPersistence.StateColumn} IN ('active', 'disabled')");
+                    $"{OperatorPersistence.StateColumn} IN ('{OperatorPersistence.ActiveStateToken}', '{OperatorPersistence.DisabledStateToken}')");
                 table.HasCheckConstraint(
                     OperatorPersistence.RoleCheckConstraint,
-                    $"{OperatorPersistence.FixedRoleColumn} IN ('administrator', 'teller', 'viewer')");
+                    $"{OperatorPersistence.FixedRoleColumn} IN ('{OperatorPersistence.AdministratorRoleToken}', '{OperatorPersistence.TellerRoleToken}', '{OperatorPersistence.ViewerRoleToken}')");
             });
 
         builder.HasKey(operatorEntity => operatorEntity.Id);
@@ -52,13 +52,17 @@ internal sealed class OperatorConfiguration : IEntityTypeConfiguration<Operator>
         builder.Property(operatorEntity => operatorEntity.State)
             .HasColumnName(OperatorPersistence.StateColumn)
             .HasColumnType("text")
-            .HasConversion(LowercaseEnumConverter.Create<OperatorState>())
+            .HasConversion(
+                state => ToStateToken(state),
+                token => FromStateToken(token))
             .IsRequired();
 
         builder.Property(operatorEntity => operatorEntity.Role)
             .HasColumnName(OperatorPersistence.FixedRoleColumn)
             .HasColumnType("text")
-            .HasConversion(LowercaseEnumConverter.Create<OperatorRole>())
+            .HasConversion(
+                role => ToRoleToken(role),
+                token => FromRoleToken(token))
             .IsRequired();
 
         builder.Property(operatorEntity => operatorEntity.AuthorizationStateVersion)
@@ -76,21 +80,38 @@ internal sealed class OperatorConfiguration : IEntityTypeConfiguration<Operator>
             .HasColumnType("timestamp with time zone")
             .IsRequired();
 
-        builder.HasIndex(operatorEntity => operatorEntity.UserName)
-            .IsUnique()
-            .HasDatabaseName(OperatorPersistence.UserNameIndex);
-
         builder.HasIndex(operatorEntity => operatorEntity.NormalizedUserName)
             .IsUnique()
             .HasDatabaseName(OperatorPersistence.NormalizedUserNameIndex);
     }
-}
 
-internal static class LowercaseEnumConverter
-{
-    public static ValueConverter<TEnum, string> Create<TEnum>()
-        where TEnum : struct, Enum =>
-        new(
-            value => value.ToString().ToLowerInvariant(),
-            stored => Enum.Parse<TEnum>(stored, ignoreCase: true));
+    private static string ToStateToken(OperatorState state) => state switch
+    {
+        OperatorState.Active => OperatorPersistence.ActiveStateToken,
+        OperatorState.Disabled => OperatorPersistence.DisabledStateToken,
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown Operator state."),
+    };
+
+    private static OperatorState FromStateToken(string token) => token switch
+    {
+        OperatorPersistence.ActiveStateToken => OperatorState.Active,
+        OperatorPersistence.DisabledStateToken => OperatorState.Disabled,
+        _ => throw new ArgumentOutOfRangeException(nameof(token), token, "Unrecognized persisted Operator state."),
+    };
+
+    private static string ToRoleToken(OperatorRole role) => role switch
+    {
+        OperatorRole.Administrator => OperatorPersistence.AdministratorRoleToken,
+        OperatorRole.Teller => OperatorPersistence.TellerRoleToken,
+        OperatorRole.Viewer => OperatorPersistence.ViewerRoleToken,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown Operator role."),
+    };
+
+    private static OperatorRole FromRoleToken(string token) => token switch
+    {
+        OperatorPersistence.AdministratorRoleToken => OperatorRole.Administrator,
+        OperatorPersistence.TellerRoleToken => OperatorRole.Teller,
+        OperatorPersistence.ViewerRoleToken => OperatorRole.Viewer,
+        _ => throw new ArgumentOutOfRangeException(nameof(token), token, "Unrecognized persisted Operator role."),
+    };
 }

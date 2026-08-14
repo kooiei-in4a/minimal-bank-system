@@ -38,11 +38,6 @@ public partial class AddOperatorIdentity : Migration
             column: "normalized_user_name",
             unique: true);
 
-        migrationBuilder.CreateIndex(
-            name: "ix_operators_user_name",
-            table: "operators",
-            column: "user_name",
-            unique: true);
     }
 
     /// <inheritdoc />

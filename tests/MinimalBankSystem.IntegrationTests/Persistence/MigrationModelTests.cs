@@ -53,6 +53,14 @@ public sealed class MigrationModelTests
         Assert.Equal(OperatorPersistence.TableName, operatorType.GetTableName());
         Assert.Null(operatorType.FindNavigation("Roles"));
         Assert.Empty(operatorType.GetReferencingForeignKeys());
+        Assert.Contains(
+            operatorType.GetIndexes(),
+            index => index.IsUnique
+                && index.Properties.Count == 1
+                && index.Properties[0].Name == nameof(Operator.NormalizedUserName));
+        Assert.DoesNotContain(
+            operatorType.GetIndexes(),
+            index => index.Properties.Any(property => property.Name == nameof(Operator.UserName)));
         Assert.DoesNotContain(
             entityTypes,
             entity => entity.ClrType.Name.Contains("IdentityRole", StringComparison.Ordinal)
@@ -191,7 +199,7 @@ public sealed class MigrationModelTests
             "MinimalBankSystem.Api",
             "Program.cs"));
 
-        Assert.Contains("IPasswordHasher<Operator>", apiProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("IPasswordHasher<Operator>", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("AddIdentityCore", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("AddIdentity<", apiProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("AddAuthentication", apiProgram, StringComparison.Ordinal);

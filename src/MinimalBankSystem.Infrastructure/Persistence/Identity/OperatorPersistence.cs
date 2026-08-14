@@ -16,8 +16,13 @@ public static class OperatorPersistence
     public const string UpdatedAtColumn = "updated_at";
     public const string StateCheckConstraint = "ck_operators_state";
     public const string RoleCheckConstraint = "ck_operators_fixed_role";
-    public const string UserNameIndex = "ix_operators_user_name";
     public const string NormalizedUserNameIndex = "ix_operators_normalized_user_name";
+
+    public const string ActiveStateToken = "active";
+    public const string DisabledStateToken = "disabled";
+    public const string AdministratorRoleToken = "administrator";
+    public const string TellerRoleToken = "teller";
+    public const string ViewerRoleToken = "viewer";
 
     public const string IdentityMigrationId = "20260813181449_AddOperatorIdentity";
 }

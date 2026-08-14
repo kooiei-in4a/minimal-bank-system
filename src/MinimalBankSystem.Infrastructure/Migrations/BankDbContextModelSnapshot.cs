@@ -78,10 +78,6 @@ namespace MinimalBankSystem.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_operators_normalized_user_name");
 
-                    b.HasIndex("UserName")
-                        .IsUnique()
-                        .HasDatabaseName("ix_operators_user_name");
-
                     b.ToTable("operators", null, t =>
                         {
                             t.HasCheckConstraint("ck_operators_fixed_role", "fixed_role IN ('administrator', 'teller', 'viewer')");

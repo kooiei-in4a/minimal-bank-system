@@ -24,8 +24,14 @@ public sealed class OperatorPersistenceTests(PostgreSqlContainerFixture fixture)
 
     private static readonly TimeSpan MigrationBudget = TimeSpan.FromSeconds(120);
 
-    [Fact]
-    public async Task OperatorRoundTripsUuidV7RoleStatePasswordAndAuthorizationFields()
+    [Theory]
+    [InlineData(OperatorRole.Administrator, "administrator", "admin")]
+    [InlineData(OperatorRole.Teller, "teller", "teller")]
+    [InlineData(OperatorRole.Viewer, "viewer", "viewer")]
+    public async Task OperatorRoundTripsUuidV7RoleStatePasswordAndAuthorizationFields(
+        OperatorRole role,
+        string expectedRoleToken,
+        string userNameSuffix)
     {
         await MigrateAsync();
 
@@ -33,9 +39,9 @@ public sealed class OperatorPersistenceTests(PostgreSqlContainerFixture fixture)
         DateTimeOffset utcNow = time.GetUtcNow();
         string securityStamp = Guid.NewGuid().ToString();
         Operator created = Operator.Create(
-            userName: "id01.roundtrip.admin",
+            userName: $"id01.roundtrip.{userNameSuffix}",
             passwordHash: IdentityPassword.Hash(SeedPlaintextPassword),
-            role: OperatorRole.Administrator,
+            role,
             utcNow: utcNow,
             securityStamp: securityStamp);
 
@@ -54,10 +60,10 @@ public sealed class OperatorPersistenceTests(PostgreSqlContainerFixture fixture)
 
         Assert.Equal(created.Id, loaded.Id);
         Assert.Equal(7, loaded.Id.Version);
-        Assert.Equal("id01.roundtrip.admin", loaded.UserName);
-        Assert.Equal("ID01.ROUNDTRIP.ADMIN", loaded.NormalizedUserName);
+        Assert.Equal($"id01.roundtrip.{userNameSuffix}", loaded.UserName);
+        Assert.Equal($"ID01.ROUNDTRIP.{userNameSuffix.ToUpperInvariant()}", loaded.NormalizedUserName);
         Assert.Equal(OperatorState.Active, loaded.State);
-        Assert.Equal(OperatorRole.Administrator, loaded.Role);
+        Assert.Equal(role, loaded.Role);
         Assert.Equal(Operator.InitialAuthorizationStateVersion, loaded.AuthorizationStateVersion);
         Assert.Equal(securityStamp, loaded.SecurityStamp);
         Assert.Equal(FrozenUtc, loaded.CreatedAt);
@@ -65,6 +71,15 @@ public sealed class OperatorPersistenceTests(PostgreSqlContainerFixture fixture)
         Assert.NotEqual(SeedPlaintextPassword, loaded.PasswordHash);
         Assert.DoesNotContain(SeedPlaintextPassword, loaded.PasswordHash, StringComparison.Ordinal);
         Assert.Equal(PasswordVerificationResult.Success, IdentityPassword.Verify(loaded, SeedPlaintextPassword));
+        Assert.Equal(PasswordVerificationResult.Failed, IdentityPassword.Verify(loaded, "incorrect-password"));
+
+        string storedRole = Assert.IsType<string>(
+            await ExecuteScalarAsync($"SELECT {OperatorPersistence.FixedRoleColumn} FROM {OperatorPersistence.TableName};"));
+        Assert.Equal(expectedRoleToken, storedRole);
+
+        string storedState = Assert.IsType<string>(
+            await ExecuteScalarAsync($"SELECT {OperatorPersistence.StateColumn} FROM {OperatorPersistence.TableName};"));
+        Assert.Equal(OperatorPersistence.ActiveStateToken, storedState);
 
         string storedHash = Assert.IsType<string>(
             await ExecuteScalarAsync($"SELECT {OperatorPersistence.PasswordHashColumn} FROM {OperatorPersistence.TableName};"));
@@ -172,7 +187,7 @@ public sealed class OperatorPersistenceTests(PostgreSqlContainerFixture fixture)
         using IServiceScope scope = factory.Services.CreateScope();
         BankDbContext context = scope.ServiceProvider.GetRequiredService<BankDbContext>();
         Assert.Empty(await context.Operators.ToListAsync());
-        Assert.NotNull(scope.ServiceProvider.GetService<IPasswordHasher<Operator>>());
+        Assert.Null(scope.ServiceProvider.GetService<IPasswordHasher<Operator>>());
     }
 
     private async Task MigrateAsync()
