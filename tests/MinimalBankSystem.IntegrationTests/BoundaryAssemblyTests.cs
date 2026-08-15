@@ -39,4 +39,23 @@ public sealed class BoundaryAssemblyTests
             referenced,
             reference => reference.Name!.Contains("IntegrationTests", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void DeterministicAuditFailureInjectionExistsOnlyInTheTestAssembly()
+    {
+        Assembly testAssembly = typeof(BoundaryAssemblyTests).Assembly;
+        Type failureInjector = typeof(PostgreSql.RejectAuditSaveChangesInterceptor);
+
+        Assert.Equal(testAssembly, failureInjector.Assembly);
+        Assert.DoesNotContain(
+            [
+                Assembly.Load(new AssemblyName("MinimalBankSystem.Api")),
+                Assembly.Load(new AssemblyName("MinimalBankSystem.Application")),
+                Assembly.Load(new AssemblyName("MinimalBankSystem.Domain")),
+                Assembly.Load(new AssemblyName("MinimalBankSystem.Infrastructure")),
+                Assembly.Load(new AssemblyName("MinimalBankSystem.Migrator")),
+            ],
+            assembly => assembly.GetReferencedAssemblies()
+                .Any(reference => reference.Name == testAssembly.GetName().Name));
+    }
 }

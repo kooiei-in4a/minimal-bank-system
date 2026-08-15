@@ -9,6 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../MinimalBankSystem.Application/MinimalBankSystem.Application.csproj" />
     <ProjectReference Include="../MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj" />
   </ItemGroup>
 </Project>

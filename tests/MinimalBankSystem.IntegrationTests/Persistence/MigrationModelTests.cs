@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using MinimalBankSystem.Domain.Auditing;
 using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Persistence;
+using MinimalBankSystem.Infrastructure.Persistence.Auditing;
 using MinimalBankSystem.Infrastructure.Persistence.Identity;
 
 namespace MinimalBankSystem.IntegrationTests.Persistence;
@@ -32,23 +34,30 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void CommittedMigrationsAreTheEmptyFoundationThenOperatorIdentity()
+    public void CommittedMigrationsAreFoundationOperatorIdentityThenAuditPersistence()
     {
         using BankDbContext context = CreateDesignTimeContext();
         string[] migrations = [.. context.GetService<IMigrationsAssembly>().Migrations.Keys];
 
         Assert.Equal(
-            [FoundationMigration, OperatorPersistence.IdentityMigrationId],
+            [
+                FoundationMigration,
+                OperatorPersistence.IdentityMigrationId,
+                AuditPersistence.AuditMigrationId,
+            ],
             migrations);
     }
 
     [Fact]
-    public void TheModelDeclaresOnlyTheOperatorEntity()
+    public void TheModelDeclaresOnlyOperatorAndAuditWithoutALiveActorForeignKey()
     {
         using BankDbContext context = CreateDesignTimeContext();
         IEntityType[] entityTypes = [.. context.Model.GetEntityTypes()];
 
-        IEntityType operatorType = Assert.Single(entityTypes);
+        Assert.Equal(2, entityTypes.Length);
+        IEntityType operatorType = Assert.Single(
+            entityTypes,
+            entity => entity.ClrType == typeof(Operator));
         Assert.Equal(typeof(Operator), operatorType.ClrType);
         Assert.Equal(OperatorPersistence.TableName, operatorType.GetTableName());
         Assert.Null(operatorType.FindNavigation("Roles"));
@@ -65,6 +74,14 @@ public sealed class MigrationModelTests
             entityTypes,
             entity => entity.ClrType.Name.Contains("IdentityRole", StringComparison.Ordinal)
                 || entity.GetTableName() is "AspNetRoles" or "AspNetUserRoles" or "AspNetUsers");
+
+        IEntityType auditType = Assert.Single(
+            entityTypes,
+            entity => entity.ClrType == typeof(AuditRecord));
+        Assert.Equal(AuditPersistence.TableName, auditType.GetTableName());
+        Assert.Empty(auditType.GetForeignKeys());
+        Assert.Empty(auditType.GetReferencingForeignKeys());
+        Assert.Empty(auditType.GetNavigations());
     }
 
     [Fact]
@@ -104,7 +121,51 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void TheGeneratedSqlCreatesHistoryAndOperatorTablesWithoutIdentityRoleSchema()
+    public void TheAuditMigrationCreatesTheLogicalFieldsTriggerAndSafeRollbackBoundary()
+    {
+        using BankDbContext context = CreateDesignTimeContext();
+        IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
+
+        Migration migration = migrations.CreateMigration(
+            migrations.Migrations[AuditPersistence.AuditMigrationId],
+            ActiveProvider);
+
+        CreateTableOperation createTable = Assert.Single(
+            migration.UpOperations.OfType<CreateTableOperation>());
+        Assert.Equal(AuditPersistence.TableName, createTable.Name);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.ActorIdentifierColumn && !column.IsNullable);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.ActorRoleColumn && !column.IsNullable);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.OperationIdentifierColumn && !column.IsNullable);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.TargetIdentifierColumn && !column.IsNullable);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.ResultColumn && !column.IsNullable);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.FailureBusinessErrorCodeColumn && column.IsNullable);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.CorrelationIdColumn && !column.IsNullable);
+        Assert.Contains(createTable.Columns, column =>
+            column.Name == AuditPersistence.AuditTimeColumn && !column.IsNullable);
+
+        SqlOperation triggerSql = Assert.Single(migration.UpOperations.OfType<SqlOperation>());
+        Assert.Contains("CREATE TRIGGER audit_records_append_only", triggerSql.Sql, StringComparison.Ordinal);
+        Assert.Contains(AuditPersistence.AppendOnlyErrorMarker, triggerSql.Sql, StringComparison.Ordinal);
+
+        DropTableOperation dropTable = Assert.Single(
+            migration.DownOperations.OfType<DropTableOperation>());
+        Assert.Equal(AuditPersistence.TableName, dropTable.Name);
+        Assert.Contains(
+            migration.DownOperations.OfType<SqlOperation>(),
+            operation => operation.Sql.Contains(
+                AuditPersistence.RollbackRequiresRestoreMarker,
+                StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheGeneratedSqlCreatesTheFixedAuditBaselineWithoutUnrelatedTriggerDrift()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
@@ -119,7 +180,9 @@ public sealed class MigrationModelTests
                 .Select(match => match.Groups["table"].Value),
         ];
 
-        Assert.Equal([QualifiedHistoryTable, OperatorPersistence.TableName], createdTables);
+        Assert.Equal(
+            [QualifiedHistoryTable, OperatorPersistence.TableName, AuditPersistence.TableName],
+            createdTables);
         Assert.Contains("ck_operators_state", script, StringComparison.Ordinal);
         Assert.Contains("ck_operators_fixed_role", script, StringComparison.Ordinal);
         Assert.Contains("timestamp with time zone", script, StringComparison.OrdinalIgnoreCase);
@@ -127,7 +190,13 @@ public sealed class MigrationModelTests
         Assert.DoesNotContain("AspNetUserRoles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("AspNetUsers", script, StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE SEQUENCE", script, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("CREATE TRIGGER", script, StringComparison.OrdinalIgnoreCase);
+        Match[] triggers = Regex
+            .Matches(script, @"CREATE\s+TRIGGER\s+(?<trigger>[^\s]+)", RegexOptions.IgnoreCase)
+            .Cast<Match>()
+            .ToArray();
+        Match trigger = Assert.Single(triggers);
+        Assert.Equal(AuditPersistence.AppendOnlyTrigger, trigger.Groups["trigger"].Value);
+        Assert.Contains("CREATE FUNCTION public.reject_audit_record_mutation", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -151,6 +220,7 @@ public sealed class MigrationModelTests
         Assert.Contains("IF NOT EXISTS(SELECT 1 FROM", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("_InitialFoundation", script, StringComparison.Ordinal);
         Assert.Contains("_AddOperatorIdentity", script, StringComparison.Ordinal);
+        Assert.Contains("_AddAuditPersistence", script, StringComparison.Ordinal);
     }
 
     [Fact]
