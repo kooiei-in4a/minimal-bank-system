@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Infrastructure.Authentication;
@@ -5,6 +6,7 @@ using MinimalBankSystem.Infrastructure.Authentication;
 namespace MinimalBankSystem.Api;
 
 [ApiController]
+[AllowAnonymous]
 [Route("auth")]
 public sealed class AuthenticationController(
     AuthnLoginService loginService,
