@@ -7,10 +7,12 @@ namespace MinimalBankSystem.IntegrationTests.Persistence;
 internal static class MigratorProcess
 {
     private const string MigratorAssemblyName = "MinimalBankSystem.Migrator";
+    private const string ApiRuntimeRoleEnvironmentVariable = "MBS_API_RUNTIME_ROLE";
 
     public static async Task<MigratorRun> RunAsync(
         string? connectionString,
-        TimeSpan waitBudget)
+        TimeSpan waitBudget,
+        string? apiRuntimeRoleName = null)
     {
         ProcessStartInfo startInfo = new()
         {
@@ -30,6 +32,15 @@ internal static class MigratorProcess
         else
         {
             startInfo.Environment[BankPersistence.ConnectionStringEnvironmentVariable] = connectionString;
+        }
+
+        if (string.IsNullOrWhiteSpace(apiRuntimeRoleName))
+        {
+            startInfo.Environment.Remove(ApiRuntimeRoleEnvironmentVariable);
+        }
+        else
+        {
+            startInfo.Environment[ApiRuntimeRoleEnvironmentVariable] = apiRuntimeRoleName;
         }
 
         using Process process = Process.Start(startInfo)

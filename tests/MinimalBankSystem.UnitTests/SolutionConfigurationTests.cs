@@ -60,6 +60,7 @@ public sealed class SolutionConfigurationTests
         AssertProjectReferences(
             repositoryRoot,
             "src/MinimalBankSystem.Infrastructure/MinimalBankSystem.Infrastructure.csproj",
+            "src/MinimalBankSystem.Application/MinimalBankSystem.Application.csproj",
             "src/MinimalBankSystem.Domain/MinimalBankSystem.Domain.csproj");
 
         AssertProjectReferences(

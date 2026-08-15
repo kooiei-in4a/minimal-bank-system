@@ -1,0 +1,34 @@
+name: WP2-AUD-01 audit boundary verification
+
+on:
+  push:
+    branches:
+      - "agent/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-principal-and-critical-mutation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Record actual checkout SHA
+        run: |
+          echo "ACTUAL_CHECKOUT_SHA=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Verify Product Audit through the shipped runtime principal
+        env:
+          WP2AUD01_SECRET_SENTINEL: ${{ runner.temp }}-wp2-aud01-${{ github.run_id }}
+        run: bash tests/wp2-aud01/verify-audit-boundary.sh
+
+      - name: Run AUD-APPEND-01 semantic critical mutation
+        env:
+          WP2AUD01_SECRET_SENTINEL: ${{ runner.temp }}-aud-append-01-${{ github.run_id }}
+        run: bash tests/wp2-aud01/verify-mutations.sh
