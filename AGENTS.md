@@ -238,10 +238,18 @@ AGENT_RESULT_CONTRACT:
     PASS | FAIL | PENDING | NOT_REQUIRED
 
   HANDOFF_STATE:
-    COMPLETE | AWAIT_CI | FIX_REQUIRED | STOP
+    COMPLETE | AWAIT_CI | FIX_REQUIRED | HUMAN_DECISION_REQUIRED | STOP
 ```
 
 `IMPLEMENTATION_RESULT`は実装・修正そのものが成立したか、`LOCAL_VERIFICATION_RESULT`はAgent自身のlocal/harness環境でverificationを完了できたか、`REQUIRED_CI_RESULT`はrepository-standard required CIの状態、`HANDOFF_STATE`はCoordinatorへ何を要求するかを表す。Coordinatorは、取得可能なGitHub上のrequired CIとexact Headを確認し、local environment failureとproduct defectを分離して評価する。
+
+各`HANDOFF_STATE`の意味は次の通りである。
+
+- `COMPLETE`: 必要な作業・検証が成立し、次stageへ進行可能。
+- `AWAIT_CI`: implementationは成立しているが、repository-standard required CIの確定待ち。
+- `FIX_REQUIRED`: existing authorityから修正方法を一意に導けるrule-decidable defectがある。
+- `HUMAN_DECISION_REQUIRED`: 複数の合理的なsemantic choiceがあり、§5.6に従って人間へ意思決定を要求する。
+- `STOP`: identity / authority / scope / control precondition mismatch等により、current targetのまま作業を継続してはいけない。
 
 特に、次の組み合わせは有効であり、単独で`FIX_REQUIRED`を意味しない。
 
@@ -252,7 +260,7 @@ REQUIRED_CI_RESULT: PENDING
 HANDOFF_STATE: AWAIT_CI
 ```
 
-実装不成立、required CI上のproduct failure、authority/exact-identity不整合、または人間判断が必要な事項は、それぞれ証拠に基づき`FIX_REQUIRED`または`STOP`へ分類する。local verificationが環境要因で完了できないことだけを理由に、実装不成立と扱ってはならない。
+rule-decidable defectは`FIX_REQUIRED`、genuine semantic decisionは`HUMAN_DECISION_REQUIRED`として§5.6 Human Decision Escalationへ接続し、identity / authority / scope / control mismatchは`STOP`へ分類する。`HUMAN_DECISION_REQUIRED`を`FIX_REQUIRED`または`STOP`へ縮退させてはならない。local verificationが環境要因で完了できないことだけを理由に、実装不成立と扱ってはならない。
 
 ## 5.6 Human Decision Escalation
 
