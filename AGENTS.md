@@ -186,15 +186,25 @@ JIT_HANDOFF: COPY_PASTE_READY
 
 v1 pilotはWP2-AUTHN-01の完了（Issue #167 closed/completed）をもって`AUTONOMOUS_EXECUTION_SCOPE: INACTIVE`へ終了しており、historical evidenceとして`docs/retrospectives/wp2-human-decision-handoff-pilot.md`とIssue #191をそのまま保持する。v1文書とIssue #191は書き換えず、v2の正本として再利用しない。
 
-### v2 contract（current / Transition Bundle）
+### v2 pilot（historical completed / Transition Bundle）
 
-Post-AUTHN-01評価`MODIFY`（Issue #191 comment `5293594071`）を受け、Issue #197でTransition Bundleを中心概念とするv2 contractを導入する。正準schemaと詳細は次を唯一の正本とし、本書では複製しない。
+Post-AUTHN-01評価`MODIFY`（Issue #191 comment `5293594071`）を受け、Issue #197でTransition Bundleを中心概念とするv2 pilotを導入した。正準schemaと詳細は次を唯一の正本とし、本書では複製しない。
 
 - `docs/retrospectives/wp2-human-decision-handoff-pilot-v2.md`
 
 v2は、v1が確立したrule-decidable stage progressionの原則を維持しつつ、stage transitionのmaterialization契約を、`STAGE_RESULT_EVIDENCE` / `PARENT_CURRENT_AUTHORITY` / `WP_CURRENT_AUTHORITY` / `NEXT_AGENT_HANDOFF`の4要素からなるTransition Bundleへ置き換える。GitHub writeはtransactionalでないため、`NEXT_AGENT_HANDOFF`は必ず他の3要素が同一exact identityで揃った後に生成する**bundle finalization record**とする。前3要素が揃っていない、またはidentity/stageが一致しない場合、`NEXT_AGENT_HANDOFF`を生成してはならない。
 
-v2の`AUTONOMOUS_EXECUTION_SCOPE_V2`は、本process PRのmergeだけでは`ACTIVE`にならない。現時点では`STATE: NOT_ACTIVE`であり、意図された次対象はWP2-AUD-01 / #166だが、対象leafへの単一・明示的なhuman activationを別途必要とする。
+v2はWP2-AUD-01（Issue #166）限定で実行済みであり、Issue #166の`closed / completed`をもってscopeを終了した。Parent #3 Current Authority comment `5300368789`およびWP-2 #34 Current Authority comment `5300369662`に基づく現在状態は、`AUTONOMOUS_EXECUTION_SCOPE_V2: INACTIVE`である。これは完了済みhistorical process evidenceであり、WP2-AUTHZ-01 / #168を含む次leafへ自動carryしない。
+
+```yaml
+AUTONOMOUS_EXECUTION_SCOPE_V2:
+  STATE: INACTIVE
+  COMPLETED_SCOPE: WP2-AUD-01_ONLY
+  COMPLETED_ISSUE: 166
+  TERMINATION_REASON: TARGET_ISSUE_CLOSED_COMPLETED
+  V2_PILOT_CARRY_TO_NEXT_LEAF: PROHIBITED
+  NEXT_LEAF_ACTIVATION: NOT_GRANTED
+```
 
 ```yaml
 OUTSIDE_PILOT_SCOPE:
@@ -202,7 +212,7 @@ OUTSIDE_PILOT_SCOPE:
   JIT_HANDOFF: GENERATE_ONLY
 ```
 
-WP2-AUTHN-01以外（WP2-AUD-01、WP2-AUTHZ-01以降を含む）では、`OUTSIDE_PILOT_SCOPE`が既定であり、v1・v2いずれのpilotも自動適用されない。次leafで同様の仕組みを使う場合は、新しいhuman activationとscope拡張の決定が必要である。
+WP2-AUTHN-01のv1 pilotとWP2-AUD-01のv2 pilotは、それぞれの対象leafで完了したhistorical evidenceである。WP2-AUTHZ-01 / #168以降の次leafでは`OUTSIDE_PILOT_SCOPE`が既定であり、v1・v2いずれのpilot authorityも自動適用されない。同じ仕組みを次leafで使う場合は、新しいhuman activationとscope拡張の決定が必要である。
 
 `AUTONOMOUS_EXECUTION_SCOPE_V2`の初回ACTIVE化は、process pilotの独立レビューと人間の最終承認後に、Parent #3 / WP-2 #34 Current Authorityで対象leafを限定して行う。Coordinator AIが自己承認してACTIVEにしてはならない。
 
@@ -211,6 +221,38 @@ ACTIVEな対象leafの内部では、Independent Issue Ready Reviewが確定し�
 重要なagent launch前のStage Entry Check（§5.1）には、v2 pilotがACTIVEな対象leafでBundle completeness gate（`STAGE_RESULT_RECORDED` / `PARENT_AUTHORITY_SYNCED` / `WP_AUTHORITY_SYNCED` / `HANDOFF_RECORDED_LAST` / `BUNDLE_STATUS_COMPLETE` / `BUNDLE_TARGET_IDENTITY_EXACT`）を含める。詳細はv2文書を参照する。
 
 人間がAgent間のpromptや結果を搬送する場合でも、原則として意味的な追記・要約・書き換えを必要としない完成handoffをAgent側が生成する。受領Agentは、handoffのpromptをauthorityとして信用しない。着手前にGitHub一次証拠（Parent #3 Current Authority、WP-2 #34 Current Authority、target Issue、exact identity、write/operation authorization）を再確認し、promptと一次証拠が矛盾する場合はSTOPする。v2 pilotがACTIVEな対象leafでは、加えてTransition Bundleの完全性（Bundle completeness gate）を再確認し、部分的・不整合な場合は既定でmechanical STOP / repairとする（v2文書参照）。
+
+### Agent Result Contract
+
+Agentの結果報告は、実装の成否、Agent自身のlocal/harness verification、repository-standard required CI、Coordinatorへの要求状態を単一の`RESULT`へ混在させず、次の4軸で記録する。
+
+```yaml
+AGENT_RESULT_CONTRACT:
+  IMPLEMENTATION_RESULT:
+    PASS | FAIL | NOT_APPLICABLE
+
+  LOCAL_VERIFICATION_RESULT:
+    PASS | FAIL | ENVIRONMENT_BLOCKED | NOT_RUN
+
+  REQUIRED_CI_RESULT:
+    PASS | FAIL | PENDING | NOT_REQUIRED
+
+  HANDOFF_STATE:
+    COMPLETE | AWAIT_CI | FIX_REQUIRED | STOP
+```
+
+`IMPLEMENTATION_RESULT`は実装・修正そのものが成立したか、`LOCAL_VERIFICATION_RESULT`はAgent自身のlocal/harness環境でverificationを完了できたか、`REQUIRED_CI_RESULT`はrepository-standard required CIの状態、`HANDOFF_STATE`はCoordinatorへ何を要求するかを表す。Coordinatorは、取得可能なGitHub上のrequired CIとexact Headを確認し、local environment failureとproduct defectを分離して評価する。
+
+特に、次の組み合わせは有効であり、単独で`FIX_REQUIRED`を意味しない。
+
+```yaml
+IMPLEMENTATION_RESULT: PASS
+LOCAL_VERIFICATION_RESULT: ENVIRONMENT_BLOCKED
+REQUIRED_CI_RESULT: PENDING
+HANDOFF_STATE: AWAIT_CI
+```
+
+実装不成立、required CI上のproduct failure、authority/exact-identity不整合、または人間判断が必要な事項は、それぞれ証拠に基づき`FIX_REQUIRED`または`STOP`へ分類する。local verificationが環境要因で完了できないことだけを理由に、実装不成立と扱ってはならない。
 
 ## 5.6 Human Decision Escalation
 
