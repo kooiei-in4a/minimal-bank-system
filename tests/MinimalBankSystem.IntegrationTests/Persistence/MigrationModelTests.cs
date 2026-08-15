@@ -142,7 +142,10 @@ public sealed class MigrationModelTests
         DropTableOperation dropTable = Assert.Single(migration.DownOperations.OfType<DropTableOperation>());
         Assert.Equal(AuditPersistence.TableName, dropTable.Name);
         SqlOperation[] downSql = [.. migration.DownOperations.OfType<SqlOperation>()];
-        Assert.Equal(2, downSql.Length);
+        Assert.Equal(3, downSql.Length);
+        Assert.Equal(
+            $"LOCK TABLE public.{AuditPersistence.TableName} IN ACCESS EXCLUSIVE MODE;",
+            downSql[0].Sql);
         Assert.Contains(downSql, operation => operation.Sql.Contains(
             AuditPersistence.RollbackRequiresRestoreMarker,
             StringComparison.Ordinal));

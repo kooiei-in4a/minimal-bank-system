@@ -59,6 +59,9 @@ public partial class AddProductAudit : Migration
         // Empty history is safely reversible to the immediately previous contract. Existing
         // Product Audit history must instead cross ADR-0009's verified backup/restore boundary.
         migrationBuilder.Sql(
+            "LOCK TABLE public.audit_records IN ACCESS EXCLUSIVE MODE;");
+
+        migrationBuilder.Sql(
             """
                 DO $audit_down_guard$
                 BEGIN
