@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using MinimalBankSystem.Api.Runtime;
+using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure.Authentication;
 
@@ -25,6 +26,25 @@ public sealed class ApiRuntimeContractTests
 {
     private static readonly DateTimeOffset FixedUtcNow =
         new(2030, 4, 5, 6, 7, 8, TimeSpan.Zero);
+
+    [Fact]
+    public void ProductionAuditRegistryStartsEmptyAndAcceptsExplicitFeatureContributions()
+    {
+        using ContractWebApplicationFactory emptyFactory = new();
+        IAuditOperationRegistry emptyRegistry =
+            emptyFactory.Services.GetRequiredService<IAuditOperationRegistry>();
+
+        Assert.Empty(emptyFactory.Services.GetServices<AuditOperationRegistration>());
+        Assert.Throws<UnregisteredAuditOperationException>(
+            () => emptyRegistry.EnsureRegistered("feature.operation"));
+
+        using ContractWebApplicationFactory contributedFactory = new(
+            services => services.AddSingleton(new AuditOperationRegistration("feature.operation")));
+        IAuditOperationRegistry contributedRegistry =
+            contributedFactory.Services.GetRequiredService<IAuditOperationRegistry>();
+
+        contributedRegistry.EnsureRegistered("feature.operation");
+    }
 
     [Fact]
     public async Task UnmappedExceptionUsesSafe500EnvelopeAndProductionHasNoBusinessMapper()

@@ -1,14 +1,19 @@
 extern alias api;
 
+using System.Data.Common;
+using System.Globalization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
-using MinimalBankSystem.Infrastructure.Persistence;
-using MinimalBankSystem.Infrastructure.Persistence.Identity;
+using MinimalBankSystem.Domain.Auditing;
+using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Authentication;
+using MinimalBankSystem.Infrastructure.Persistence;
+using MinimalBankSystem.Infrastructure.Persistence.Auditing;
+using MinimalBankSystem.Infrastructure.Persistence.Identity;
 using MinimalBankSystem.IntegrationTests.Persistence;
 using MinimalBankSystem.Migrator;
 using Npgsql;
@@ -21,10 +26,12 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
     : PostgreSqlDatabaseTestBase(fixture), IClassFixture<PostgreSqlContainerFixture>
 {
     private const string SecretSentinel = "FND04_REJECTED_PASSWORD_SENTINEL_8C9314F2";
+    private const string FoundationMigration = "20260809113338_InitialFoundation";
 
     private static readonly string[] ExpectedLatestPublicTables =
     [
         BankPersistence.MigrationsHistoryTableName,
+        AuditPersistence.TableName,
         OperatorPersistence.TableName,
     ];
 
@@ -44,20 +51,33 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
 
         Assert.Equal(
-            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId, AuditPersistence.AuditMigrationId],
             await ReadMigrationHistoryAsync());
         Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
     }
 
     [Fact]
-    public async Task PreviousFoundationSchemaUpgradesToOperatorIdentity()
+    public async Task ImmediatelyPreviousOperatorSchemaUpgradesWithoutLosingRepresentativeRows()
     {
         await using BankDbContext context = CreateContext();
         IMigrator migrator = context.GetService<IMigrator>();
-        await migrator.MigrateAsync("20260809113338_InitialFoundation");
+        await migrator.MigrateAsync(OperatorPersistence.IdentityMigrationId);
 
-        Assert.Equal(["20260809113338_InitialFoundation"], await ReadMigrationHistoryAsync());
-        Assert.Equal([BankPersistence.MigrationsHistoryTableName], await ReadPublicTablesAsync());
+        Operator representative = OperatorFactory.Create(
+            "audit.migration.viewer",
+            "AUDIT_MIGRATION_REPRESENTATIVE_PASSWORD_NOT_A_CREDENTIAL",
+            OperatorRole.Viewer,
+            new DateTimeOffset(2026, 8, 15, 0, 0, 0, TimeSpan.Zero),
+            "audit-migration-security-stamp");
+        context.Operators.Add(representative);
+        await context.SaveChangesAsync();
+
+        Assert.Equal(
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            await ReadMigrationHistoryAsync());
+        Assert.Equal(
+            [BankPersistence.MigrationsHistoryTableName, OperatorPersistence.TableName],
+            await ReadPublicTablesAsync());
 
         MigratorRun run = await MigratorProcess.RunAsync(Database.ConnectionString, NormalRunBudget);
         Assert.True(
@@ -65,9 +85,15 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
 
         Assert.Equal(
-            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId, AuditPersistence.AuditMigrationId],
             await ReadMigrationHistoryAsync());
         Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
+
+        await using BankDbContext readContext = CreateContext();
+        Operator stored = await readContext.Operators.AsNoTracking().SingleAsync();
+        Assert.Equal(representative.Id, stored.Id);
+        Assert.Equal(representative.UserName, stored.UserName);
+        Assert.Equal(representative.Role, stored.Role);
     }
 
     [Fact]
@@ -190,7 +216,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
 
         string[] historyAfterMigration = await ReadMigrationHistoryAsync();
         string[] tablesAfterMigration = await ReadPublicTablesAsync();
-        Assert.Equal(2, historyAfterMigration.Length);
+        Assert.Equal(3, historyAfterMigration.Length);
         Assert.Equal(ExpectedLatestPublicTables, tablesAfterMigration);
 
         await StartApiAndIssueRequestAsync();
@@ -219,6 +245,176 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
         }
 
         Assert.Empty(await ReadPublicTablesAsync());
+    }
+
+    [Fact]
+    public async Task AuditDownSucceedsWhileHistoryIsEmptyAndPreservesThePriorContract()
+    {
+        await using BankDbContext context = CreateContext();
+        IMigrator migrator = context.GetService<IMigrator>();
+        await migrator.MigrateAsync();
+
+        Operator representative = OperatorFactory.Create(
+            "audit.down.viewer",
+            "AUDIT_DOWN_REPRESENTATIVE_PASSWORD_NOT_A_CREDENTIAL",
+            OperatorRole.Viewer,
+            new DateTimeOffset(2026, 8, 15, 1, 0, 0, TimeSpan.Zero),
+            "audit-down-security-stamp");
+        context.Operators.Add(representative);
+        await context.SaveChangesAsync();
+
+        await migrator.MigrateAsync(OperatorPersistence.IdentityMigrationId);
+
+        Assert.Equal(
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            await ReadMigrationHistoryAsync());
+        Assert.Equal(
+            [BankPersistence.MigrationsHistoryTableName, OperatorPersistence.TableName],
+            await ReadPublicTablesAsync());
+        Assert.Equal(representative.Id, (await context.Operators.AsNoTracking().SingleAsync()).Id);
+    }
+
+    [Fact]
+    public async Task AuditDownWithHistoryFailsAtTheApprovedBackupRestoreBoundary()
+    {
+        await using BankDbContext context = CreateContext();
+        IMigrator migrator = context.GetService<IMigrator>();
+        await migrator.MigrateAsync();
+
+        context.AuditRecords.Add(AuditRecord.Create(
+            Guid.CreateVersion7(),
+            OperatorRole.Administrator,
+            "verification.audit.rollback-boundary",
+            "rollback-target",
+            AuditResult.Success,
+            failureBusinessErrorCode: null,
+            "correlation-audit-rollback",
+            new DateTimeOffset(2026, 8, 15, 2, 0, 0, TimeSpan.Zero)));
+        await context.SaveChangesAsync();
+
+        PostgresException exception = await Assert.ThrowsAsync<PostgresException>(() =>
+            migrator.MigrateAsync(OperatorPersistence.IdentityMigrationId));
+
+        Assert.Contains(
+            AuditPersistence.RollbackRequiresRestoreMarker,
+            exception.MessageText,
+            StringComparison.Ordinal);
+        Assert.Equal(3, (await ReadMigrationHistoryAsync()).Length);
+        Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
+        Assert.Equal(1L, await ReadLongAsync($"SELECT count(*) FROM {AuditPersistence.TableName};"));
+    }
+
+    [Fact]
+    public async Task AuditDownBlocksTheRuntimePrincipalBeforeItsEmptyCheckUntilTheDestructiveTransitionCompletes()
+    {
+        const long advisoryLockKey = 7_463_021;
+        const string gateFunction = "audit_down_concurrency_gate";
+        const string gateTrigger = "audit_down_concurrency_trigger";
+
+        await using AuditRuntimeBoundary boundary = await AuditRuntimeBoundary.CreateAsync(Database.ConnectionString);
+        await boundary.MigrateAsync();
+        await ExecuteNonQueryAsync(
+            $"""
+             CREATE FUNCTION public.{gateFunction}()
+             RETURNS event_trigger
+             LANGUAGE plpgsql
+             AS $audit_down_concurrency_gate$
+             BEGIN
+                 PERFORM pg_advisory_xact_lock({advisoryLockKey});
+             END;
+             $audit_down_concurrency_gate$;
+
+             CREATE EVENT TRIGGER {gateTrigger}
+             ON ddl_command_start
+             WHEN TAG IN ('DROP TABLE')
+             EXECUTE FUNCTION public.{gateFunction}();
+             """);
+
+        await using NpgsqlConnection gateConnection = new(Database.ConnectionString);
+        await gateConnection.OpenAsync();
+        await using NpgsqlTransaction gateTransaction = await gateConnection.BeginTransactionAsync();
+        await using (NpgsqlCommand acquireGate = new(
+                         $"SELECT pg_advisory_xact_lock({advisoryLockKey});",
+                         gateConnection,
+                         gateTransaction))
+        {
+            await acquireGate.ExecuteNonQueryAsync();
+        }
+
+        bool gateReleased = false;
+
+        try
+        {
+            await using BankDbContext migratorContext = CreateContext(boundary.MigratorConnectionString);
+            await migratorContext.Database.OpenConnectionAsync();
+            int migratorBackendPid = await ReadBackendPidAsync(migratorContext.Database.GetDbConnection());
+            IMigrator migrator = migratorContext.GetService<IMigrator>();
+            Task downTask = migrator.MigrateAsync(OperatorPersistence.IdentityMigrationId);
+
+            await WaitForAsync(
+                () => MigrationIsHoldingTheAuditLockAndWaitingAtTheDropGateAsync(migratorBackendPid),
+                "The EF/Npgsql Down execution did not retain ACCESS EXCLUSIVE on audit_records through DROP TABLE.");
+
+            NpgsqlConnectionStringBuilder runtimeConnection = new(boundary.RuntimeConnectionString)
+            {
+                ApplicationName = "audit-down-runtime-writer",
+            };
+            await using NpgsqlConnection runtimeWriter = new(runtimeConnection.ConnectionString);
+            await runtimeWriter.OpenAsync();
+            int runtimeBackendPid = await ReadBackendPidAsync(runtimeWriter);
+            await using NpgsqlCommand runtimeInsert = new(
+                """
+                INSERT INTO public.audit_records (
+                    audit_id, actor_identifier, actor_role, operation_identifier, target_identifier,
+                    result, failure_business_error_code, correlation_id, audit_time
+                ) VALUES (
+                    '01821815-0000-7000-8000-000000000001',
+                    '01821815-0000-7000-8000-000000000002',
+                    'administrator',
+                    'verification.audit.down-concurrency',
+                    'audit-down-concurrency-target',
+                    'success',
+                    NULL,
+                    'audit-down-concurrency-correlation',
+                    TIMESTAMPTZ '2026-08-15 03:00:00+00'
+                );
+                """,
+                runtimeWriter);
+            Task<int> runtimeInsertTask = runtimeInsert.ExecuteNonQueryAsync();
+
+            await WaitForAsync(
+                () => RuntimeWriterIsWaitingForTheAuditTableLockAsync(runtimeBackendPid),
+                "The runtime-principal INSERT was not waiting behind the migration-held audit_records lock.");
+            Assert.False(runtimeInsertTask.IsCompleted);
+
+            await gateTransaction.CommitAsync();
+            gateReleased = true;
+            await downTask;
+
+            PostgresException writerFailure = await Assert.ThrowsAsync<PostgresException>(
+                async () => await runtimeInsertTask);
+            Assert.Equal(PostgresErrorCodes.UndefinedTable, writerFailure.SqlState);
+
+            Assert.Equal(
+                [FoundationMigration, OperatorPersistence.IdentityMigrationId],
+                await ReadMigrationHistoryAsync());
+            Assert.Equal(
+                [BankPersistence.MigrationsHistoryTableName, OperatorPersistence.TableName],
+                await ReadPublicTablesAsync());
+        }
+        finally
+        {
+            if (!gateReleased)
+            {
+                await gateTransaction.RollbackAsync();
+            }
+
+            await ExecuteNonQueryAsync(
+                $"""
+                 DROP EVENT TRIGGER IF EXISTS {gateTrigger};
+                 DROP FUNCTION IF EXISTS public.{gateFunction}();
+                 """);
+        }
     }
 
     private async Task StartApiAndIssueRequestAsync()
@@ -269,6 +465,70 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
         await command.ExecuteNonQueryAsync();
     }
 
+    private async Task<bool> MigrationIsHoldingTheAuditLockAndWaitingAtTheDropGateAsync(int backendPid)
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(
+            $"""
+             SELECT
+                 EXISTS (
+                     SELECT 1
+                     FROM pg_locks
+                     WHERE pid = {backendPid}
+                       AND relation = 'public.audit_records'::regclass
+                       AND mode = 'AccessExclusiveLock'
+                       AND granted)
+                 AND EXISTS (
+                     SELECT 1
+                     FROM pg_stat_activity
+                     WHERE pid = {backendPid}
+                       AND wait_event_type = 'Lock'
+                       AND wait_event = 'advisory');
+             """,
+            connection);
+
+        return Assert.IsType<bool>(await command.ExecuteScalarAsync());
+    }
+
+    private async Task<bool> RuntimeWriterIsWaitingForTheAuditTableLockAsync(int backendPid)
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(
+            $"""
+             SELECT
+                 EXISTS (
+                     SELECT 1
+                     FROM pg_locks
+                     WHERE pid = {backendPid}
+                       AND relation = 'public.audit_records'::regclass
+                       AND NOT granted)
+                 AND EXISTS (
+                     SELECT 1
+                     FROM pg_stat_activity
+                     WHERE pid = {backendPid}
+                       AND wait_event_type = 'Lock');
+             """,
+            connection);
+
+        return Assert.IsType<bool>(await command.ExecuteScalarAsync());
+    }
+
+    private static async Task<int> ReadBackendPidAsync(DbConnection connection)
+    {
+        await using NpgsqlCommand command = new("SELECT pg_backend_pid();", (NpgsqlConnection)connection);
+        return Convert.ToInt32(await command.ExecuteScalarAsync(), CultureInfo.InvariantCulture);
+    }
+
+    private async Task<long> ReadLongAsync(string commandText)
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(commandText, connection);
+        return Assert.IsType<long>(await command.ExecuteScalarAsync());
+    }
+
     private async Task<string[]> ReadStringsAsync(string commandText)
     {
         await using NpgsqlConnection connection = new(Database.ConnectionString);
@@ -286,10 +546,29 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
         return [.. values];
     }
 
-    private BankDbContext CreateContext()
+    private static async Task WaitForAsync(Func<Task<bool>> condition, string failureMessage)
+    {
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
+
+        while (!timeout.IsCancellationRequested)
+        {
+            if (await condition())
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(50), timeout.Token);
+        }
+
+        throw new Xunit.Sdk.XunitException(failureMessage);
+    }
+
+    private BankDbContext CreateContext(string? connectionString = null)
     {
         DbContextOptionsBuilder<BankDbContext> options = new();
-        options.UseBankPostgreSql(Database.ConnectionString, BankPersistence.MigrationTimeoutSeconds);
+        options.UseBankPostgreSql(
+            connectionString ?? Database.ConnectionString,
+            BankPersistence.MigrationTimeoutSeconds);
         return new BankDbContext(options.Options);
     }
 
