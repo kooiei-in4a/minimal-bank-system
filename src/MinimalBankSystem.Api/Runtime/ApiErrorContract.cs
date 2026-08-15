@@ -7,6 +7,9 @@ public sealed record ApiErrorEnvelope(string Code, string Message)
 
     public static ApiErrorEnvelope AuthenticationRequired { get; } =
         new("authentication_required", "Authentication is required.");
+
+    public static ApiErrorEnvelope OperationNotPermitted { get; } =
+        new("operation_not_permitted", "The current Operator is not permitted to perform this operation.");
 }
 
 public sealed record ApiErrorMapping(int StatusCode, string Code, string Message)
