@@ -13,6 +13,7 @@ readonly jwt_sentinel="${sentinel}_JWT"
 readonly jwt_secret_sentinel="$(printf '%s' "$jwt_sentinel" | base64 | tr -d '\n')"
 readonly expected_foundation_migration='20260809113338_InitialFoundation'
 readonly expected_identity_migration='20260813181449_AddOperatorIdentity'
+readonly expected_audit_migration='20260814234733_AddAuditPersistence'
 readonly compose=(docker compose -p "$project_name")
 
 for command_name in docker jq bash; do
@@ -260,6 +261,10 @@ tables_before_outage="$(read_public_tables)"
 }
 [[ "$history_before_outage" == *"$expected_identity_migration"* ]] || {
   printf 'ORACLE_SIGNATURE=missing-operator-identity-migration\n' >&2
+  exit 1
+}
+[[ "$history_before_outage" == *"$expected_audit_migration"* ]] || {
+  printf 'ORACLE_SIGNATURE=missing-product-audit-migration\n' >&2
   exit 1
 }
 

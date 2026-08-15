@@ -5,9 +5,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using MinimalBankSystem.Api.Runtime;
+using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Application.Runtime;
 using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.Infrastructure.Persistence;
+using MinimalBankSystem.Infrastructure.Persistence.Auditing;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +31,8 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
+builder.Services.AddSingleton<IAuditOperationRegistry, AuditOperationRegistry>();
+builder.Services.AddScoped<IAuditWriter, AuditWriter>();
 
 builder.Services
     .AddOptions<JwtAuthnOptions>()
