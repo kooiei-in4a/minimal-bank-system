@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using MinimalBankSystem.Api.Authorization;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Application.Runtime;
@@ -71,7 +74,21 @@ builder.Services
             },
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddScoped<CurrentOperatorRequestContext>();
+builder.Services.AddScoped<IAuthorizationHandler, CurrentOperatorAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, CurrentOperatorAuthorizationResultHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = CurrentOperatorPolicies.CreateFallbackPolicy();
+    options.AddPolicy(
+        CurrentOperatorPolicyNames.Administrator,
+        CurrentOperatorPolicies.CreateRolePolicy(MinimalBankSystem.Domain.Identity.OperatorRole.Administrator));
+    options.AddPolicy(
+        CurrentOperatorPolicyNames.AdministratorOrTeller,
+        CurrentOperatorPolicies.CreateRolePolicy(
+            MinimalBankSystem.Domain.Identity.OperatorRole.Administrator,
+            MinimalBankSystem.Domain.Identity.OperatorRole.Teller));
+});
 
 // Normal API startup never evolves the schema. The options factory runs only when persistence is
 // resolved and fails closed if the canonical PostgreSQL connection is absent.
@@ -120,8 +137,10 @@ app.UseStatusCodePages(async statusCodeContext =>
     }
 });
 app.MapHealthChecks(HealthContract.LivePath, HealthContract.Liveness)
+    .AllowAnonymous()
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapHealthChecks(HealthContract.ReadyPath, HealthContract.Readiness)
+    .AllowAnonymous()
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapControllers();
 
