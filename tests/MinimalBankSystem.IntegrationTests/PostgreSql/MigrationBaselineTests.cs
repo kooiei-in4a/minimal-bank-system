@@ -6,9 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
-using MinimalBankSystem.Infrastructure.Persistence;
-using MinimalBankSystem.Infrastructure.Persistence.Identity;
 using MinimalBankSystem.Infrastructure.Authentication;
+using MinimalBankSystem.Infrastructure.Persistence;
+using MinimalBankSystem.Infrastructure.Persistence.Auditing;
+using MinimalBankSystem.Infrastructure.Persistence.Identity;
 using MinimalBankSystem.IntegrationTests.Persistence;
 using MinimalBankSystem.Migrator;
 using Npgsql;
@@ -25,6 +26,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
     private static readonly string[] ExpectedLatestPublicTables =
     [
         BankPersistence.MigrationsHistoryTableName,
+        AuditPersistence.TableName,
         OperatorPersistence.TableName,
     ];
 
@@ -44,7 +46,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
 
         Assert.Equal(
-            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId, AuditPersistence.AuditMigrationId],
             await ReadMigrationHistoryAsync());
         Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
     }
@@ -65,9 +67,46 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
             $"Expected success, got exit code {run.ExitCode}. Output:\n{run.Output}");
 
         Assert.Equal(
-            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId],
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId, AuditPersistence.AuditMigrationId],
             await ReadMigrationHistoryAsync());
         Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
+    }
+
+    [Fact]
+    public async Task ImmediatelyPreviousOperatorSchemaUpgradesWithoutLosingRepresentativeRows()
+    {
+        await using (BankDbContext context = CreateContext())
+        {
+            await context.GetService<IMigrator>().MigrateAsync(OperatorPersistence.IdentityMigrationId);
+        }
+
+        Guid representativeId = Guid.NewGuid();
+        await ExecuteNonQueryAsync(
+            $"""
+             INSERT INTO {OperatorPersistence.TableName} (
+                 {OperatorPersistence.IdColumn}, {OperatorPersistence.UserNameColumn},
+                 {OperatorPersistence.NormalizedUserNameColumn}, {OperatorPersistence.PasswordHashColumn},
+                 {OperatorPersistence.SecurityStampColumn}, {OperatorPersistence.StateColumn},
+                 {OperatorPersistence.FixedRoleColumn}, {OperatorPersistence.AuthorizationStateVersionColumn},
+                 {OperatorPersistence.CreatedAtColumn}, {OperatorPersistence.UpdatedAtColumn}
+             ) VALUES (
+                 '{representativeId}', 'previous.operator', 'PREVIOUS.OPERATOR', 'representative-hash',
+                 'representative-stamp', 'active', 'viewer', 1,
+                 TIMESTAMPTZ '2032-01-02 03:04:05+00', TIMESTAMPTZ '2032-01-02 03:04:05+00'
+             );
+             """);
+
+        MigratorRun run = await MigratorProcess.RunAsync(Database.ConnectionString, NormalRunBudget);
+        Assert.Equal(MigratorExitCode.Success, run.ExitCode);
+
+        Assert.Equal(
+            ["20260809113338_InitialFoundation", OperatorPersistence.IdentityMigrationId, AuditPersistence.AuditMigrationId],
+            await ReadMigrationHistoryAsync());
+        Assert.Equal(ExpectedLatestPublicTables, await ReadPublicTablesAsync());
+        Assert.Equal(
+            representativeId,
+            Assert.IsType<Guid>(await ExecuteScalarAsync(
+                $"SELECT {OperatorPersistence.IdColumn} FROM {OperatorPersistence.TableName};")));
     }
 
     [Fact]
@@ -190,7 +229,7 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
 
         string[] historyAfterMigration = await ReadMigrationHistoryAsync();
         string[] tablesAfterMigration = await ReadPublicTablesAsync();
-        Assert.Equal(2, historyAfterMigration.Length);
+        Assert.Equal(3, historyAfterMigration.Length);
         Assert.Equal(ExpectedLatestPublicTables, tablesAfterMigration);
 
         await StartApiAndIssueRequestAsync();
@@ -267,6 +306,14 @@ public sealed class MigrationBaselineTests(PostgreSqlContainerFixture fixture)
         await connection.OpenAsync();
         await using NpgsqlCommand command = new(commandText, connection);
         await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task<object?> ExecuteScalarAsync(string commandText)
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(commandText, connection);
+        return await command.ExecuteScalarAsync();
     }
 
     private async Task<string[]> ReadStringsAsync(string commandText)

@@ -4,6 +4,7 @@ set -Eeuo pipefail
 readonly project_name="${FND05_PROJECT_NAME:-minimal-bank-system-fnd05}"
 readonly expected_foundation_migration='20260809113338_InitialFoundation'
 readonly expected_identity_migration='20260813181449_AddOperatorIdentity'
+readonly expected_audit_migration='20260814234713_AddProductAudit'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_TEST_SENTINEL_NOT_A_CREDENTIAL}"
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
@@ -143,6 +144,10 @@ assert_success_contract() {
   }
   [[ "$history" == *"$expected_identity_migration"* ]] || {
     printf 'Expected operator identity migration history is missing.\n' >&2
+    return 1
+  }
+  [[ "$history" == *"$expected_audit_migration"* ]] || {
+    printf 'Expected Product Audit migration history is missing.\n' >&2
     return 1
   }
 
