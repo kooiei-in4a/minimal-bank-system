@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
+using Microsoft.AspNetCore.Routing;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Domain.Auditing;
@@ -8,8 +9,6 @@ namespace MinimalBankSystem.Api.Authorization;
 
 internal sealed class CurrentOperatorAuthorizationResultHandler : IAuthorizationMiddlewareResultHandler
 {
-    private const string MethodNotAllowedEndpointDisplayName = "405 HTTP Method Not Supported";
-    private const string UnsupportedMediaTypeEndpointDisplayName = "415 HTTP Unsupported Media Type";
     private readonly AuthorizationMiddlewareResultHandler defaultHandler = new();
 
     public async Task HandleAsync(
@@ -23,16 +22,11 @@ internal sealed class CurrentOperatorAuthorizationResultHandler : IAuthorization
         ArgumentNullException.ThrowIfNull(policy);
         ArgumentNullException.ThrowIfNull(authorizeResult);
 
-        Endpoint? endpoint = httpContext.GetEndpoint();
-        if (endpoint is null ||
-            string.Equals(
-                endpoint.DisplayName,
-                MethodNotAllowedEndpointDisplayName,
-                StringComparison.Ordinal) ||
-            string.Equals(
-                endpoint.DisplayName,
-                UnsupportedMediaTypeEndpointDisplayName,
-                StringComparison.Ordinal))
+        // Framework routing faults (404 unmatched, 405 method, 415 media type) are plain Endpoint
+        // instances, not RouteEndpoint. Bypass authorization result rewriting so the existing API
+        // error contract remains intact. Every product endpoint in this application is a
+        // RouteEndpoint.
+        if (httpContext.GetEndpoint() is not RouteEndpoint)
         {
             await next(httpContext).ConfigureAwait(false);
             return;
@@ -60,6 +54,10 @@ internal sealed class CurrentOperatorAuthorizationResultHandler : IAuthorization
         CurrentOperatorSnapshot currentOperator = requestContext.CurrentOperator
             ?? throw new InvalidOperationException(
                 "An authenticated policy rejection did not resolve a current Product-Audit actor.");
+
+        Endpoint endpoint = httpContext.GetEndpoint()
+            ?? throw new InvalidOperationException(
+                "An authenticated policy rejection requires a matched RouteEndpoint.");
 
         IReadOnlyList<IAuthorizationAuditContext> auditContexts = endpoint.Metadata
             .GetOrderedMetadata<IAuthorizationAuditContext>();

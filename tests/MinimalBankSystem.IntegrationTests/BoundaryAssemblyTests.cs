@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Versioning;
+using MinimalBankSystem.IntegrationTests.Authorization;
 using MinimalBankSystem.IntegrationTests.Persistence;
 using MinimalBankSystem.IntegrationTests.PostgreSql;
 
@@ -74,5 +75,61 @@ public sealed class BoundaryAssemblyTests
         Assert.DoesNotContain(nameof(ThrowOnAuditSaveChangesInterceptor), apiComposition, StringComparison.Ordinal);
         Assert.DoesNotContain("AddInterceptors", apiComposition, StringComparison.Ordinal);
         Assert.DoesNotContain("AUDIT_FAILURE", apiComposition, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// AUTHZ (#168) Narrow Fix contract: the AUTHZ verification surface — its probe controller,
+    /// test-only Audit context, failure-injection writer, and each Critical Mutation's
+    /// DI-substituted handler — is test-composition-only, never reachable from production.
+    /// </summary>
+    [Fact]
+    public void AuthorizationVerificationSurfaceExistsOnlyInTestCompositionByConstruction()
+    {
+        Assembly testAssembly = typeof(BoundaryAssemblyTests).Assembly;
+        Type[] verificationOnlyTypes =
+        [
+            typeof(AuthorizationProbeController),
+            typeof(TestAuthorizationAuditContextAttribute),
+            typeof(FailingAuthorizationAuditWriter),
+            typeof(DisabledCheckBypassAuthorizationHandler),
+            typeof(VersionCheckBypassAuthorizationHandler),
+            typeof(RoleClaimAuthoritativeAuthorizationHandler),
+        ];
+
+        Assert.All(verificationOnlyTypes, type =>
+        {
+            Assert.NotNull(type);
+            Assert.Same(testAssembly, type.Assembly);
+        });
+
+        foreach (string productionAssemblyName in new[]
+                 {
+                     "MinimalBankSystem.Api",
+                     "MinimalBankSystem.Application",
+                     "MinimalBankSystem.Domain",
+                     "MinimalBankSystem.Infrastructure",
+                     "MinimalBankSystem.Migrator",
+                 })
+        {
+            Assembly productionAssembly = Assembly.Load(new AssemblyName(productionAssemblyName));
+            Assert.DoesNotContain(
+                productionAssembly.GetReferencedAssemblies(),
+                reference => reference.Name == testAssembly.GetName().Name);
+        }
+
+        string apiComposition = File.ReadAllText(Path.Combine(
+            RepositoryLayout.RepositoryRoot.FullName,
+            "src",
+            "MinimalBankSystem.Api",
+            "Program.cs"));
+
+        Assert.DoesNotContain(nameof(AuthorizationProbeController), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain("__authz-probe", apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain(TestAuthorizationAuditContextAttribute.Operation, apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain(nameof(FailingAuthorizationAuditWriter), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain(nameof(DisabledCheckBypassAuthorizationHandler), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain(nameof(VersionCheckBypassAuthorizationHandler), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain(nameof(RoleClaimAuthoritativeAuthorizationHandler), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsEnvironment(\"Testing\")", apiComposition, StringComparison.Ordinal);
     }
 }

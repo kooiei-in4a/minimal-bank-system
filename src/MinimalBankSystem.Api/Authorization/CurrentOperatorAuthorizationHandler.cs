@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Authentication;
@@ -21,6 +22,14 @@ internal sealed class CurrentOperatorAuthorizationHandler(
                 requirement is CurrentOperatorRequirement or CurrentOperatorRoleRequirement) ||
             authorizationContext.Resource is not HttpContext httpContext ||
             authorizationContext.User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        // Routing faults are not RouteEndpoint. Exit before any current-Operator DB lookup so
+        // 404/405/415 never pay for Operator resolution and product RouteEndpoints never take this
+        // bypass.
+        if (httpContext.GetEndpoint() is not RouteEndpoint)
         {
             return;
         }
@@ -48,6 +57,11 @@ internal sealed class CurrentOperatorAuthorizationHandler(
                 case CurrentOperatorRoleRequirement roleRequirement
                     when roleRequirement.PermittedRoles.Contains(currentOperator.Role):
                     authorizationContext.Succeed(requirement);
+                    break;
+                case CurrentOperatorRoleRequirement:
+                    // Explicit failure so a pass-through handler cannot succeed an unmet role
+                    // requirement.
+                    authorizationContext.Fail();
                     break;
             }
         }

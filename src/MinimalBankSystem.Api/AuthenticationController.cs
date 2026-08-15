@@ -6,12 +6,12 @@ using MinimalBankSystem.Infrastructure.Authentication;
 namespace MinimalBankSystem.Api;
 
 [ApiController]
-[AllowAnonymous]
 [Route("auth")]
 public sealed class AuthenticationController(
     AuthnLoginService loginService,
     IJwtAccessTokenIssuer tokenIssuer) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(
         LoginRequest request,

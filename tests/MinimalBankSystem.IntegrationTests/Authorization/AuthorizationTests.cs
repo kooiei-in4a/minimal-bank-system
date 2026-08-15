@@ -77,6 +77,51 @@ public sealed class AuthorizationTests(PostgreSqlContainerFixture fixture)
     }
 
     [Fact]
+    public async Task NonRouteEndpointBypassHappensBeforeCurrentOperatorDbLookupAndDoesNotBypassRouteEndpoints()
+    {
+        await MigrateAsync();
+        using ConsoleCapture capture = new();
+
+        await using AuthorizationProbeApiFactory factory = new(Database.ConnectionString);
+        using HttpClient client = factory.CreateClient();
+        AuthorizationProbeSignals signals = factory.Services.GetRequiredService<AuthorizationProbeSignals>();
+        string missingOperatorToken = CreateToken(Guid.NewGuid(), Operator.InitialAuthorizationStateVersion);
+
+        using HttpResponseMessage missing = await SendWithTokenAsync(
+            client,
+            "/__authz-probe/not-a-route",
+            missingOperatorToken);
+        await AssertErrorAsync(
+            missing,
+            HttpStatusCode.NotFound,
+            "endpoint_not_found",
+            "Authenticated unmatched route must remain 404 without current-Operator resolution.");
+
+        // POST against a GET-only action becomes a framework non-RouteEndpoint 405 endpoint.
+        using HttpRequestMessage post = new(
+            HttpMethod.Post,
+            Route(AuthorizationProbeController.FallbackRoute, "routing-bypass"));
+        post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", missingOperatorToken);
+        using HttpResponseMessage methodNotAllowed = await client.SendAsync(post);
+        await AssertErrorAsync(
+            methodNotAllowed,
+            HttpStatusCode.MethodNotAllowed,
+            "method_not_allowed",
+            "Authenticated unsupported method must remain 405 without current-Operator resolution.");
+
+        Assert.DoesNotContain("OperatorNotFound", capture.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("2001", capture.Content, StringComparison.Ordinal);
+
+        Operator viewer = await SeedOperatorAsync("authz01.routing.viewer", OperatorRole.Viewer);
+        using HttpResponseMessage allowed = await SendWithTokenAsync(
+            client,
+            Route(AuthorizationProbeController.FallbackRoute, "route-endpoint-not-bypassed"),
+            CreateToken(viewer));
+        Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+        Assert.Equal(1, signals.FallbackHandlerReachCount);
+    }
+
+    [Fact]
     public async Task FallbackDenyRejectsMissingAndInvalidBearerBeforeHandlerWithoutProductAudit()
     {
         await MigrateAsync();
