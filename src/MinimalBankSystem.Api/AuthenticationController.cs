@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Infrastructure.Authentication;
@@ -10,6 +11,10 @@ public sealed class AuthenticationController(
     AuthnLoginService loginService,
     IJwtAccessTokenIssuer tokenIssuer) : ControllerBase
 {
+    // AUTHZ (#168) default-deny fallback protects every endpoint without explicit authorization
+    // metadata. Login is explicitly anonymous: it is the one endpoint that establishes the
+    // current Operator's authenticated state in the first place.
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(
         LoginRequest request,

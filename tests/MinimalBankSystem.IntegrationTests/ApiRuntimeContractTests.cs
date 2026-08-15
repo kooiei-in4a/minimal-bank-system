@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -611,7 +612,12 @@ public sealed class ApiRuntimeContractTests
     }
 }
 
+// These framework-error-contract diagnostics are unrelated to AUTHZ (#168) current-Operator
+// authorization; they predate it and must remain reachable anonymously so the FND-02 contract
+// they verify is unaffected by the AUTHZ default-deny fallback. The controller is registered only
+// by ContractWebApplicationFactory below, never by production Program.cs.
 [ApiController]
+[AllowAnonymous]
 public sealed class RuntimeContractController(
     ApplicationTime applicationTime,
     ContractProbeSignals signals) : ControllerBase
