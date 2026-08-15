@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MinimalBankSystem.Domain.Auditing;
 using MinimalBankSystem.Domain.Identity;
 
 namespace MinimalBankSystem.Infrastructure.Persistence;
@@ -10,6 +11,8 @@ namespace MinimalBankSystem.Infrastructure.Persistence;
 /// <param name="options">Provider options built through <see cref="BankPersistence"/>.</param>
 public sealed class BankDbContext(DbContextOptions<BankDbContext> options) : DbContext(options)
 {
+    public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
+
     public DbSet<Operator> Operators => Set<Operator>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

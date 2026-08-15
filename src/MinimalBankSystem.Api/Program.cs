@@ -6,6 +6,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Infrastructure.Auditing;
 using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.Infrastructure.Persistence;
 
@@ -66,6 +67,7 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddAuditPersistence();
 
 // Normal API startup never evolves the schema. The options factory runs only when persistence is
 // resolved and fails closed if the canonical PostgreSQL connection is absent.

@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using MinimalBankSystem.Domain.Auditing;
 using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Persistence;
+using MinimalBankSystem.Infrastructure.Persistence.Auditing;
 using MinimalBankSystem.Infrastructure.Persistence.Identity;
 
 namespace MinimalBankSystem.IntegrationTests.Persistence;
@@ -32,23 +34,24 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void CommittedMigrationsAreTheEmptyFoundationThenOperatorIdentity()
+    public void CommittedMigrationsAreFoundationOperatorIdentityThenAuditPersistence()
     {
         using BankDbContext context = CreateDesignTimeContext();
         string[] migrations = [.. context.GetService<IMigrationsAssembly>().Migrations.Keys];
 
         Assert.Equal(
-            [FoundationMigration, OperatorPersistence.IdentityMigrationId],
+            [FoundationMigration, OperatorPersistence.IdentityMigrationId, AuditPersistence.AuditMigrationId],
             migrations);
     }
 
     [Fact]
-    public void TheModelDeclaresOnlyTheOperatorEntity()
+    public void TheModelDeclaresExactlyOperatorAndAuditWithoutAnActorForeignKey()
     {
         using BankDbContext context = CreateDesignTimeContext();
         IEntityType[] entityTypes = [.. context.Model.GetEntityTypes()];
 
-        IEntityType operatorType = Assert.Single(entityTypes);
+        Assert.Equal([typeof(AuditRecord), typeof(Operator)], entityTypes.Select(entity => entity.ClrType));
+        IEntityType operatorType = Assert.Single(entityTypes, entity => entity.ClrType == typeof(Operator));
         Assert.Equal(typeof(Operator), operatorType.ClrType);
         Assert.Equal(OperatorPersistence.TableName, operatorType.GetTableName());
         Assert.Null(operatorType.FindNavigation("Roles"));
@@ -65,6 +68,24 @@ public sealed class MigrationModelTests
             entityTypes,
             entity => entity.ClrType.Name.Contains("IdentityRole", StringComparison.Ordinal)
                 || entity.GetTableName() is "AspNetRoles" or "AspNetUserRoles" or "AspNetUsers");
+
+        IEntityType auditType = Assert.Single(entityTypes, entity => entity.ClrType == typeof(AuditRecord));
+        Assert.Equal(AuditPersistence.TableName, auditType.GetTableName());
+        Assert.Empty(auditType.GetForeignKeys());
+        Assert.Empty(auditType.GetReferencingForeignKeys());
+        Assert.Equal(
+            [
+                nameof(AuditRecord.ActorIdentifier),
+                nameof(AuditRecord.ActorRole),
+                nameof(AuditRecord.AuditId),
+                nameof(AuditRecord.AuditTime),
+                nameof(AuditRecord.CorrelationId),
+                nameof(AuditRecord.FailureBusinessErrorCode),
+                nameof(AuditRecord.OperationIdentifier),
+                nameof(AuditRecord.Result),
+                nameof(AuditRecord.TargetIdentifier),
+            ],
+            auditType.GetProperties().Select(property => property.Name).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -104,7 +125,46 @@ public sealed class MigrationModelTests
     }
 
     [Fact]
-    public void TheGeneratedSqlCreatesHistoryAndOperatorTablesWithoutIdentityRoleSchema()
+    public void TheAuditMigrationCreatesTheExactTableAndAppendOnlyControlWithBackupRestoreDownBoundary()
+    {
+        using BankDbContext context = CreateDesignTimeContext();
+        IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
+        Migration migration = migrations.CreateMigration(
+            migrations.Migrations[AuditPersistence.AuditMigrationId],
+            ActiveProvider);
+
+        CreateTableOperation createTable = Assert.Single(migration.UpOperations.OfType<CreateTableOperation>());
+        Assert.Equal(AuditPersistence.TableName, createTable.Name);
+        Assert.Equal(
+            [
+                AuditPersistence.ActorIdentifierColumn,
+                AuditPersistence.ActorRoleColumn,
+                AuditPersistence.AuditIdColumn,
+                AuditPersistence.AuditTimeColumn,
+                AuditPersistence.CorrelationIdColumn,
+                AuditPersistence.FailureBusinessErrorCodeColumn,
+                AuditPersistence.OperationIdentifierColumn,
+                AuditPersistence.ResultColumn,
+                AuditPersistence.TargetIdentifierColumn,
+            ],
+            createTable.Columns.Select(column => column.Name).Order(StringComparer.Ordinal));
+        Assert.Contains(createTable.CheckConstraints, constraint => constraint.Name == AuditPersistence.ActorRoleCheckConstraint);
+        Assert.Contains(createTable.CheckConstraints, constraint => constraint.Name == AuditPersistence.ResultCheckConstraint);
+        Assert.Contains(createTable.CheckConstraints, constraint => constraint.Name == AuditPersistence.FailureCodeCheckConstraint);
+
+        SqlOperation appendOnly = Assert.Single(migration.UpOperations.OfType<SqlOperation>());
+        Assert.Contains($"CREATE FUNCTION public.{AuditPersistence.AppendOnlyFunction}()", appendOnly.Sql, StringComparison.Ordinal);
+        Assert.Contains($"CREATE TRIGGER {AuditPersistence.AppendOnlyTrigger}", appendOnly.Sql, StringComparison.Ordinal);
+        Assert.Contains("BEFORE UPDATE OR DELETE", appendOnly.Sql, StringComparison.Ordinal);
+        Assert.Contains("ERRCODE = '55000'", appendOnly.Sql, StringComparison.Ordinal);
+
+        Assert.Empty(migration.DownOperations.OfType<DropTableOperation>());
+        SqlOperation downBoundary = Assert.Single(migration.DownOperations.OfType<SqlOperation>());
+        Assert.Contains(AuditPersistence.RollbackRequiresBackupRestoreSignature, downBoundary.Sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheGeneratedSqlCreatesOnlyIntendedTablesAndExactlyTheAuditAppendOnlyTrigger()
     {
         using BankDbContext context = CreateDesignTimeContext();
 
@@ -119,7 +179,9 @@ public sealed class MigrationModelTests
                 .Select(match => match.Groups["table"].Value),
         ];
 
-        Assert.Equal([QualifiedHistoryTable, OperatorPersistence.TableName], createdTables);
+        Assert.Equal(
+            [QualifiedHistoryTable, OperatorPersistence.TableName, AuditPersistence.TableName],
+            createdTables);
         Assert.Contains("ck_operators_state", script, StringComparison.Ordinal);
         Assert.Contains("ck_operators_fixed_role", script, StringComparison.Ordinal);
         Assert.Contains("timestamp with time zone", script, StringComparison.OrdinalIgnoreCase);
@@ -127,7 +189,16 @@ public sealed class MigrationModelTests
         Assert.DoesNotContain("AspNetUserRoles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("AspNetUsers", script, StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE SEQUENCE", script, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("CREATE TRIGGER", script, StringComparison.OrdinalIgnoreCase);
+        Match[] triggerCreations =
+        [
+            .. Regex
+                .Matches(script, @"CREATE\s+TRIGGER\s+(?<trigger>[^\s]+)", RegexOptions.IgnoreCase)
+                .Cast<Match>(),
+        ];
+        Match trigger = Assert.Single(triggerCreations);
+        Assert.Equal(AuditPersistence.AppendOnlyTrigger, trigger.Groups["trigger"].Value);
+        Assert.Contains($"CREATE FUNCTION public.{AuditPersistence.AppendOnlyFunction}()", script, StringComparison.Ordinal);
+        Assert.Contains("BEFORE UPDATE OR DELETE ON public.audit_logs", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -151,6 +222,7 @@ public sealed class MigrationModelTests
         Assert.Contains("IF NOT EXISTS(SELECT 1 FROM", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("_InitialFoundation", script, StringComparison.Ordinal);
         Assert.Contains("_AddOperatorIdentity", script, StringComparison.Ordinal);
+        Assert.Contains("_AddAuditPersistence", script, StringComparison.Ordinal);
     }
 
     [Fact]
