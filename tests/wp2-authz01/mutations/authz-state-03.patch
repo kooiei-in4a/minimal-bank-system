@@ -1,0 +1,25 @@
+diff --git a/src/MinimalBankSystem.Api/Runtime/Authorization/CurrentOperatorAuthorizationHandler.cs b/src/MinimalBankSystem.Api/Runtime/Authorization/CurrentOperatorAuthorizationHandler.cs
+index b62ab9f..5dee672 100644
+--- a/src/MinimalBankSystem.Api/Runtime/Authorization/CurrentOperatorAuthorizationHandler.cs
++++ b/src/MinimalBankSystem.Api/Runtime/Authorization/CurrentOperatorAuthorizationHandler.cs
+@@ -94,7 +94,7 @@ public sealed class CurrentOperatorAuthorizationHandler(
+                 context.Succeed(requirement);
+             }
+             else if (requirement is OperatorRoleRequirement roleRequirement &&
+-                     AuthoritativeRole(currentOperator) is { } role &&
++                     AuthoritativeRole(httpContext.User, currentOperator) is { } role &&
+                      roleRequirement.AllowedRoles.Contains(role))
+             {
+                 context.Succeed(requirement);
+@@ -108,5 +108,10 @@ public sealed class CurrentOperatorAuthorizationHandler(
+         }
+     }
+ 
+-    private static OperatorRole? AuthoritativeRole(Operator currentOperator) => currentOperator.Role;
++    private static OperatorRole? AuthoritativeRole(ClaimsPrincipal principal, Operator currentOperator)
++    {
++        // MUTATION AUTHZ-STATE-03: the JWT role claim replaces the persisted role.
++        string? claim = principal.FindFirst(ClaimTypes.Role)?.Value;
++        return Enum.TryParse<OperatorRole>(claim, out OperatorRole role) ? role : null;
++    }
+ }

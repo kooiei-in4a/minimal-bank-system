@@ -1,0 +1,20 @@
+diff --git a/src/MinimalBankSystem.Infrastructure/Authorization/CurrentOperatorResolver.cs b/src/MinimalBankSystem.Infrastructure/Authorization/CurrentOperatorResolver.cs
+index df8ad2d..9a997c5 100644
+--- a/src/MinimalBankSystem.Infrastructure/Authorization/CurrentOperatorResolver.cs
++++ b/src/MinimalBankSystem.Infrastructure/Authorization/CurrentOperatorResolver.cs
+@@ -28,10 +28,11 @@ public sealed class CurrentOperatorResolver(BankDbContext dbContext)
+             return CurrentOperatorResolution.NotFound;
+         }
+ 
+-        if (current.State is not OperatorState.Active)
+-        {
+-            return CurrentOperatorResolution.Disabled;
+-        }
++        // MUTATION AUTHZ-STATE-01: disabled-state check removed.
++        // if (current.State is not OperatorState.Active)
++        // {
++        //     return CurrentOperatorResolution.Disabled;
++        // }
+ 
+         if (current.AuthorizationStateVersion != presentedAuthorizationStateVersion)
+         {
