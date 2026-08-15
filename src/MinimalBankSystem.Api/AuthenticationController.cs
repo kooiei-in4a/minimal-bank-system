@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Infrastructure.Authentication;
@@ -10,6 +11,7 @@ public sealed class AuthenticationController(
     AuthnLoginService loginService,
     IJwtAccessTokenIssuer tokenIssuer) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(
         LoginRequest request,

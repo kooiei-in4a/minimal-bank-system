@@ -1,13 +1,18 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using MinimalBankSystem.Api.Runtime;
+using MinimalBankSystem.Api.Runtime.Authorization;
 using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Application.Runtime;
+using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Authentication;
+using MinimalBankSystem.Infrastructure.Authorization;
 using MinimalBankSystem.Infrastructure.Persistence;
 using MinimalBankSystem.Infrastructure.Persistence.Auditing;
 
@@ -49,6 +54,10 @@ builder.Services
 
 builder.Services.AddScoped<AuthnLoginService>();
 builder.Services.AddSingleton<IJwtAccessTokenIssuer, JwtAccessTokenIssuer>();
+builder.Services.AddScoped<CurrentOperatorResolver>();
+builder.Services.AddScoped<CurrentOperatorContext>();
+builder.Services.AddScoped<IAuthorizationHandler, CurrentOperatorAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, OperatorAuthorizationResultHandler>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer();
@@ -71,7 +80,19 @@ builder.Services
             },
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(AuthorizationPolicies.Fallback)
+    .AddPolicy(
+        AuthorizationPolicies.AdministratorOnly,
+        AuthorizationPolicies.CreateRolePolicy(OperatorRole.Administrator))
+    .AddPolicy(
+        AuthorizationPolicies.TellerOrAdministrator,
+        AuthorizationPolicies.CreateRolePolicy(OperatorRole.Teller, OperatorRole.Administrator));
+// The fallback must not convert framework routing errors (404/405/415) into 401 for requests
+// that no endpoint matched. The evaluator bypasses only that case and delegates everything else.
+builder.Services.AddSingleton<IPolicyEvaluator>(serviceProvider =>
+    new RoutingFaultAwarePolicyEvaluator(
+        ActivatorUtilities.CreateInstance<PolicyEvaluator>(serviceProvider)));
 
 // Normal API startup never evolves the schema. The options factory runs only when persistence is
 // resolved and fails closed if the canonical PostgreSQL connection is absent.
@@ -120,8 +141,10 @@ app.UseStatusCodePages(async statusCodeContext =>
     }
 });
 app.MapHealthChecks(HealthContract.LivePath, HealthContract.Liveness)
+    .AllowAnonymous()
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapHealthChecks(HealthContract.ReadyPath, HealthContract.Readiness)
+    .AllowAnonymous()
     .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
 app.MapControllers();
 
