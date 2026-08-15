@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -119,6 +120,38 @@ public sealed class AuthorizationTests(PostgreSqlContainerFixture fixture)
             CreateToken(viewer));
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         Assert.Equal(1, signals.FallbackHandlerReachCount);
+    }
+
+    [Fact]
+    public async Task Framework415BypassHappensBeforeCurrentOperatorDbLookupWithoutHandlerOrProductAudit()
+    {
+        // AUTHZ-H1-MAJ-01: FS-AUTHZ-03 requires explicit 415 proof through the AUTHZ-enabled path.
+        await MigrateAsync();
+        using ConsoleCapture capture = new();
+
+        await using AuthorizationProbeApiFactory factory = new(Database.ConnectionString);
+        using HttpClient client = factory.CreateClient();
+        AuthorizationProbeSignals signals = factory.Services.GetRequiredService<AuthorizationProbeSignals>();
+        string missingOperatorToken = CreateToken(Guid.NewGuid(), Operator.InitialAuthorizationStateVersion);
+
+        using HttpRequestMessage unsupportedMediaType = new(
+            HttpMethod.Post,
+            Route(AuthorizationProbeController.MediaTypeRoute, "unsupported-media-type"));
+        unsupportedMediaType.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", missingOperatorToken);
+        unsupportedMediaType.Content = new StringContent("not-json", Encoding.UTF8, "text/plain");
+
+        using HttpResponseMessage response = await client.SendAsync(unsupportedMediaType);
+        await AssertErrorAsync(
+            response,
+            HttpStatusCode.UnsupportedMediaType,
+            "unsupported_media_type",
+            "Authenticated unsupported media type must remain 415 without current-Operator resolution.");
+
+        Assert.Equal(0, signals.MediaTypeHandlerReachCount);
+        Assert.DoesNotContain("OperatorNotFound", capture.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("2001", capture.Content, StringComparison.Ordinal);
+        Assert.Equal(0L, await CountAuditsAsync());
     }
 
     [Fact]

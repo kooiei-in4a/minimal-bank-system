@@ -23,6 +23,7 @@ public sealed class AuthorizationProbeController(AuthorizationProbeSignals signa
     public const string FallbackRoute = "/__authz-probe/fallback/{targetId}";
     public const string AdministratorRoute = "/__authz-probe/administrator/{targetId}";
     public const string MissingAuditContextRoute = "/__authz-probe/missing-audit-context/{targetId}";
+    public const string MediaTypeRoute = "/__authz-probe/media-type/{targetId}";
 
     [HttpGet(FallbackRoute)]
     public IActionResult Fallback(string targetId)
@@ -50,7 +51,23 @@ public sealed class AuthorizationProbeController(AuthorizationProbeSignals signa
         signals.RecordMissingAuditContextHandlerReached();
         return Ok(new { HandlerReached = true });
     }
+
+    /// <summary>
+    /// AUTHZ-H1-MAJ-01: framework unsupported-media-type (415) surface under real AUTHZ fallback.
+    /// Not AllowAnonymous — authorization must see the framework 415 endpoint before any handler.
+    /// </summary>
+    [HttpPost(MediaTypeRoute)]
+    [Consumes("application/json")]
+    public IActionResult MediaType(string targetId, [FromBody] AuthorizationProbeMediaTypeBody body)
+    {
+        _ = targetId;
+        _ = body;
+        signals.RecordMediaTypeHandlerReached();
+        return Ok(new { HandlerReached = true });
+    }
 }
+
+public sealed record AuthorizationProbeMediaTypeBody(string? Name);
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 internal sealed class TestAuthorizationAuditContextAttribute(string targetRouteValueName)
@@ -75,6 +92,7 @@ public sealed class AuthorizationProbeSignals
     private int fallbackHandlerReachCount;
     private int administratorHandlerReachCount;
     private int missingAuditContextHandlerReachCount;
+    private int mediaTypeHandlerReachCount;
 
     public int FallbackHandlerReachCount => Volatile.Read(ref fallbackHandlerReachCount);
 
@@ -82,12 +100,16 @@ public sealed class AuthorizationProbeSignals
 
     public int MissingAuditContextHandlerReachCount => Volatile.Read(ref missingAuditContextHandlerReachCount);
 
+    public int MediaTypeHandlerReachCount => Volatile.Read(ref mediaTypeHandlerReachCount);
+
     public void RecordFallbackHandlerReached() => Interlocked.Increment(ref fallbackHandlerReachCount);
 
     public void RecordAdministratorHandlerReached() => Interlocked.Increment(ref administratorHandlerReachCount);
 
     public void RecordMissingAuditContextHandlerReached() =>
         Interlocked.Increment(ref missingAuditContextHandlerReachCount);
+
+    public void RecordMediaTypeHandlerReached() => Interlocked.Increment(ref mediaTypeHandlerReachCount);
 }
 
 internal sealed class AuthorizationProbeApiFactory(
