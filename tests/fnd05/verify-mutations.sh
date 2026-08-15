@@ -4,6 +4,7 @@ set -Eeuo pipefail
 readonly repository_root="$(git rev-parse --show-toplevel)"
 readonly expected_foundation_migration='20260809113338_InitialFoundation'
 readonly expected_identity_migration='20260813181449_AddOperatorIdentity'
+readonly expected_audit_migration='20260814234713_AddProductAudit'
 readonly sentinel="${FND05_SECRET_SENTINEL:-FND05_MUTATION_SENTINEL_NOT_A_CREDENTIAL}"
 readonly bootstrap_sentinel="${sentinel}_BOOTSTRAP"
 readonly migrator_sentinel="${sentinel}_MIGRATOR"
@@ -137,6 +138,10 @@ success_oracle() {
   }
   [[ "$history_value" == *"$expected_identity_migration"* ]] || {
     printf 'ORACLE_SIGNATURE=expected-identity-migration-absent\n' >&2
+    return 1
+  }
+  [[ "$history_value" == *"$expected_audit_migration"* ]] || {
+    printf 'ORACLE_SIGNATURE=expected-audit-migration-absent\n' >&2
     return 1
   }
 }
