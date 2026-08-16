@@ -10,6 +10,9 @@ public sealed record ApiErrorEnvelope(string Code, string Message)
 
     public static ApiErrorEnvelope OperationNotPermitted { get; } =
         new("operation_not_permitted", "The authenticated operator is not permitted to perform this operation.");
+
+    public static ApiErrorEnvelope OperatorNotFound { get; } =
+        new("operator_not_found", "The requested operator was not found.");
 }
 
 public sealed record ApiErrorMapping(int StatusCode, string Code, string Message)

@@ -29,13 +29,20 @@ public sealed class ApiRuntimeContractTests
         new(2030, 4, 5, 6, 7, 8, TimeSpan.Zero);
 
     [Fact]
-    public void ProductionAuditRegistryStartsEmptyAndAcceptsExplicitFeatureContributions()
+    public void ProductionAuditRegistryIncludesExplicitFeatureContributions()
     {
         using ContractWebApplicationFactory emptyFactory = new();
         IAuditOperationRegistry emptyRegistry =
             emptyFactory.Services.GetRequiredService<IAuditOperationRegistry>();
 
-        Assert.Empty(emptyFactory.Services.GetServices<AuditOperationRegistration>());
+        Assert.Contains(
+            emptyFactory.Services.GetServices<AuditOperationRegistration>(),
+            registration => registration.Identifier == "operator.query.list");
+        Assert.Contains(
+            emptyFactory.Services.GetServices<AuditOperationRegistration>(),
+            registration => registration.Identifier == "operator.query.detail");
+        emptyRegistry.EnsureRegistered("operator.query.list");
+        emptyRegistry.EnsureRegistered("operator.query.detail");
         Assert.Throws<UnregisteredAuditOperationException>(
             () => emptyRegistry.EnsureRegistered("feature.operation"));
 
