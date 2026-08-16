@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
+using MinimalBankSystem.Api.OperatorQuery;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Application.Runtime;
@@ -29,13 +30,19 @@ public sealed class ApiRuntimeContractTests
         new(2030, 4, 5, 6, 7, 8, TimeSpan.Zero);
 
     [Fact]
-    public void ProductionAuditRegistryStartsEmptyAndAcceptsExplicitFeatureContributions()
+    public void ProductionAuditRegistryContainsExplicitFeatureContributions()
     {
         using ContractWebApplicationFactory emptyFactory = new();
         IAuditOperationRegistry emptyRegistry =
             emptyFactory.Services.GetRequiredService<IAuditOperationRegistry>();
 
-        Assert.Empty(emptyFactory.Services.GetServices<AuditOperationRegistration>());
+        Assert.Equal(
+            [OperatorQueryOperations.List, OperatorQueryOperations.Detail],
+            emptyFactory.Services
+                .GetServices<AuditOperationRegistration>()
+                .Select(registration => registration.Identifier));
+        emptyRegistry.EnsureRegistered(OperatorQueryOperations.List);
+        emptyRegistry.EnsureRegistered(OperatorQueryOperations.Detail);
         Assert.Throws<UnregisteredAuditOperationException>(
             () => emptyRegistry.EnsureRegistered("feature.operation"));
 
