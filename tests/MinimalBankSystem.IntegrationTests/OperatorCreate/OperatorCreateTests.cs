@@ -15,12 +15,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using MinimalBankSystem.Api.OperatorCreate;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
+using MinimalBankSystem.Domain.Auditing;
 using MinimalBankSystem.Domain.Identity;
 using MinimalBankSystem.Infrastructure.Authentication;
 using MinimalBankSystem.Infrastructure.Persistence;
@@ -502,20 +504,32 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
         Operator administrator = await SeedOperatorAsync(
             "opr.create.rejection-audit-failure.admin",
             OperatorRole.Administrator);
-        AuditFailureProbe failureProbe = new();
+        const string correlationId = "opr-create-rejection-audit-failure";
+        const string normalizedTarget = "OPR.CREATE.REJECTION-AUDIT-FAILURE.TARGET";
+        AuditPersistenceFailureProbe persistenceFailureProbe = new();
+        ResultFactoryProbe resultFactoryProbe = new();
+        ThrowOnOperatorCreateAuditSaveChangesInterceptor persistenceFailure =
+            new(persistenceFailureProbe);
         long operatorCountBefore = await CountOperatorsAsync();
 
         await using OperatorCreateApiFactory factory = CreateFactory(services =>
         {
             services.RemoveAll<IAuditWriter>();
-            services.AddSingleton(failureProbe);
-            services.AddScoped<IAuditWriter, FailingSuccessAuditWriter>();
+            services.AddSingleton(persistenceFailure);
+            services.AddSingleton(resultFactoryProbe);
+            services.AddDbContext<BankDbContext>((serviceProvider, options) =>
+                options.AddInterceptors(
+                    serviceProvider.GetRequiredService<ThrowOnOperatorCreateAuditSaveChangesInterceptor>()));
+            services.AddScoped<IAuditWriter>(serviceProvider =>
+                new ResultFactoryProbeAuditWriter(
+                    ActivatorUtilities.CreateInstance<PostgreSqlAuditWriter>(serviceProvider),
+                    serviceProvider.GetRequiredService<ResultFactoryProbe>()));
         });
         using HttpClient client = factory.CreateClient();
         using HttpResponseMessage response = await SendCreateAsync(
             client,
             CreateToken(administrator),
-            "opr-create-rejection-audit-failure",
+            correlationId,
             "opr.create.rejection-audit-failure.target",
             "Valid-Password-1!",
             "owner");
@@ -524,8 +538,17 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Contains("internal_error", body, StringComparison.Ordinal);
         Assert.DoesNotContain("validation_failed", body, StringComparison.Ordinal);
-        Assert.Equal(1, failureProbe.InvocationCount);
+        Assert.DoesNotContain(
+            "operator_login_identifier_already_registered",
+            body,
+            StringComparison.Ordinal);
+        Assert.Equal(1, persistenceFailureProbe.FailurePointHitCount);
+        Assert.Equal(1, persistenceFailureProbe.AddedAuditRecordCount);
+        Assert.Equal(1, persistenceFailureProbe.FailureInjectionCount);
+        Assert.Equal(0, resultFactoryProbe.InvocationCount);
         Assert.Equal(operatorCountBefore, await CountOperatorsAsync());
+        Assert.False(await OperatorExistsAsync(normalizedTarget));
+        Assert.Empty(await ReadAuditsAsync(correlationId));
         Assert.Equal(0L, await CountAuditsAsync());
     }
 
@@ -1001,6 +1024,99 @@ internal sealed class AuditFailureProbe
 
     public void RecordInvocation() => Interlocked.Increment(ref invocationCount);
 }
+
+internal sealed class AuditPersistenceFailureProbe
+{
+    private int failurePointHitCount;
+    private int addedAuditRecordCount;
+    private int failureInjectionCount;
+
+    public int FailurePointHitCount => Volatile.Read(ref failurePointHitCount);
+
+    public int AddedAuditRecordCount => Volatile.Read(ref addedAuditRecordCount);
+
+    public int FailureInjectionCount => Volatile.Read(ref failureInjectionCount);
+
+    public void RecordFailurePointHit(int addedAuditRecords)
+    {
+        Interlocked.Increment(ref failurePointHitCount);
+        Interlocked.Add(ref addedAuditRecordCount, addedAuditRecords);
+    }
+
+    public void RecordFailureInjection() => Interlocked.Increment(ref failureInjectionCount);
+}
+
+internal sealed class ResultFactoryProbe
+{
+    private int invocationCount;
+
+    public int InvocationCount => Volatile.Read(ref invocationCount);
+
+    public void RecordInvocation() => Interlocked.Increment(ref invocationCount);
+}
+
+internal sealed class ThrowOnOperatorCreateAuditSaveChangesInterceptor(
+    AuditPersistenceFailureProbe probe) : SaveChangesInterceptor
+{
+    public override InterceptionResult<int> SavingChanges(
+        DbContextEventData eventData,
+        InterceptionResult<int> result)
+    {
+        ThrowForAddedAudit(eventData);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken cancellationToken = default)
+    {
+        _ = cancellationToken;
+        ThrowForAddedAudit(eventData);
+        return ValueTask.FromResult(result);
+    }
+
+    private void ThrowForAddedAudit(DbContextEventData eventData)
+    {
+        int addedAuditRecords = eventData.Context?.ChangeTracker.Entries<AuditRecord>()
+            .Count(entry => entry.State == EntityState.Added) ?? 0;
+        if (addedAuditRecords == 0)
+        {
+            return;
+        }
+
+        probe.RecordFailurePointHit(addedAuditRecords);
+        probe.RecordFailureInjection();
+        throw new OperatorCreateAuditPersistenceFailureInjectionException();
+    }
+}
+
+internal sealed class ResultFactoryProbeAuditWriter(
+    PostgreSqlAuditWriter inner,
+    ResultFactoryProbe probe) : IAuditWriter
+{
+    public Task AppendToCurrentTransactionAsync(
+        AuditWriteRequest request,
+        CancellationToken cancellationToken = default) =>
+        inner.AppendToCurrentTransactionAsync(request, cancellationToken);
+
+    public Task<TResult> AppendInSeparateTransactionBeforeResultAsync<TResult>(
+        AuditWriteRequest request,
+        Func<CancellationToken, Task<TResult>> successResultFactory,
+        CancellationToken cancellationToken = default) =>
+        inner.AppendInSeparateTransactionBeforeResultAsync(
+            request,
+            async resultCancellationToken =>
+            {
+                probe.RecordInvocation();
+                return await successResultFactory(resultCancellationToken).ConfigureAwait(false);
+            },
+            cancellationToken);
+}
+
+internal sealed class OperatorCreateAuditPersistenceFailureInjectionException()
+    : InvalidOperationException(
+        "Deterministic test-only Operator create AuditRecord persistence failure.");
 
 internal sealed class OperatorCreateActionReachProbe
 {
