@@ -43,6 +43,10 @@ public sealed class ApiRuntimeContractTests
             registration => registration.Identifier == "operator.query.detail");
         emptyRegistry.EnsureRegistered("operator.query.list");
         emptyRegistry.EnsureRegistered("operator.query.detail");
+        Assert.Contains(
+            emptyFactory.Services.GetServices<AuditOperationRegistration>(),
+            registration => registration.Identifier == "operator.command.create");
+        emptyRegistry.EnsureRegistered("operator.command.create");
         Assert.Throws<UnregisteredAuditOperationException>(
             () => emptyRegistry.EnsureRegistered("feature.operation"));
 
