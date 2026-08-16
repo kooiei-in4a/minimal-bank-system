@@ -9,7 +9,10 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -193,6 +196,104 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
         await AssertErrorAsync(response, HttpStatusCode.BadRequest, "validation_failed");
         Assert.Equal(operatorCountBefore, await CountOperatorsAsync());
         Assert.Single(await ReadAuditsAsync(correlationId));
+    }
+
+    [Fact]
+    public async Task HandlerOwnedValidationInputsReachActionAndWriteExactlyOneRejectionAudit()
+    {
+        await MigrateAsync();
+        Operator administrator = await SeedOperatorAsync(
+            "opr.create.validation-boundary.admin",
+            OperatorRole.Administrator);
+        long operatorCountBefore = await CountOperatorsAsync();
+        OperatorCreateActionReachProbe reachProbe = new();
+
+        HandlerValidationCase[] cases =
+        [
+            new("body-missing", null),
+            new("json-null", "null"),
+            new("missing-loginIdentifier", "{\"password\":\"Valid-Password-1!\",\"role\":\"administrator\"}"),
+            new("missing-password", "{\"loginIdentifier\":\"opr.create.validation.missing-password\",\"role\":\"administrator\"}"),
+            new("missing-role", "{\"loginIdentifier\":\"opr.create.validation.missing-role\",\"password\":\"Valid-Password-1!\"}"),
+            new("null-loginIdentifier", "{\"loginIdentifier\":null,\"password\":\"Valid-Password-1!\",\"role\":\"administrator\"}"),
+            new("null-password", "{\"loginIdentifier\":\"opr.create.validation.null-password\",\"password\":null,\"role\":\"administrator\"}"),
+            new("null-role", "{\"loginIdentifier\":\"opr.create.validation.null-role\",\"password\":\"Valid-Password-1!\",\"role\":null}"),
+            new("empty-loginIdentifier", "{\"loginIdentifier\":\"\",\"password\":\"Valid-Password-1!\",\"role\":\"administrator\"}"),
+            new("empty-password", "{\"loginIdentifier\":\"opr.create.validation.empty-password\",\"password\":\"\",\"role\":\"administrator\"}"),
+            new("empty-role", "{\"loginIdentifier\":\"opr.create.validation.empty-role\",\"password\":\"Valid-Password-1!\",\"role\":\"\"}"),
+            new("whitespace-loginIdentifier", "{\"loginIdentifier\":\"   \",\"password\":\"Valid-Password-1!\",\"role\":\"administrator\"}"),
+            new("whitespace-password", "{\"loginIdentifier\":\"opr.create.validation.whitespace-password\",\"password\":\"   \",\"role\":\"administrator\"}"),
+            new("whitespace-role", "{\"loginIdentifier\":\"opr.create.validation.whitespace-role\",\"password\":\"Valid-Password-1!\",\"role\":\"   \"}"),
+            new("invalid-role", "{\"loginIdentifier\":\"opr.create.validation.invalid-role\",\"password\":\"Valid-Password-1!\",\"role\":\"owner\"}"),
+            new("wrong-case-role", "{\"loginIdentifier\":\"opr.create.validation.wrong-case-role\",\"password\":\"Valid-Password-1!\",\"role\":\"Administrator\"}"),
+        ];
+
+        await using OperatorCreateApiFactory factory = CreateFactory(services =>
+        {
+            services.Configure<MvcOptions>(options =>
+                options.Filters.Add(new OperatorCreateActionReachProbeFilter(reachProbe)));
+        });
+        using HttpClient client = factory.CreateClient();
+
+        for (int index = 0; index < cases.Length; index++)
+        {
+            HandlerValidationCase validationCase = cases[index];
+            string correlationId = $"opr-create-validation-boundary-{validationCase.Name}";
+
+            using HttpResponseMessage response = await SendRawCreateAsync(
+                client,
+                CreateToken(administrator),
+                correlationId,
+                validationCase.Body);
+
+            await AssertErrorAsync(response, HttpStatusCode.BadRequest, "validation_failed");
+            Assert.Equal(index + 1, reachProbe.InvocationCount);
+            Assert.Equal(operatorCountBefore, await CountOperatorsAsync());
+
+            PersistedAudit audit = Assert.Single(await ReadAuditsAsync(correlationId));
+            Assert.Equal("operator.command.create", audit.OperationIdentifier);
+            Assert.Equal("operators", audit.TargetIdentifier);
+            Assert.Equal(AuditPersistence.FailureResultToken, audit.Result);
+            Assert.Equal("validation_failed", audit.FailureBusinessErrorCode);
+        }
+    }
+
+    [Fact]
+    public async Task FrameworkOwnedRejectionsDoNotReachActionOrWriteProductAudit()
+    {
+        await MigrateAsync();
+        Operator administrator = await SeedOperatorAsync(
+            "opr.create.framework-boundary.admin",
+            OperatorRole.Administrator);
+        long operatorCountBefore = await CountOperatorsAsync();
+        OperatorCreateActionReachProbe reachProbe = new();
+
+        await using OperatorCreateApiFactory factory = CreateFactory(services =>
+        {
+            services.Configure<MvcOptions>(options =>
+                options.Filters.Add(new OperatorCreateActionReachProbeFilter(reachProbe)));
+        });
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage malformedJson = await SendRawCreateAsync(
+            client,
+            CreateToken(administrator),
+            "opr-create-framework-malformed-json",
+            "{\"loginIdentifier\":");
+        await AssertErrorAsync(malformedJson, HttpStatusCode.BadRequest, "validation_failed");
+        Assert.Equal(0, reachProbe.InvocationCount);
+        Assert.Empty(await ReadAuditsAsync("opr-create-framework-malformed-json"));
+
+        using HttpResponseMessage unsupportedContentType = await SendRawCreateAsync(
+            client,
+            CreateToken(administrator),
+            "opr-create-framework-unsupported-content-type",
+            "not-json",
+            "text/plain");
+        await AssertStatusOnlyAsync(unsupportedContentType, HttpStatusCode.UnsupportedMediaType);
+        Assert.Equal(0, reachProbe.InvocationCount);
+        Assert.Empty(await ReadAuditsAsync("opr-create-framework-unsupported-content-type"));
+        Assert.Equal(operatorCountBefore, await CountOperatorsAsync());
     }
 
     [Theory]
@@ -395,6 +496,86 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
     }
 
     [Fact]
+    public async Task HandlerRejectionAuditFailureFailsClosedWithoutResponseOrAudit()
+    {
+        await MigrateAsync();
+        Operator administrator = await SeedOperatorAsync(
+            "opr.create.rejection-audit-failure.admin",
+            OperatorRole.Administrator);
+        AuditFailureProbe failureProbe = new();
+        long operatorCountBefore = await CountOperatorsAsync();
+
+        await using OperatorCreateApiFactory factory = CreateFactory(services =>
+        {
+            services.RemoveAll<IAuditWriter>();
+            services.AddSingleton(failureProbe);
+            services.AddScoped<IAuditWriter, FailingSuccessAuditWriter>();
+        });
+        using HttpClient client = factory.CreateClient();
+        using HttpResponseMessage response = await SendCreateAsync(
+            client,
+            CreateToken(administrator),
+            "opr-create-rejection-audit-failure",
+            "opr.create.rejection-audit-failure.target",
+            "Valid-Password-1!",
+            "owner");
+        string body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Contains("internal_error", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("validation_failed", body, StringComparison.Ordinal);
+        Assert.Equal(1, failureProbe.InvocationCount);
+        Assert.Equal(operatorCountBefore, await CountOperatorsAsync());
+        Assert.Equal(0L, await CountAuditsAsync());
+    }
+
+    [Fact]
+    public async Task OperatorPersistenceFailureBeforeSuccessAuditFailsClosedWithoutAudit()
+    {
+        await MigrateAsync();
+        Operator administrator = await SeedOperatorAsync(
+            "opr.create.persistence-failure.admin",
+            OperatorRole.Administrator);
+        long operatorCountBefore = await CountOperatorsAsync();
+        AuditAppendProbe appendProbe = new();
+        await InstallOperatorPersistenceFailureTriggerAsync();
+
+        try
+        {
+            await using OperatorCreateApiFactory factory = CreateFactory(services =>
+            {
+                services.RemoveAll<IAuditWriter>();
+                services.AddSingleton(appendProbe);
+                services.AddScoped<IAuditWriter>(serviceProvider =>
+                    new RecordingAuditWriter(
+                        ActivatorUtilities.CreateInstance<PostgreSqlAuditWriter>(serviceProvider),
+                        serviceProvider.GetRequiredService<AuditAppendProbe>()));
+            });
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await SendCreateAsync(
+                client,
+                CreateToken(administrator),
+                "opr-create-operator-persistence-failure",
+                "opr.create.operator-persistence-failure.target",
+                "Valid-Password-1!",
+                "administrator");
+            string body = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.Contains("internal_error", body, StringComparison.Ordinal);
+            Assert.Equal(0, appendProbe.CurrentTransactionInvocationCount);
+            Assert.Equal(operatorCountBefore, await CountOperatorsAsync());
+            Assert.Equal(0L, await CountAuditsAsync());
+        }
+        finally
+        {
+            await RemoveOperatorPersistenceFailureTriggerAsync();
+        }
+
+        Assert.False(await OperatorPersistenceFailureTriggerExistsAsync());
+    }
+
+    [Fact]
     public async Task ConcurrentDuplicateRequestsProduceExactlyOneSuccessAndOneConflictWithoutMisleadingAudit()
     {
         await MigrateAsync();
@@ -403,8 +584,19 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
         const string normalizedLoginIdentifier = "OPR.CREATE.RACE.TARGET";
         const string firstCorrelationId = "opr-create-race-a";
         const string secondCorrelationId = "opr-create-race-b";
+        DuplicateCommitBarrier barrier = new();
 
-        await using OperatorCreateApiFactory factory = CreateFactory();
+        await using OperatorCreateApiFactory factory = CreateFactory(services =>
+        {
+            services.RemoveAll<IOperatorCreateSuccessCommitter>();
+            services.AddSingleton(barrier);
+            services.AddScoped<IOperatorCreateSuccessCommitter>(serviceProvider =>
+                new CoordinatedOperatorCreateSuccessCommitter(
+                    new AtomicOperatorCreateSuccessCommitter(
+                        serviceProvider.GetRequiredService<BankDbContext>(),
+                        serviceProvider.GetRequiredService<IAuditWriter>()),
+                    serviceProvider.GetRequiredService<DuplicateCommitBarrier>()));
+        });
         using HttpClient client = factory.CreateClient();
         string token = CreateToken(administrator);
 
@@ -420,6 +612,9 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
             Assert.Equal(
                 new[] { HttpStatusCode.Created, HttpStatusCode.Conflict },
                 statusCodes);
+            Assert.Equal(2, barrier.CommitEntryCount);
+            Assert.Equal(1, barrier.UniqueViolationCount);
+            Assert.True(barrier.ReleaseCompleted);
 
             Assert.Equal(1L, await CountOperatorsWithNormalizedNameAsync(normalizedLoginIdentifier));
 
@@ -577,6 +772,57 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
         return Convert.ToInt64(await command.ExecuteScalarAsync(), CultureInfo.InvariantCulture);
     }
 
+    private async Task InstallOperatorPersistenceFailureTriggerAsync()
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(
+            """
+            CREATE FUNCTION public.opr_create_test_reject_operator_insert()
+            RETURNS trigger
+            LANGUAGE plpgsql
+            AS $function$
+            BEGIN
+                RAISE EXCEPTION 'OPR_CREATE_TEST_OPERATOR_PERSISTENCE_FAILURE';
+            END;
+            $function$;
+            CREATE TRIGGER trg_opr_create_test_reject_operator_insert
+            BEFORE INSERT ON operators
+            FOR EACH ROW
+            EXECUTE FUNCTION public.opr_create_test_reject_operator_insert();
+            """,
+            connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task RemoveOperatorPersistenceFailureTriggerAsync()
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(
+            """
+            DROP TRIGGER IF EXISTS trg_opr_create_test_reject_operator_insert ON operators;
+            DROP FUNCTION IF EXISTS public.opr_create_test_reject_operator_insert();
+            """,
+            connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task<bool> OperatorPersistenceFailureTriggerExistsAsync()
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_trigger
+                WHERE tgname = 'trg_opr_create_test_reject_operator_insert');
+            """,
+            connection);
+        return (bool)(await command.ExecuteScalarAsync())!;
+    }
+
     private async Task<IReadOnlyList<PersistedAudit>> ReadAuditsAsync(string correlationId)
     {
         List<PersistedAudit> audits = [];
@@ -649,6 +895,24 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
         return await client.SendAsync(request);
     }
 
+    private static async Task<HttpResponseMessage> SendRawCreateAsync(
+        HttpClient client,
+        string token,
+        string correlationId,
+        string? body,
+        string mediaType = "application/json")
+    {
+        using HttpRequestMessage request = new(HttpMethod.Post, "/operators");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Headers.Add(CorrelationIdMiddleware.HeaderName, correlationId);
+        if (body is not null)
+        {
+            request.Content = new StringContent(body, Encoding.UTF8, mediaType);
+        }
+
+        return await client.SendAsync(request);
+    }
+
     private static async Task AssertErrorAsync(
         HttpResponseMessage response,
         HttpStatusCode expectedStatus,
@@ -660,6 +924,16 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
             $"Expected {(int)expectedStatus} but got {(int)response.StatusCode}. Body: {body}");
         using JsonDocument document = JsonDocument.Parse(body);
         Assert.Equal(expectedCode, document.RootElement.GetProperty("code").GetString());
+    }
+
+    private static async Task AssertStatusOnlyAsync(
+        HttpResponseMessage response,
+        HttpStatusCode expectedStatus)
+    {
+        string body = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            response.StatusCode == expectedStatus,
+            $"Expected {(int)expectedStatus} but got {(int)response.StatusCode}. Body: {body}");
     }
 
     private static string CreateToken(Operator operatorEntity)
@@ -700,6 +974,8 @@ public sealed class OperatorCreateTests(PostgreSqlContainerFixture fixture)
         string Result,
         string? FailureBusinessErrorCode,
         string CorrelationId);
+
+    private sealed record HandlerValidationCase(string Name, string? Body);
 }
 
 internal sealed class OperatorCreateApiFactory(
@@ -724,6 +1000,128 @@ internal sealed class AuditFailureProbe
     public int InvocationCount => Volatile.Read(ref invocationCount);
 
     public void RecordInvocation() => Interlocked.Increment(ref invocationCount);
+}
+
+internal sealed class OperatorCreateActionReachProbe
+{
+    private int invocationCount;
+
+    public int InvocationCount => Volatile.Read(ref invocationCount);
+
+    public void RecordInvocation() => Interlocked.Increment(ref invocationCount);
+}
+
+internal sealed class OperatorCreateActionReachProbeFilter(OperatorCreateActionReachProbe probe)
+    : IAsyncActionFilter
+{
+    public async Task OnActionExecutionAsync(
+        ActionExecutingContext context,
+        ActionExecutionDelegate next)
+    {
+        if (context.HttpContext.Request.Method == HttpMethods.Post &&
+            string.Equals(context.HttpContext.Request.Path, "/operators", StringComparison.Ordinal))
+        {
+            probe.RecordInvocation();
+        }
+
+        await next().ConfigureAwait(false);
+    }
+}
+
+internal sealed class DuplicateCommitBarrier
+{
+    private readonly TaskCompletionSource<object?> release = new(
+        TaskCreationOptions.RunContinuationsAsynchronously);
+    private int commitEntryCount;
+    private int uniqueViolationCount;
+
+    public int CommitEntryCount => Volatile.Read(ref commitEntryCount);
+
+    public int UniqueViolationCount => Volatile.Read(ref uniqueViolationCount);
+
+    public bool ReleaseCompleted => release.Task.IsCompletedSuccessfully;
+
+    public async Task WaitForBothCommitEntriesAsync(CancellationToken cancellationToken)
+    {
+        int entries = Interlocked.Increment(ref commitEntryCount);
+        if (entries == 2)
+        {
+            release.TrySetResult(null);
+        }
+
+        await release.Task
+            .WaitAsync(TimeSpan.FromSeconds(30), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public void RecordUniqueViolation() => Interlocked.Increment(ref uniqueViolationCount);
+}
+
+internal sealed class CoordinatedOperatorCreateSuccessCommitter(
+    AtomicOperatorCreateSuccessCommitter productionCommitter,
+    DuplicateCommitBarrier barrier) : IOperatorCreateSuccessCommitter
+{
+    public async Task CommitAsync(
+        Operator newOperator,
+        Guid actorIdentifier,
+        OperatorRole actorRole,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        await barrier.WaitForBothCommitEntriesAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await productionCommitter
+                .CommitAsync(newOperator, actorIdentifier, actorRole, httpContext, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (DbUpdateException failure) when (IsNormalizedUserNameUniqueViolation(failure))
+        {
+            barrier.RecordUniqueViolation();
+            throw;
+        }
+    }
+
+    private static bool IsNormalizedUserNameUniqueViolation(DbUpdateException failure) =>
+        failure.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgresFailure &&
+        string.Equals(
+            postgresFailure.ConstraintName,
+            OperatorPersistence.NormalizedUserNameIndex,
+            StringComparison.Ordinal);
+}
+
+internal sealed class AuditAppendProbe
+{
+    private int currentTransactionInvocationCount;
+
+    public int CurrentTransactionInvocationCount =>
+        Volatile.Read(ref currentTransactionInvocationCount);
+
+    public void RecordCurrentTransactionInvocation() =>
+        Interlocked.Increment(ref currentTransactionInvocationCount);
+}
+
+internal sealed class RecordingAuditWriter(
+    IAuditWriter inner,
+    AuditAppendProbe probe) : IAuditWriter
+{
+    public async Task AppendToCurrentTransactionAsync(
+        AuditWriteRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        probe.RecordCurrentTransactionInvocation();
+        await inner.AppendToCurrentTransactionAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<TResult> AppendInSeparateTransactionBeforeResultAsync<TResult>(
+        AuditWriteRequest request,
+        Func<CancellationToken, Task<TResult>> successResultFactory,
+        CancellationToken cancellationToken = default) =>
+        inner.AppendInSeparateTransactionBeforeResultAsync(
+            request,
+            successResultFactory,
+            cancellationToken);
 }
 
 /// <summary>

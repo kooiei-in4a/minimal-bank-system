@@ -15,7 +15,7 @@ namespace MinimalBankSystem.Api.OperatorCreate;
 /// implementation (test-composition-only technique, matching the approach already established by
 /// WP2-AUTHZ-01's Critical Mutation tests).
 /// </summary>
-public interface IOperatorCreateSuccessCommitter
+internal interface IOperatorCreateSuccessCommitter
 {
     Task CommitAsync(
         Operator newOperator,

@@ -726,6 +726,7 @@ v0.1.0ではAudit Logの記録と検証証拠取得を必須とし、利用者�
 | `method_not_allowed` | 405 | endpointに対して指定HTTP methodが許可されない |
 | `unsupported_media_type` | 415 | request media typeがendpointで受理されない |
 | `email_already_registered` | 409 | 正規化後メールアドレスが重複 |
+| `operator_login_identifier_already_registered` | 409 | 正規化後Operator login identifierが重複 |
 | `account_closed` | 409 | 解約済みAccountへの禁止操作 |
 | `customer_closed` | 409 | 解約済みCustomerへの禁止更新 |
 | `account_balance_not_zero` | 409 | 正残高のため解約不可 |

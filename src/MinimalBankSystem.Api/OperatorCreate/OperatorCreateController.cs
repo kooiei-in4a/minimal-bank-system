@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MinimalBankSystem.Api.Authorization;
@@ -20,14 +21,13 @@ namespace MinimalBankSystem.Api.OperatorCreate;
 public sealed class OperatorCreateController(
     BankDbContext persistence,
     IAuditWriter auditWriter,
-    IOperatorCreateSuccessCommitter successCommitter,
     ApplicationTime applicationTime) : ControllerBase
 {
     [Authorize(Policy = CurrentOperatorPolicyNames.Administrator)]
     [OperatorCreateAuthorizationAuditContext]
     [HttpPost]
     public async Task<IActionResult> Create(
-        [FromBody] OperatorCreateRequest? request,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] OperatorCreateRequest? request,
         CancellationToken cancellationToken)
     {
         CurrentOperatorSnapshot actor = GetCurrentActor();
@@ -92,7 +92,8 @@ public sealed class OperatorCreateController(
 
         try
         {
-            await successCommitter
+            await HttpContext.RequestServices
+                .GetRequiredService<IOperatorCreateSuccessCommitter>()
                 .CommitAsync(newOperator, actor.Identifier, actor.Role, HttpContext, cancellationToken)
                 .ConfigureAwait(false);
         }
