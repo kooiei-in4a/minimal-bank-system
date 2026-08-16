@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using MinimalBankSystem.Api.Authorization;
+using MinimalBankSystem.Api.OperatorQuery;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Application.Runtime;
@@ -34,10 +35,10 @@ builder.Services
     });
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ApplicationTime>();
-// Feature leaves contribute explicit AuditOperationRegistration instances through DI. AUD-01
-// contributes none, so production is empty and fail-closed until an owning feature registers one.
+// Feature leaves contribute explicit AuditOperationRegistration instances through DI.
 builder.Services.AddSingleton<IAuditOperationRegistry, AuditOperationRegistry>();
 builder.Services.AddScoped<IAuditWriter, PostgreSqlAuditWriter>();
+builder.Services.AddOperatorQuery();
 
 builder.Services
     .AddOptions<JwtAuthnOptions>()
