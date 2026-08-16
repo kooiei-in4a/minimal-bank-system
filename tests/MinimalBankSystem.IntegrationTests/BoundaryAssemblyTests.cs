@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.Versioning;
 using MinimalBankSystem.IntegrationTests.Authorization;
+using MinimalBankSystem.IntegrationTests.OperatorCreate;
 using MinimalBankSystem.IntegrationTests.Persistence;
 using MinimalBankSystem.IntegrationTests.PostgreSql;
 
@@ -131,5 +132,63 @@ public sealed class BoundaryAssemblyTests
         Assert.DoesNotContain(nameof(VersionCheckBypassAuthorizationHandler), apiComposition, StringComparison.Ordinal);
         Assert.DoesNotContain(nameof(RoleClaimAuthoritativeAuthorizationHandler), apiComposition, StringComparison.Ordinal);
         Assert.DoesNotContain("IsEnvironment(\"Testing\")", apiComposition, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OperatorCreateVerificationSurfaceExistsOnlyInTestCompositionByConstruction()
+    {
+        Assembly testAssembly = typeof(BoundaryAssemblyTests).Assembly;
+        Type[] verificationOnlyTypes =
+        [
+            typeof(FailingOperatorCreateAuditWriter),
+            typeof(CommitThenFailCreateAuditWriter),
+            typeof(ThrowOnOperatorSaveChangesInterceptor),
+            typeof(OperatorCreateAuditFailureInjectionException),
+            typeof(OperatorCreateAuditAtomicityMutationException),
+            typeof(OperatorCreatePersistenceInjectionException),
+        ];
+
+        Assert.All(verificationOnlyTypes, type =>
+        {
+            Assert.NotNull(type);
+            Assert.Same(testAssembly, type.Assembly);
+        });
+
+        foreach (string productionAssemblyName in new[]
+                 {
+                     "MinimalBankSystem.Api",
+                     "MinimalBankSystem.Application",
+                     "MinimalBankSystem.Domain",
+                     "MinimalBankSystem.Infrastructure",
+                     "MinimalBankSystem.Migrator",
+                 })
+        {
+            Assembly productionAssembly = Assembly.Load(new AssemblyName(productionAssemblyName));
+            Assert.DoesNotContain(
+                productionAssembly.GetReferencedAssemblies(),
+                reference => reference.Name == testAssembly.GetName().Name);
+        }
+
+        string apiComposition = File.ReadAllText(Path.Combine(
+            RepositoryLayout.RepositoryRoot.FullName,
+            "src",
+            "MinimalBankSystem.Api",
+            "Program.cs"));
+        string executorPath = Path.Combine(
+            RepositoryLayout.RepositoryRoot.FullName,
+            "src",
+            "MinimalBankSystem.Api",
+            "OperatorCreate",
+            "OperatorCreateExecutor.cs");
+        string executorComposition = File.ReadAllText(executorPath);
+
+        Assert.DoesNotContain(nameof(FailingOperatorCreateAuditWriter), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain(nameof(CommitThenFailCreateAuditWriter), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain(nameof(ThrowOnOperatorSaveChangesInterceptor), apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain("OPR-CREATE-AUD-01", apiComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsEnvironment(\"Testing\")", apiComposition, StringComparison.Ordinal);
+        Assert.Contains("AppendToCurrentTransactionAsync", executorComposition, StringComparison.Ordinal);
+        Assert.Contains("AppendInSeparateTransactionBeforeResultAsync", executorComposition, StringComparison.Ordinal);
+        Assert.DoesNotContain("CommitThenFail", executorComposition, StringComparison.Ordinal);
     }
 }

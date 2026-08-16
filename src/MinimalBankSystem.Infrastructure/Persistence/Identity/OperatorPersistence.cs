@@ -1,3 +1,5 @@
+using Npgsql;
+
 namespace MinimalBankSystem.Infrastructure.Persistence.Identity;
 
 /// <summary>Physical names for the Operator identity schema owned by WP2-ID-01.</summary>
@@ -25,4 +27,24 @@ public static class OperatorPersistence
     public const string ViewerRoleToken = "viewer";
 
     public const string IdentityMigrationId = "20260813181449_AddOperatorIdentity";
+
+    public static bool IsNormalizedUserNameConflict(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException postgres
+                && postgres.SqlState == PostgresErrorCodes.UniqueViolation
+                && string.Equals(
+                    postgres.ConstraintName,
+                    NormalizedUserNameIndex,
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

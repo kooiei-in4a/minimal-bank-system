@@ -13,6 +13,11 @@ public sealed record ApiErrorEnvelope(string Code, string Message)
 
     public static ApiErrorEnvelope OperatorNotFound { get; } =
         new("operator_not_found", "The requested operator was not found.");
+
+    public static ApiErrorEnvelope OperatorLoginIdentifierAlreadyRegistered { get; } =
+        new(
+            "operator_login_identifier_already_registered",
+            "The operator login identifier is already registered.");
 }
 
 public sealed record ApiErrorMapping(int StatusCode, string Code, string Message)
