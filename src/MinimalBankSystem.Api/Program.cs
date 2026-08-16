@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using MinimalBankSystem.Api;
 using MinimalBankSystem.Api.Authorization;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
@@ -38,6 +39,8 @@ builder.Services.AddSingleton<ApplicationTime>();
 // contributes none, so production is empty and fail-closed until an owning feature registers one.
 builder.Services.AddSingleton<IAuditOperationRegistry, AuditOperationRegistry>();
 builder.Services.AddScoped<IAuditWriter, PostgreSqlAuditWriter>();
+builder.Services.AddSingleton(new AuditOperationRegistration(OperatorQueryOperations.List));
+builder.Services.AddSingleton(new AuditOperationRegistration(OperatorQueryOperations.Detail));
 
 builder.Services
     .AddOptions<JwtAuthnOptions>()

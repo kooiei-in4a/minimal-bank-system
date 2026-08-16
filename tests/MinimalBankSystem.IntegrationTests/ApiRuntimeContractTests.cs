@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
+using MinimalBankSystem.Api;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
 using MinimalBankSystem.Application.Runtime;
@@ -28,16 +29,23 @@ public sealed class ApiRuntimeContractTests
     private static readonly DateTimeOffset FixedUtcNow =
         new(2030, 4, 5, 6, 7, 8, TimeSpan.Zero);
 
+    /// <summary>
+    /// AUD-01 contributes no production operation of its own; WP2-OPR-QRY-01 (#169) is the first
+    /// feature to register real production operations (<see cref="OperatorQueryOperations.List"/>,
+    /// <see cref="OperatorQueryOperations.Detail"/>). The registry nonetheless remains a fail-closed
+    /// allowlist: only explicitly DI-contributed identifiers are ever accepted.
+    /// </summary>
     [Fact]
-    public void ProductionAuditRegistryStartsEmptyAndAcceptsExplicitFeatureContributions()
+    public void ProductionAuditRegistryAcceptsExplicitFeatureContributionsAndFailsClosedForUnregisteredOperations()
     {
-        using ContractWebApplicationFactory emptyFactory = new();
-        IAuditOperationRegistry emptyRegistry =
-            emptyFactory.Services.GetRequiredService<IAuditOperationRegistry>();
+        using ContractWebApplicationFactory productionFactory = new();
+        IAuditOperationRegistry productionRegistry =
+            productionFactory.Services.GetRequiredService<IAuditOperationRegistry>();
 
-        Assert.Empty(emptyFactory.Services.GetServices<AuditOperationRegistration>());
+        productionRegistry.EnsureRegistered(OperatorQueryOperations.List);
+        productionRegistry.EnsureRegistered(OperatorQueryOperations.Detail);
         Assert.Throws<UnregisteredAuditOperationException>(
-            () => emptyRegistry.EnsureRegistered("feature.operation"));
+            () => productionRegistry.EnsureRegistered("feature.operation"));
 
         using ContractWebApplicationFactory contributedFactory = new(
             services => services.AddSingleton(new AuditOperationRegistration("feature.operation")));
