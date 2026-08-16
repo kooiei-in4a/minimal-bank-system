@@ -23,15 +23,18 @@ public sealed class OperatorQueryController(
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
         CurrentOperatorSnapshot actor = GetCurrentActor();
-        IReadOnlyList<OperatorQueryResponse> projection = await persistence.Operators
+        IReadOnlyList<OperatorQueryRow> rows = await persistence.Operators
             .AsNoTracking()
             .OrderBy(operatorEntity => operatorEntity.Id)
-            .Select(operatorEntity => new OperatorQueryResponse(
+            .Select(operatorEntity => new OperatorQueryRow(
                 operatorEntity.Id,
                 operatorEntity.State,
                 operatorEntity.Role))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        IReadOnlyList<OperatorQueryResponse> projection = rows
+            .Select(ToResponse)
+            .ToArray();
 
         AuditWriteRequest audit = new(
             actor.Identifier,
@@ -58,10 +61,10 @@ public sealed class OperatorQueryController(
         CancellationToken cancellationToken)
     {
         CurrentOperatorSnapshot actor = GetCurrentActor();
-        OperatorQueryResponse? projection = await persistence.Operators
+        OperatorQueryRow? row = await persistence.Operators
             .AsNoTracking()
             .Where(operatorEntity => operatorEntity.Id == operatorIdentifier)
-            .Select(operatorEntity => new OperatorQueryResponse(
+            .Select(operatorEntity => new OperatorQueryRow(
                 operatorEntity.Id,
                 operatorEntity.State,
                 operatorEntity.Role))
@@ -69,7 +72,7 @@ public sealed class OperatorQueryController(
             .ConfigureAwait(false);
 
         string targetIdentifier = operatorIdentifier.ToString("D");
-        if (projection is null)
+        if (row is null)
         {
             AuditWriteRequest rejectionAudit = new(
                 actor.Identifier,
@@ -87,6 +90,8 @@ public sealed class OperatorQueryController(
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        OperatorQueryResponse projection = ToResponse(row);
 
         AuditWriteRequest audit = new(
             actor.Identifier,
@@ -109,6 +114,38 @@ public sealed class OperatorQueryController(
         HttpContext.RequestServices.GetRequiredService<CurrentOperatorRequestContext>().CurrentOperator
         ?? throw new InvalidOperationException(
             "An authorized Operator query requires a current Product-Audit actor.");
+
+    private static OperatorQueryResponse ToResponse(OperatorQueryRow row) =>
+        new(
+            row.OperatorIdentifier,
+            ToStateToken(row.State),
+            ToRoleToken(row.Role));
+
+    private static string ToStateToken(OperatorState state) => state switch
+    {
+        OperatorState.Active => "active",
+        OperatorState.Disabled => "disabled",
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(state),
+            state,
+            "Unknown Operator state cannot be exposed by the query API."),
+    };
+
+    private static string ToRoleToken(OperatorRole role) => role switch
+    {
+        OperatorRole.Administrator => "administrator",
+        OperatorRole.Teller => "teller",
+        OperatorRole.Viewer => "viewer",
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(role),
+            role,
+            "Unknown Operator role cannot be exposed by the query API."),
+    };
+
+    private sealed record OperatorQueryRow(
+        Guid OperatorIdentifier,
+        OperatorState State,
+        OperatorRole Role);
 }
 
 /// <summary>
@@ -117,5 +154,5 @@ public sealed class OperatorQueryController(
 /// </summary>
 public sealed record OperatorQueryResponse(
     Guid OperatorIdentifier,
-    OperatorState State,
-    OperatorRole Role);
+    string State,
+    string Role);

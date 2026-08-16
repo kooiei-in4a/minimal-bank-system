@@ -58,8 +58,16 @@ public sealed class OperatorQueryTests(PostgreSqlContainerFixture fixture)
         JsonElement[] entries = document.RootElement.EnumerateArray().ToArray();
 
         Assert.Equal(2, entries.Length);
-        AssertProjection(entries.Single(entry => entry.GetProperty("operatorIdentifier").GetGuid() == administrator.Id), administrator.Id);
-        AssertProjection(entries.Single(entry => entry.GetProperty("operatorIdentifier").GetGuid() == viewer.Id), viewer.Id);
+        AssertProjection(
+            entries.Single(entry => entry.GetProperty("operatorIdentifier").GetGuid() == administrator.Id),
+            administrator.Id,
+            expectedState: "active",
+            expectedRole: "administrator");
+        AssertProjection(
+            entries.Single(entry => entry.GetProperty("operatorIdentifier").GetGuid() == viewer.Id),
+            viewer.Id,
+            expectedState: "active",
+            expectedRole: "viewer");
     }
 
     [Fact]
@@ -79,7 +87,11 @@ public sealed class OperatorQueryTests(PostgreSqlContainerFixture fixture)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument document = await ReadJsonAsync(response);
-        AssertProjection(document.RootElement, target.Id);
+        AssertProjection(
+            document.RootElement,
+            target.Id,
+            expectedState: "active",
+            expectedRole: "viewer");
     }
 
     [Fact]
@@ -251,7 +263,11 @@ public sealed class OperatorQueryTests(PostgreSqlContainerFixture fixture)
         using JsonDocument document = await ReadJsonAsync(response);
         JsonElement projection = document.RootElement;
 
-        AssertProjection(projection, target.Id);
+        AssertProjection(
+            projection,
+            target.Id,
+            expectedState: "active",
+            expectedRole: "viewer");
         foreach (string prohibitedField in new[]
                  {
                      "password",
@@ -399,13 +415,24 @@ public sealed class OperatorQueryTests(PostgreSqlContainerFixture fixture)
         Assert.Equal(expectedCode, document.RootElement.GetProperty("code").GetString());
     }
 
-    private static void AssertProjection(JsonElement projection, Guid expectedIdentifier)
+    private static void AssertProjection(
+        JsonElement projection,
+        Guid expectedIdentifier,
+        string expectedState,
+        string expectedRole)
     {
         Assert.Equal(expectedIdentifier, projection.GetProperty("operatorIdentifier").GetGuid());
-        Assert.True(projection.TryGetProperty("state", out _));
-        Assert.True(projection.TryGetProperty("role", out _));
+
+        JsonElement state = projection.GetProperty("state");
+        Assert.Equal(JsonValueKind.String, state.ValueKind);
+        Assert.Equal(expectedState, state.GetString());
+
+        JsonElement role = projection.GetProperty("role");
+        Assert.Equal(JsonValueKind.String, role.ValueKind);
+        Assert.Equal(expectedRole, role.GetString());
 
         string[] approvedFields = ["operatorIdentifier", "state", "role"];
+        Assert.Equal(approvedFields.Length, projection.EnumerateObject().Count());
         foreach (JsonProperty property in projection.EnumerateObject())
         {
             Assert.Contains(property.Name, approvedFields);
