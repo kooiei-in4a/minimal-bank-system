@@ -134,13 +134,13 @@ internal sealed class CurrentOperatorAuthorizationHandler(
     }
 }
 
-internal sealed class CurrentOperatorRequestContext
+public sealed class CurrentOperatorRequestContext
 {
-    public CurrentOperatorSnapshot? CurrentOperator { get; private set; }
+    internal CurrentOperatorSnapshot? CurrentOperator { get; private set; }
 
-    public bool AuthenticationInvalidated { get; private set; }
+    internal bool AuthenticationInvalidated { get; private set; }
 
-    public void SetCurrent(CurrentOperatorSnapshot currentOperator)
+    internal void SetCurrent(CurrentOperatorSnapshot currentOperator)
     {
         ArgumentNullException.ThrowIfNull(currentOperator);
 
@@ -153,7 +153,7 @@ internal sealed class CurrentOperatorRequestContext
         CurrentOperator = currentOperator;
     }
 
-    public void MarkAuthenticationInvalidated()
+    internal void MarkAuthenticationInvalidated()
     {
         CurrentOperator = null;
         AuthenticationInvalidated = true;
