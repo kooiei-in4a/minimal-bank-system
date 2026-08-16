@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -328,9 +329,11 @@ public sealed class OperatorQueryTests(PostgreSqlContainerFixture fixture)
     {
         using OperatorQueryApiFactory factory = new(HealthConnectionStrings.Unreachable);
         EndpointDataSource endpointDataSource = factory.Services.GetRequiredService<EndpointDataSource>();
-        RouteEndpoint[] endpoints = endpointDataSource.Endpoints
-            .OfType<RouteEndpoint>()
-            .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/operators", StringComparison.Ordinal) == true)
+        Endpoint[] endpoints = endpointDataSource.Endpoints
+            .Where(endpoint => endpoint.Metadata
+                .GetOrderedMetadata<IAuthorizationAuditContext>()
+                .Any(context => context.OperationIdentifier is
+                    OperatorQueryOperations.List or OperatorQueryOperations.Detail))
             .ToArray();
 
         Assert.Equal(2, endpoints.Length);
