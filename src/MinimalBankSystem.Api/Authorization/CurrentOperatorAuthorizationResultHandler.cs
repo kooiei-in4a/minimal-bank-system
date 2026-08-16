@@ -9,6 +9,15 @@ namespace MinimalBankSystem.Api.Authorization;
 
 internal sealed class CurrentOperatorAuthorizationResultHandler : IAuthorizationMiddlewareResultHandler
 {
+    // Mandatory authenticated-403 Product Audit persistence must not depend on
+    // HttpContext.RequestAborted: a client disconnect must not be able to suppress a required
+    // Audit record. The write is a single short Audit-only transaction (begin + SaveChanges +
+    // commit), so it is bounded by its own timeout instead of an unbounded CancellationToken.None.
+    // The bound mirrors the existing PostgreSQL-dependent wait convention used for readiness
+    // checks (see HealthContract.ReadinessTimeout) so this fix does not invent a new timeout
+    // policy for the codebase.
+    private static readonly TimeSpan MandatoryAuditPersistenceTimeout = TimeSpan.FromSeconds(10);
+
     private readonly AuthorizationMiddlewareResultHandler defaultHandler = new();
 
     public async Task HandleAsync(
@@ -89,11 +98,16 @@ internal sealed class CurrentOperatorAuthorizationResultHandler : IAuthorization
             httpContext.TraceIdentifier);
 
         IAuditWriter auditWriter = httpContext.RequestServices.GetRequiredService<IAuditWriter>();
+
+        // A dedicated, bounded token — not linked to RequestAborted — so a client disconnect
+        // cannot cancel the mandatory 403 Audit write. Audit persistence failure (including a
+        // timeout here) still propagates and fails closed via the existing exception handling.
+        using CancellationTokenSource auditCancellation = new(MandatoryAuditPersistenceTimeout);
         await auditWriter
             .AppendInSeparateTransactionBeforeResultAsync(
                 auditRequest,
                 _ => Task.FromResult(true),
-                httpContext.RequestAborted)
+                auditCancellation.Token)
             .ConfigureAwait(false);
 
         httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
