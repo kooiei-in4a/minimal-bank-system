@@ -6,17 +6,15 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using MinimalBankSystem.Api.Authorization;
 using MinimalBankSystem.Api.OperatorMutation;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
@@ -41,90 +39,127 @@ public sealed class OperatorMutationCriticalMutationTests(PostgreSqlContainerFix
 {
     private const string SeedPlaintextPassword = "operator-mutation-critical-seed-not-for-production";
 
+    /// <summary>
+    /// OPR-MUT-ADMIN-01: active-administrator invariant bypass. Semantic oracle: the committed
+    /// active-administrator count reaches zero. Two concurrent, individually-plausible disables
+    /// of the only two active administrators must not both be allowed to "win" the invariant
+    /// check against stale, unlocked data. A self-disable scenario cannot exercise this race
+    /// (only one Operator would ever be involved), so this proof always uses two distinct
+    /// administrators disabling each other.
+    /// </summary>
     [Fact]
     public async Task OprMutAdmin01ActiveAdministratorInvariantIsProvenWithSemanticOracle()
     {
         await MigrateAsync();
-        Operator actor = await SeedOperatorAsync("opr-mut-admin01.actor", OperatorRole.Administrator);
-        string baselineToken = CreateToken(actor);
 
-        // BASELINE_GREEN: the production service rejects disabling the only active administrator.
+        // BASELINE_GREEN: production service. Exactly two active administrators exist; each
+        // concurrently disables the other. The invariant must permit only one to succeed.
+        await ForceDisableAllActiveAdministratorsExceptAsync();
+        (Operator baselineA, Operator baselineB) = await SeedTwoActiveAdministratorsAsync(
+            "opr-mut-admin01.baseline.a", "opr-mut-admin01.baseline.b");
         await using (OperatorMutationApiFactory baseline = CreateFactory())
         using (HttpClient baselineClient = baseline.CreateClient())
-        using (HttpResponseMessage baselineResponse = await SendDisableAsync(
-                   baselineClient,
-                   actor.Id,
-                   baselineToken,
-                   "opr-mut-admin01-baseline"))
         {
-            Assert.Equal(HttpStatusCode.Conflict, baselineResponse.StatusCode);
-            Assert.Contains(
-                "state_transition_not_allowed",
-                await baselineResponse.Content.ReadAsStringAsync(),
-                StringComparison.Ordinal);
+            HttpResponseMessage[] responses = await Task.WhenAll(
+                SendDisableAsync(baselineClient, baselineB.Id, CreateToken(baselineA), "opr-mut-admin01-baseline-a"),
+                SendDisableAsync(baselineClient, baselineA.Id, CreateToken(baselineB), "opr-mut-admin01-baseline-b"));
+            int successCount = responses.Count(response => response.StatusCode == HttpStatusCode.OK);
+            foreach (HttpResponseMessage response in responses)
+            {
+                response.Dispose();
+            }
+
+            Assert.Equal(1, successCount);
         }
 
-        Assert.Equal(1L, await CountActiveAdministratorsAsync());
+        Assert.True(
+            await CountActiveAmongAsync(baselineA.Id, baselineB.Id) >= 1,
+            "OPR-MUT-ADMIN-01 BASELINE_GREEN: the production lock strategy unexpectedly allowed the active-administrator count to reach zero.");
 
-        // MUTATION_RED: a test-composition-only service removes the invariant check. The oracle
-        // is the committed active-administrator count, not merely the HTTP success status.
+        // MUTATION_RED: the production IOperatorMutationService is replaced with a test-only
+        // double that locks only the requested target row and reads the active-administrator
+        // count from an unlocked snapshot, instead of locking the full active-administrator set -
+        // the exact insufficient pattern the approved contract calls out by name.
+        await ForceDisableAllActiveAdministratorsExceptAsync();
+        (Operator mutatedA, Operator mutatedB) = await SeedTwoActiveAdministratorsAsync(
+            "opr-mut-admin01.mutated.a", "opr-mut-admin01.mutated.b");
         await using (OperatorMutationApiFactory mutated = CreateFactory(services =>
         {
             services.RemoveAll<IOperatorMutationService>();
-            services.AddScoped<IOperatorMutationService, LastAdministratorBypassMutationService>();
+            services.AddScoped<IOperatorMutationService, TargetOnlyUnlockedCountMutationService>();
         }))
         using (HttpClient mutatedClient = mutated.CreateClient())
-        using (HttpResponseMessage mutatedResponse = await SendDisableAsync(
-                   mutatedClient,
-                   actor.Id,
-                   baselineToken,
-                   "opr-mut-admin01-mutated"))
         {
-            Assert.Equal(HttpStatusCode.OK, mutatedResponse.StatusCode);
+            HttpResponseMessage[] responses = await Task.WhenAll(
+                SendDisableAsync(mutatedClient, mutatedB.Id, CreateToken(mutatedA), "opr-mut-admin01-mutated-a"),
+                SendDisableAsync(mutatedClient, mutatedA.Id, CreateToken(mutatedB), "opr-mut-admin01-mutated-b"));
+            foreach (HttpResponseMessage response in responses)
+            {
+                response.Dispose();
+            }
         }
 
-        Assert.Equal(0L, await CountActiveAdministratorsAsync());
+        long mutatedActiveAdministratorCount = await CountActiveAmongAsync(mutatedA.Id, mutatedB.Id);
+        Assert.True(
+            mutatedActiveAdministratorCount == 0,
+            $"OPR-MUT-ADMIN-01 MUTATION_RED: expected the target-only, unlocked-count service to allow the committed active-administrator count (among the two seeded administrators) to reach zero, but observed {mutatedActiveAdministratorCount}.");
 
-        await SetOperatorStateAsync(actor.Id, OperatorState.Active, OperatorRole.Administrator);
-        Operator restoredActor = await ReadOperatorAsync(actor.Id);
-
-        // RESTORE_GREEN: production behavior again rejects the same semantic violation.
+        // RESTORE_GREEN: back to the production service. The invariant holds again.
+        await ForceDisableAllActiveAdministratorsExceptAsync();
+        (Operator restoredA, Operator restoredB) = await SeedTwoActiveAdministratorsAsync(
+            "opr-mut-admin01.restored.a", "opr-mut-admin01.restored.b");
         await using (OperatorMutationApiFactory restored = CreateFactory())
         using (HttpClient restoredClient = restored.CreateClient())
-        using (HttpResponseMessage restoredResponse = await SendDisableAsync(
-                   restoredClient,
-                   actor.Id,
-                   CreateToken(restoredActor),
-                   "opr-mut-admin01-restored"))
         {
-            Assert.Equal(HttpStatusCode.Conflict, restoredResponse.StatusCode);
-            Assert.Contains(
-                "state_transition_not_allowed",
-                await restoredResponse.Content.ReadAsStringAsync(),
-                StringComparison.Ordinal);
+            HttpResponseMessage[] responses = await Task.WhenAll(
+                SendDisableAsync(restoredClient, restoredB.Id, CreateToken(restoredA), "opr-mut-admin01-restored-a"),
+                SendDisableAsync(restoredClient, restoredA.Id, CreateToken(restoredB), "opr-mut-admin01-restored-b"));
+            int successCount = responses.Count(response => response.StatusCode == HttpStatusCode.OK);
+            foreach (HttpResponseMessage response in responses)
+            {
+                response.Dispose();
+            }
+
+            Assert.Equal(1, successCount);
         }
 
-        Assert.Equal(1L, await CountActiveAdministratorsAsync());
+        Assert.True(
+            await CountActiveAmongAsync(restoredA.Id, restoredB.Id) >= 1,
+            "OPR-MUT-ADMIN-01 RESTORE_GREEN: production code must not allow the active-administrator count to reach zero.");
     }
 
+    /// <summary>
+    /// OPR-MUT-AUTH-01: authorization-state invalidation bypass. Semantic oracle: an old
+    /// authenticated JWT remains authorized after a successful security-relevant mutation. This
+    /// proof stays entirely on the mutation side: it swaps the production
+    /// <see cref="IOperatorMutationSuccessCommitter"/> for a double that applies and persists the
+    /// role change but reverts only the authorization-state version and security stamp fields
+    /// before saving - a control that changed the role but forgot to invalidate prior
+    /// authenticated sessions. <c>CurrentOperatorAuthorizationHandler</c> and AUTHZ policy are
+    /// never touched. The mutation is a role promotion (Teller to Administrator) rather than a
+    /// disable: <c>CurrentOperatorAuthorizationHandler</c> rejects a disabled Operator's token on
+    /// the current-state check alone, before the version comparison is ever reached, which would
+    /// mask this specific defect instead of isolating it.
+    /// </summary>
     [Fact]
     public async Task OprMutAuth01OldAuthenticatedStateCannotSurviveSuccessfulMutation()
     {
         await MigrateAsync();
         Operator actor = await SeedOperatorAsync("opr-mut-auth01.actor", OperatorRole.Administrator);
-        Operator target = await SeedOperatorAsync("opr-mut-auth01.target", OperatorRole.Administrator);
+        Operator target = await SeedOperatorAsync("opr-mut-auth01.target", OperatorRole.Teller);
 
-        // BASELINE_GREEN: successful disable bumps the version and the old target JWT is rejected
-        // before the protected Operator query handler is reached.
+        // BASELINE_GREEN: production commit path invalidates the pre-mutation token after a
+        // successful role promotion.
         string baselineStaleToken = CreateToken(target);
         await using (OperatorMutationApiFactory baseline = CreateFactory())
         using (HttpClient baselineClient = baseline.CreateClient())
         {
-            using HttpResponseMessage mutation = await SendDisableAsync(
+            using HttpResponseMessage mutation = await SendRoleChangeAsync(
                 baselineClient,
                 target.Id,
                 CreateToken(actor),
-                "opr-mut-auth01-baseline-mutation");
+                "opr-mut-auth01-baseline-mutation",
+                "administrator");
             Assert.Equal(HttpStatusCode.OK, mutation.StatusCode);
 
             using HttpRequestMessage staleRequest = CreateQueryRequest(
@@ -134,34 +169,30 @@ public sealed class OperatorMutationCriticalMutationTests(PostgreSqlContainerFix
             Assert.Equal(HttpStatusCode.Unauthorized, staleResponse.StatusCode);
         }
 
-        await SetOperatorStateAsync(target.Id, OperatorState.Active, OperatorRole.Administrator);
+        await SetOperatorStateAsync(target.Id, OperatorState.Active, OperatorRole.Teller);
         Operator restoredActor = await ReadOperatorAsync(actor.Id);
         Operator restoredTarget = await ReadOperatorAsync(target.Id);
 
-        // MUTATION_RED: test-only handler omits both current-state and version checks. The semantic
-        // failure is a 200 protected response from an old token after the mutation succeeds.
+        // MUTATION_RED: the mutation-side commit path persists the role change and the required
+        // success Audit, but reverts AuthorizationStateVersion/SecurityStamp to their pre-mutation
+        // values before saving. The semantic failure is a 200 protected response from the
+        // pre-mutation token after the mutation succeeds - AUTHZ itself is untouched, and the
+        // probed endpoint only requires an authenticated current Operator (not a specific role),
+        // so the outcome isolates the version/stamp bypass rather than a role-privilege check.
         string mutatedStaleToken = CreateToken(restoredTarget);
         await using (OperatorMutationApiFactory mutated = CreateFactory(services =>
         {
-            ServiceDescriptor[] productionHandlers = services
-                .Where(descriptor =>
-                    descriptor.ServiceType == typeof(IAuthorizationHandler) &&
-                    descriptor.ImplementationType == typeof(CurrentOperatorAuthorizationHandler))
-                .ToArray();
-            foreach (ServiceDescriptor descriptor in productionHandlers)
-            {
-                services.Remove(descriptor);
-            }
-
-            services.AddScoped<IAuthorizationHandler, AuthorizationStateAndVersionBypassHandler>();
+            services.RemoveAll<IOperatorMutationSuccessCommitter>();
+            services.AddScoped<IOperatorMutationSuccessCommitter, AuthorizationInvalidationBypassSuccessCommitter>();
         }))
         using (HttpClient mutatedClient = mutated.CreateClient())
         {
-            using HttpResponseMessage mutation = await SendDisableAsync(
+            using HttpResponseMessage mutation = await SendRoleChangeAsync(
                 mutatedClient,
                 target.Id,
                 CreateToken(restoredActor),
-                "opr-mut-auth01-mutated-mutation");
+                "opr-mut-auth01-mutated-mutation",
+                "administrator");
             Assert.Equal(HttpStatusCode.OK, mutation.StatusCode);
 
             using HttpRequestMessage staleRequest = CreateQueryRequest(
@@ -169,11 +200,16 @@ public sealed class OperatorMutationCriticalMutationTests(PostgreSqlContainerFix
                 "opr-mut-auth01-mutated-stale");
             using HttpResponseMessage staleResponse = await mutatedClient.SendAsync(staleRequest);
             string body = await staleResponse.Content.ReadAsStringAsync();
-            Assert.Equal(HttpStatusCode.OK, staleResponse.StatusCode);
+            Assert.True(
+                staleResponse.StatusCode == HttpStatusCode.OK,
+                $"OPR-MUT-AUTH-01 MUTATION_RED: expected the pre-mutation token to remain authorized (200) after a successful mutation that bypassed authorization-state invalidation, but observed {(int)staleResponse.StatusCode}.");
             Assert.Contains("operatorIdentifier", body, StringComparison.Ordinal);
         }
 
-        await SetOperatorStateAsync(target.Id, OperatorState.Active, OperatorRole.Administrator);
+        Assert.Equal(OperatorRole.Administrator, (await ReadOperatorAsync(target.Id)).Role);
+        Assert.Single(await ReadAuditsAsync("opr-mut-auth01-mutated-mutation"));
+
+        await SetOperatorStateAsync(target.Id, OperatorState.Active, OperatorRole.Teller);
         Operator finalActor = await ReadOperatorAsync(actor.Id);
         Operator finalTarget = await ReadOperatorAsync(target.Id);
 
@@ -181,11 +217,12 @@ public sealed class OperatorMutationCriticalMutationTests(PostgreSqlContainerFix
         await using (OperatorMutationApiFactory restored = CreateFactory())
         using (HttpClient restoredClient = restored.CreateClient())
         {
-            using HttpResponseMessage mutation = await SendDisableAsync(
+            using HttpResponseMessage mutation = await SendRoleChangeAsync(
                 restoredClient,
                 target.Id,
                 CreateToken(finalActor),
-                "opr-mut-auth01-restored-mutation");
+                "opr-mut-auth01-restored-mutation",
+                "administrator");
             Assert.Equal(HttpStatusCode.OK, mutation.StatusCode);
 
             using HttpRequestMessage staleRequest = CreateQueryRequest(
@@ -331,6 +368,61 @@ public sealed class OperatorMutationCriticalMutationTests(PostgreSqlContainerFix
             candidate.State == OperatorState.Active && candidate.Role == OperatorRole.Administrator);
     }
 
+    private async Task<(Operator First, Operator Second)> SeedTwoActiveAdministratorsAsync(
+        string firstUserName,
+        string secondUserName)
+    {
+        Operator first = await SeedOperatorAsync(firstUserName, OperatorRole.Administrator);
+        Operator second = await SeedOperatorAsync(secondUserName, OperatorRole.Administrator);
+        return (first, second);
+    }
+
+    /// <summary>
+    /// Disables every currently-active administrator via a direct write, bypassing the API. This
+    /// test method's BASELINE_GREEN/MUTATION_RED/RESTORE_GREEN phases each seed their own pair of
+    /// administrators into the same shared per-test-method database; without this reset, an
+    /// earlier phase's surviving administrator would give a later phase's pair extra headroom and
+    /// the active-administrator invariant would no longer bind on that pair alone.
+    /// </summary>
+    private async Task ForceDisableAllActiveAdministratorsExceptAsync(params Guid[] keep)
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(
+            $"""
+             UPDATE {OperatorPersistence.TableName}
+             SET {OperatorPersistence.StateColumn} = '{OperatorPersistence.DisabledStateToken}'
+             WHERE {OperatorPersistence.FixedRoleColumn} = '{OperatorPersistence.AdministratorRoleToken}'
+               AND {OperatorPersistence.StateColumn} = '{OperatorPersistence.ActiveStateToken}'
+               AND NOT ({OperatorPersistence.IdColumn} = ANY(@keep));
+             """,
+            connection);
+        command.Parameters.AddWithValue("keep", keep);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// Counts active administrators restricted to a specific set of seeded identifiers, not the
+    /// whole table - this test method's baseline/mutated/restored phases each seed their own
+    /// administrators in the same shared database, so a global count would be polluted by other
+    /// phases' surviving administrators.
+    /// </summary>
+    private async Task<long> CountActiveAmongAsync(params Guid[] identifiers)
+    {
+        await using NpgsqlConnection connection = new(Database.ConnectionString);
+        await connection.OpenAsync();
+        await using NpgsqlCommand command = new(
+            $"""
+             SELECT count(*) FROM {OperatorPersistence.TableName}
+             WHERE {OperatorPersistence.FixedRoleColumn} = '{OperatorPersistence.AdministratorRoleToken}'
+               AND {OperatorPersistence.StateColumn} = '{OperatorPersistence.ActiveStateToken}'
+               AND {OperatorPersistence.IdColumn} = ANY(@ids);
+             """,
+            connection);
+        command.Parameters.AddWithValue("ids", identifiers);
+        return Convert.ToInt64(await command.ExecuteScalarAsync(), CultureInfo.InvariantCulture);
+    }
+
     private async Task<IReadOnlyList<PersistedAudit>> ReadAuditsAsync(string correlationId)
     {
         List<PersistedAudit> audits = [];
@@ -362,6 +454,20 @@ public sealed class OperatorMutationCriticalMutationTests(PostgreSqlContainerFix
         using HttpRequestMessage request = new(HttpMethod.Post, $"/operators/{targetIdentifier:D}/disable");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.Add(CorrelationIdMiddleware.HeaderName, correlationId);
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> SendRoleChangeAsync(
+        HttpClient client,
+        Guid targetIdentifier,
+        string token,
+        string correlationId,
+        string role)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Post, $"/operators/{targetIdentifier:D}/role");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Headers.Add(CorrelationIdMiddleware.HeaderName, correlationId);
+        request.Content = JsonContent.Create(new { role });
         return await client.SendAsync(request);
     }
 
@@ -400,9 +506,21 @@ public sealed class OperatorMutationCriticalMutationTests(PostgreSqlContainerFix
         string Result);
 }
 
-internal sealed class LastAdministratorBypassMutationService(
+/// <summary>
+/// OPR-MUT-ADMIN-01 MUTATION_RED double: locks only the requested target row and derives the
+/// active-administrator count from a plain unlocked snapshot read, instead of locking the full
+/// active-administrator set the way the production <c>OperatorMutationService</c> does - the
+/// exact "target Operatorだけをlockしてread-count-then-writeする実装では不十分です" pattern the
+/// approved contract calls out by name as insufficient. Because the count is not backed by any
+/// row lock, two concurrent requests each targeting a different one of the only two active
+/// administrators can both observe the same stale count before either commits and both proceed.
+/// Every other step (rejection rules, domain mutation, success-committer hand-off) mirrors
+/// production so the double isolates the locking defect alone. Test-composition-only; never
+/// referenced by production <c>Program.cs</c>.
+/// </summary>
+internal sealed class TargetOnlyUnlockedCountMutationService(
     BankDbContext persistence,
-    IAuditWriter auditWriter) : IOperatorMutationService
+    IOperatorMutationSuccessCommitter successCommitter) : IOperatorMutationService
 {
     public async Task<OperatorMutationResult> ExecuteAsync(
         Guid operatorIdentifier,
@@ -415,91 +533,147 @@ internal sealed class LastAdministratorBypassMutationService(
     {
         await using IDbContextTransaction transaction = await persistence.Database
             .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-        Operator target = await persistence.Operators.SingleAsync(
-            candidate => candidate.Id == operatorIdentifier,
-            cancellationToken);
-        OperatorRole role = requestedRole ?? target.Role;
-        OperatorState state = operation == OperatorMutationKind.Disable
-            ? OperatorState.Disabled
-            : target.State;
+
+        Operator? target = await persistence.Operators
+            .FromSqlRaw(
+                $"SELECT * FROM {OperatorPersistence.TableName} WHERE {OperatorPersistence.IdColumn} = {{0}} FOR UPDATE",
+                operatorIdentifier)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (target is null)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            return OperatorMutationResult.Rejected(ApiErrorEnvelope.OperatorNotFound, StatusCodes.Status404NotFound);
+        }
+
+        // Deliberately unlocked: not serialized against a concurrent transaction running this
+        // same insufficient strategy against the other administrator of the pair.
+        long activeAdministratorCount = await persistence.Operators
+            .AsNoTracking()
+            .LongCountAsync(
+                candidate => candidate.State == OperatorState.Active && candidate.Role == OperatorRole.Administrator,
+                cancellationToken);
+
+        OperatorState desiredState = operation == OperatorMutationKind.Enable
+            ? OperatorState.Active
+            : operation == OperatorMutationKind.Disable
+                ? OperatorState.Disabled
+                : target.State;
+        OperatorRole desiredRole = operation == OperatorMutationKind.ChangeRole
+            ? requestedRole ?? throw new InvalidOperationException("Role mutation requires a validated role.")
+            : target.Role;
+
+        ApiErrorEnvelope? rejection = GetRejection(
+            target, operation, desiredState, desiredRole, actorIdentifier, activeAdministratorCount);
+        if (rejection is not null)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            return OperatorMutationResult.Rejected(rejection, StatusCodes.Status409Conflict);
+        }
+
         target.ApplyLifecycleMutation(
-            state,
-            role,
+            desiredState,
+            desiredRole,
             DateTimeOffset.UtcNow,
             Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
-        await persistence.SaveChangesAsync(cancellationToken);
-        await auditWriter.AppendToCurrentTransactionAsync(
-            new AuditWriteRequest(
-                actorIdentifier,
-                actorRole,
-                "operator.command.disable",
-                target.Id.ToString("D"),
-                AuditResult.Success,
-                null,
-                httpContext.TraceIdentifier),
-            cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return OperatorMutationResult.Succeeded(
-            new OperatorMutationResponse(target.Id, "disabled", OperatorPersistence.AdministratorRoleToken));
+
+        await successCommitter
+            .CommitAsync(target, operation, actorIdentifier, actorRole, httpContext, transaction, cancellationToken)
+            .ConfigureAwait(false);
+
+        return OperatorMutationResult.Succeeded(new OperatorMutationResponse(
+            target.Id,
+            target.State == OperatorState.Active ? OperatorPersistence.ActiveStateToken : OperatorPersistence.DisabledStateToken,
+            ToRoleToken(target.Role)));
     }
+
+    private static ApiErrorEnvelope? GetRejection(
+        Operator target,
+        OperatorMutationKind operation,
+        OperatorState desiredState,
+        OperatorRole desiredRole,
+        Guid actorIdentifier,
+        long activeAdministratorCount)
+    {
+        if (operation == OperatorMutationKind.Disable && actorIdentifier == target.Id)
+        {
+            return ApiErrorEnvelope.StateTransitionNotAllowed;
+        }
+
+        if (target.State == desiredState && target.Role == desiredRole)
+        {
+            return ApiErrorEnvelope.StateTransitionNotAllowed;
+        }
+
+        bool losesActiveAdministrator =
+            target.State == OperatorState.Active &&
+            target.Role == OperatorRole.Administrator &&
+            (desiredState != OperatorState.Active || desiredRole != OperatorRole.Administrator);
+        if (losesActiveAdministrator && activeAdministratorCount <= 1)
+        {
+            return ApiErrorEnvelope.StateTransitionNotAllowed;
+        }
+
+        return null;
+    }
+
+    private static string ToRoleToken(OperatorRole role) => role switch
+    {
+        OperatorRole.Administrator => OperatorPersistence.AdministratorRoleToken,
+        OperatorRole.Teller => OperatorPersistence.TellerRoleToken,
+        OperatorRole.Viewer => OperatorPersistence.ViewerRoleToken,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown Operator role."),
+    };
 }
 
-internal sealed class AuthorizationStateAndVersionBypassHandler(
-    CurrentOperatorRequestContext requestContext) : IAuthorizationHandler
+/// <summary>
+/// OPR-MUT-AUTH-01 MUTATION_RED double: applies and persists the state/role change and the
+/// required success Audit, but reverts <see cref="Operator.AuthorizationStateVersion"/> and
+/// <see cref="Operator.SecurityStamp"/> to their pre-mutation values (read from EF Core's
+/// tracked <c>OriginalValues</c>, captured when the target was loaded, before the domain
+/// mutation) before saving - modeling a control that changed state/role but forgot to invalidate
+/// prior authenticated sessions. <c>CurrentOperatorAuthorizationHandler</c> and AUTHZ
+/// policy are never touched. Test-composition-only; never referenced by production
+/// <c>Program.cs</c>.
+/// </summary>
+internal sealed class AuthorizationInvalidationBypassSuccessCommitter(
+    BankDbContext persistence,
+    IAuditWriter auditWriter) : IOperatorMutationSuccessCommitter
 {
-    public async Task HandleAsync(AuthorizationHandlerContext authorizationContext)
+    private static readonly PropertyInfo AuthorizationStateVersionProperty =
+        typeof(Operator).GetProperty(nameof(Operator.AuthorizationStateVersion))!;
+
+    private static readonly PropertyInfo SecurityStampProperty =
+        typeof(Operator).GetProperty(nameof(Operator.SecurityStamp))!;
+
+    public async Task CommitAsync(
+        Operator target,
+        OperatorMutationKind operation,
+        Guid actorIdentifier,
+        OperatorRole actorRole,
+        HttpContext httpContext,
+        IDbContextTransaction transaction,
+        CancellationToken cancellationToken)
     {
-        if (!authorizationContext.Requirements.Any(requirement =>
-                requirement is CurrentOperatorRequirement or CurrentOperatorRoleRequirement) ||
-            authorizationContext.Resource is not HttpContext httpContext ||
-            httpContext.User.Identity?.IsAuthenticated != true ||
-            httpContext.GetEndpoint() is not RouteEndpoint)
-        {
-            return;
-        }
+        object? originalVersion = persistence.Entry(target).OriginalValues[nameof(Operator.AuthorizationStateVersion)];
+        object? originalStamp = persistence.Entry(target).OriginalValues[nameof(Operator.SecurityStamp)];
 
-        Claim? subject = authorizationContext.User.FindFirst(JwtRegisteredClaimNames.Sub);
-        if (subject is null || !Guid.TryParseExact(subject.Value, "D", out Guid operatorIdentifier))
-        {
-            requestContext.MarkAuthenticationInvalidated();
-            return;
-        }
+        AuthorizationStateVersionProperty.SetValue(target, originalVersion);
+        SecurityStampProperty.SetValue(target, originalStamp);
 
-        BankDbContext persistence = httpContext.RequestServices.GetRequiredService<BankDbContext>();
-        CurrentOperatorSnapshot? current = await persistence.Operators
-            .AsNoTracking()
-            .Where(candidate => candidate.Id == operatorIdentifier)
-            .Select(candidate => new CurrentOperatorSnapshot(
-                candidate.Id,
-                candidate.State,
-                candidate.Role,
-                candidate.AuthorizationStateVersion))
-            .SingleOrDefaultAsync(httpContext.RequestAborted);
-        if (current is null)
-        {
-            requestContext.MarkAuthenticationInvalidated();
-            return;
-        }
+        await persistence.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        // OPR-MUT-AUTH-01 MUTATION_RED: current state and authorization-state version are both
-        // ignored, allowing the old JWT to remain authorized after a successful mutation.
-        requestContext.SetCurrent(current);
-        foreach (IAuthorizationRequirement requirement in authorizationContext.Requirements)
-        {
-            switch (requirement)
-            {
-                case CurrentOperatorRequirement:
-                    authorizationContext.Succeed(requirement);
-                    break;
-                case CurrentOperatorRoleRequirement roleRequirement
-                    when roleRequirement.PermittedRoles.Contains(current.Role):
-                    authorizationContext.Succeed(requirement);
-                    break;
-                case CurrentOperatorRoleRequirement:
-                    authorizationContext.Fail();
-                    break;
-            }
-        }
+        AuditWriteRequest successAudit = new(
+            actorIdentifier,
+            actorRole,
+            OperatorMutationAudit.GetOperationIdentifier(operation),
+            target.Id.ToString("D"),
+            AuditResult.Success,
+            FailureBusinessErrorCode: null,
+            httpContext.TraceIdentifier);
+
+        await auditWriter.AppendToCurrentTransactionAsync(successAudit, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 }
 

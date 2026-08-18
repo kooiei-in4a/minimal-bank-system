@@ -28,33 +28,41 @@ public sealed class OperatorMutationConcurrencyTests(PostgreSqlContainerFixture 
 {
     private const string SeedPlaintextPassword = "operator-mutation-concurrency-seed-not-for-production";
 
+    // The three cases below are the primary real-PostgreSQL concurrency proof for the
+    // active-administrator invariant. Each seeds *exactly two* active administrators (A/B) and
+    // has them mutate *each other* concurrently (cross-target), not a shared third target. A
+    // common-target race only contends on one row's lock and does not exercise the ordered
+    // FOR-UPDATE lock over the whole active-administrator set the way two administrators removing
+    // each other does, so cross-target is required as the primary proof rather than a
+    // same-target race.
+
     [Fact]
-    public async Task ConcurrentDisableAndDisablePreservesActiveAdministratorInvariant()
+    public async Task ConcurrentCrossTargetDisableAndDisablePreservesActiveAdministratorInvariant()
     {
         await MigrateAsync();
-        Operator firstActor = await SeedOperatorAsync("opr-mut-concurrent.dd.actor-one", OperatorRole.Administrator);
-        Operator secondActor = await SeedOperatorAsync("opr-mut-concurrent.dd.actor-two", OperatorRole.Administrator);
-        Operator target = await SeedOperatorAsync("opr-mut-concurrent.dd.target", OperatorRole.Administrator);
+        Operator adminA = await SeedOperatorAsync("opr-mut-concurrent.dd.admin-a", OperatorRole.Administrator);
+        Operator adminB = await SeedOperatorAsync("opr-mut-concurrent.dd.admin-b", OperatorRole.Administrator);
 
         HttpResponseMessage[] responses = await RunConcurrentAsync(
             (client, correlationId) => SendMutationAsync(
                 client,
-                target.Id,
+                adminB.Id,
                 "/disable",
-                CreateToken(firstActor),
+                CreateToken(adminA),
                 correlationId),
             (client, correlationId) => SendMutationAsync(
                 client,
-                target.Id,
+                adminA.Id,
                 "/disable",
-                CreateToken(secondActor),
+                CreateToken(adminB),
                 correlationId));
         try
         {
             Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.OK);
             Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.Conflict);
-            Assert.Equal(OperatorState.Disabled, (await ReadOperatorAsync(target.Id)).State);
-            Assert.Equal(2L, await CountActiveAdministratorsAsync());
+            Assert.True(
+                await CountActiveAdministratorsAsync() >= 1,
+                "Cross-target disable+disable must leave at least one active administrator.");
         }
         finally
         {
@@ -66,30 +74,30 @@ public sealed class OperatorMutationConcurrencyTests(PostgreSqlContainerFixture 
     }
 
     [Fact]
-    public async Task ConcurrentDemotionAndDemotionPreservesActiveAdministratorInvariant()
+    public async Task ConcurrentCrossTargetDemotionAndDemotionPreservesActiveAdministratorInvariant()
     {
         await MigrateAsync();
-        Operator firstActor = await SeedOperatorAsync("opr-mut-concurrent.dm.actor-one", OperatorRole.Administrator);
-        Operator secondActor = await SeedOperatorAsync("opr-mut-concurrent.dm.actor-two", OperatorRole.Administrator);
-        Operator target = await SeedOperatorAsync("opr-mut-concurrent.dm.target", OperatorRole.Administrator);
+        Operator adminA = await SeedOperatorAsync("opr-mut-concurrent.dm.admin-a", OperatorRole.Administrator);
+        Operator adminB = await SeedOperatorAsync("opr-mut-concurrent.dm.admin-b", OperatorRole.Administrator);
 
         HttpResponseMessage[] responses = await RunConcurrentAsync(
             (client, correlationId) => SendRoleAsync(
                 client,
-                target.Id,
-                CreateToken(firstActor),
+                adminB.Id,
+                CreateToken(adminA),
                 correlationId),
             (client, correlationId) => SendRoleAsync(
                 client,
-                target.Id,
-                CreateToken(secondActor),
+                adminA.Id,
+                CreateToken(adminB),
                 correlationId));
         try
         {
             Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.OK);
             Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.Conflict);
-            Assert.Equal(OperatorRole.Teller, (await ReadOperatorAsync(target.Id)).Role);
-            Assert.Equal(2L, await CountActiveAdministratorsAsync());
+            Assert.True(
+                await CountActiveAdministratorsAsync() >= 1,
+                "Cross-target demotion+demotion must leave at least one active administrator.");
         }
         finally
         {
@@ -101,35 +109,31 @@ public sealed class OperatorMutationConcurrencyTests(PostgreSqlContainerFixture 
     }
 
     [Fact]
-    public async Task ConcurrentDisableAndDemotionPreservesInvariantAndConvergesSafely()
+    public async Task ConcurrentCrossTargetDisableAndDemotionPreservesInvariantAndConvergesSafely()
     {
         await MigrateAsync();
-        Operator firstActor = await SeedOperatorAsync("opr-mut-concurrent.dmd.actor-one", OperatorRole.Administrator);
-        Operator secondActor = await SeedOperatorAsync("opr-mut-concurrent.dmd.actor-two", OperatorRole.Administrator);
-        Operator target = await SeedOperatorAsync("opr-mut-concurrent.dmd.target", OperatorRole.Administrator);
+        Operator adminA = await SeedOperatorAsync("opr-mut-concurrent.dmd.admin-a", OperatorRole.Administrator);
+        Operator adminB = await SeedOperatorAsync("opr-mut-concurrent.dmd.admin-b", OperatorRole.Administrator);
 
         HttpResponseMessage[] responses = await RunConcurrentAsync(
             (client, correlationId) => SendMutationAsync(
                 client,
-                target.Id,
+                adminB.Id,
                 "/disable",
-                CreateToken(firstActor),
+                CreateToken(adminA),
                 correlationId),
             (client, correlationId) => SendRoleAsync(
                 client,
-                target.Id,
-                CreateToken(secondActor),
+                adminA.Id,
+                CreateToken(adminB),
                 correlationId));
         try
         {
-            Assert.All(responses, response =>
-                Assert.Contains(
-                    response.StatusCode,
-                    new[] { HttpStatusCode.OK, HttpStatusCode.Conflict }));
-            Operator finalTarget = await ReadOperatorAsync(target.Id);
-            Assert.Equal(OperatorState.Disabled, finalTarget.State);
-            Assert.Equal(OperatorRole.Teller, finalTarget.Role);
-            Assert.Equal(2L, await CountActiveAdministratorsAsync());
+            Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.OK);
+            Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.Conflict);
+            Assert.True(
+                await CountActiveAdministratorsAsync() >= 1,
+                "Cross-target disable+demotion must leave at least one active administrator.");
         }
         finally
         {
