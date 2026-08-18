@@ -18,6 +18,12 @@ public sealed record ApiErrorEnvelope(string Code, string Message)
         new(
             "operator_login_identifier_already_registered",
             "The operator login identifier is already registered.");
+
+    public static ApiErrorEnvelope StateTransitionNotAllowed { get; } =
+        new("state_transition_not_allowed", "The requested Operator state transition is not allowed.");
+
+    public static ApiErrorEnvelope ConcurrentOperationConflict { get; } =
+        new("concurrent_operation_conflict", "The Operator operation could not be completed safely because of a concurrent operation.");
 }
 
 public sealed record ApiErrorMapping(int StatusCode, string Code, string Message)
