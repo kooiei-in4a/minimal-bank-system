@@ -78,4 +78,60 @@ public sealed class Operator
             UpdatedAt = createdAt,
         };
     }
+
+    /// <summary>
+    /// Transitions this Operator to <see cref="OperatorState.Active"/> as an actual state change.
+    /// Callers own no-op detection (already-active), self-disable and last-administrator
+    /// invariants; this method unconditionally applies the transition and the resulting
+    /// authorization-state invalidation required by ADR-0007.
+    /// </summary>
+    public void Enable(DateTimeOffset utcNow, string securityStamp)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
+
+        State = OperatorState.Active;
+        InvalidateAuthorizationState(utcNow, securityStamp);
+    }
+
+    /// <summary>
+    /// Transitions this Operator to <see cref="OperatorState.Disabled"/> as an actual state
+    /// change. Callers own no-op detection (already-disabled), self-disable and
+    /// last-administrator invariants; this method unconditionally applies the transition.
+    /// </summary>
+    public void Disable(DateTimeOffset utcNow, string securityStamp)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
+
+        State = OperatorState.Disabled;
+        InvalidateAuthorizationState(utcNow, securityStamp);
+    }
+
+    /// <summary>
+    /// Changes this Operator's fixed role as an actual role change. Callers own no-op detection
+    /// (same-role) and last-administrator invariants; this method unconditionally applies the
+    /// transition.
+    /// </summary>
+    public void ChangeRole(OperatorRole newRole, DateTimeOffset utcNow, string securityStamp)
+    {
+        if (newRole is not (OperatorRole.Administrator or OperatorRole.Teller or OperatorRole.Viewer))
+        {
+            throw new ArgumentOutOfRangeException(nameof(newRole));
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
+
+        Role = newRole;
+        InvalidateAuthorizationState(utcNow, securityStamp);
+    }
+
+    private void InvalidateAuthorizationState(DateTimeOffset utcNow, string securityStamp)
+    {
+        checked
+        {
+            AuthorizationStateVersion += 1;
+        }
+
+        SecurityStamp = securityStamp;
+        UpdatedAt = utcNow.ToUniversalTime();
+    }
 }
