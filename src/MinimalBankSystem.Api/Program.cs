@@ -8,6 +8,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using MinimalBankSystem.Api.Authorization;
 using MinimalBankSystem.Api.OperatorCreate;
+using MinimalBankSystem.Api.OperatorMutation;
 using MinimalBankSystem.Api.OperatorQuery;
 using MinimalBankSystem.Api.Runtime;
 using MinimalBankSystem.Application.Auditing;
@@ -41,6 +42,7 @@ builder.Services.AddSingleton<IAuditOperationRegistry, AuditOperationRegistry>()
 builder.Services.AddScoped<IAuditWriter, PostgreSqlAuditWriter>();
 builder.Services.AddOperatorQuery();
 builder.Services.AddOperatorCreate();
+builder.Services.AddOperatorMutation();
 
 builder.Services
     .AddOptions<JwtAuthnOptions>()

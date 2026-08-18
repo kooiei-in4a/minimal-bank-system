@@ -70,6 +70,83 @@ public sealed class OperatorTests
             FrozenUtc,
             "stamp"));
     }
+
+    [Fact]
+    public void EnableBumpsAuthorizationStateSecurityStampAndUpdatedAt()
+    {
+        Operator created = CreateOperator(OperatorRole.Teller);
+        created.Disable(FrozenUtc, "disable-stamp");
+        int versionAfterDisable = created.AuthorizationStateVersion;
+        DateTimeOffset laterUtc = FrozenUtc.AddMinutes(5);
+
+        created.Enable(laterUtc, "enable-stamp");
+
+        Assert.Equal(OperatorState.Active, created.State);
+        Assert.Equal(versionAfterDisable + 1, created.AuthorizationStateVersion);
+        Assert.Equal("enable-stamp", created.SecurityStamp);
+        Assert.Equal(laterUtc, created.UpdatedAt);
+    }
+
+    [Fact]
+    public void DisableBumpsAuthorizationStateSecurityStampAndUpdatedAt()
+    {
+        Operator created = CreateOperator(OperatorRole.Teller);
+        int initialVersion = created.AuthorizationStateVersion;
+        DateTimeOffset laterUtc = FrozenUtc.AddMinutes(5);
+
+        created.Disable(laterUtc, "disable-stamp");
+
+        Assert.Equal(OperatorState.Disabled, created.State);
+        Assert.Equal(initialVersion + 1, created.AuthorizationStateVersion);
+        Assert.Equal("disable-stamp", created.SecurityStamp);
+        Assert.Equal(laterUtc, created.UpdatedAt);
+    }
+
+    [Fact]
+    public void ChangeRoleBumpsAuthorizationStateSecurityStampAndUpdatedAt()
+    {
+        Operator created = CreateOperator(OperatorRole.Teller);
+        int initialVersion = created.AuthorizationStateVersion;
+        DateTimeOffset laterUtc = FrozenUtc.AddMinutes(5);
+
+        created.ChangeRole(OperatorRole.Administrator, laterUtc, "role-stamp");
+
+        Assert.Equal(OperatorRole.Administrator, created.Role);
+        Assert.Equal(initialVersion + 1, created.AuthorizationStateVersion);
+        Assert.Equal("role-stamp", created.SecurityStamp);
+        Assert.Equal(laterUtc, created.UpdatedAt);
+    }
+
+    [Fact]
+    public void ChangeRoleRejectsUnspecifiedRole()
+    {
+        Operator created = CreateOperator(OperatorRole.Teller);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            created.ChangeRole(OperatorRole.Unspecified, FrozenUtc, "stamp"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void MutationMethodsRejectBlankSecurityStamp(string? blankStamp)
+    {
+        Operator created = CreateOperator(OperatorRole.Teller);
+
+        Assert.ThrowsAny<ArgumentException>(() => created.Enable(FrozenUtc, blankStamp!));
+        Assert.ThrowsAny<ArgumentException>(() => created.Disable(FrozenUtc, blankStamp!));
+        Assert.ThrowsAny<ArgumentException>(() =>
+            created.ChangeRole(OperatorRole.Administrator, FrozenUtc, blankStamp!));
+    }
+
+    private static Operator CreateOperator(OperatorRole role) =>
+        Operator.Create(
+            "mutation.subject",
+            new OperatorPasswordHash("identity-hashed-password"),
+            role,
+            FrozenUtc,
+            "initial-stamp");
 }
 
 file sealed class FrozenTimeProvider(DateTimeOffset utcNow) : TimeProvider
