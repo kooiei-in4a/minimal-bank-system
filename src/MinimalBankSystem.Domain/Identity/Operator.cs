@@ -78,4 +78,59 @@ public sealed class Operator
             UpdatedAt = createdAt,
         };
     }
+
+    public void Enable(DateTimeOffset utcNow, string securityStamp)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
+
+        if (State == OperatorState.Active)
+        {
+            throw new InvalidOperationException("An already-active Operator cannot be enabled.");
+        }
+
+        State = OperatorState.Active;
+        InvalidateAuthorizationState(utcNow, securityStamp);
+    }
+
+    public void Disable(DateTimeOffset utcNow, string securityStamp)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
+
+        if (State == OperatorState.Disabled)
+        {
+            throw new InvalidOperationException("An already-disabled Operator cannot be disabled.");
+        }
+
+        State = OperatorState.Disabled;
+        InvalidateAuthorizationState(utcNow, securityStamp);
+    }
+
+    public void ChangeRole(OperatorRole role, DateTimeOffset utcNow, string securityStamp)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
+
+        if (role is not (OperatorRole.Administrator or OperatorRole.Teller or OperatorRole.Viewer))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role));
+        }
+
+        if (Role == role)
+        {
+            throw new InvalidOperationException("An Operator cannot be changed to the same role.");
+        }
+
+        Role = role;
+        InvalidateAuthorizationState(utcNow, securityStamp);
+    }
+
+    private void InvalidateAuthorizationState(DateTimeOffset utcNow, string securityStamp)
+    {
+        checked
+        {
+            AuthorizationStateVersion++;
+        }
+
+        SecurityStamp = securityStamp;
+        UpdatedAt = utcNow.ToUniversalTime();
+    }
 }
