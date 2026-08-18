@@ -78,4 +78,29 @@ public sealed class Operator
             UpdatedAt = createdAt,
         };
     }
+
+    public void ApplyLifecycleMutation(
+        OperatorState state,
+        OperatorRole role,
+        DateTimeOffset utcNow,
+        string securityStamp)
+    {
+        if (state is not (OperatorState.Active or OperatorState.Disabled))
+        {
+            throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown Operator state.");
+        }
+
+        if (role is not (OperatorRole.Administrator or OperatorRole.Teller or OperatorRole.Viewer))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown Operator role.");
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
+
+        State = state;
+        Role = role;
+        SecurityStamp = securityStamp;
+        AuthorizationStateVersion = checked(AuthorizationStateVersion + 1);
+        UpdatedAt = utcNow.ToUniversalTime();
+    }
 }

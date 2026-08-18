@@ -70,6 +70,30 @@ public sealed class OperatorTests
             FrozenUtc,
             "stamp"));
     }
+
+    [Fact]
+    public void ApplyLifecycleMutationUpdatesSecurityMaterialVersionRoleStateAndUpdatedAt()
+    {
+        Operator operatorEntity = Operator.Create(
+            "operator.lifecycle",
+            new OperatorPasswordHash("hash"),
+            OperatorRole.Viewer,
+            FrozenUtc,
+            "initial-stamp");
+        DateTimeOffset updatedAt = FrozenUtc.AddMinutes(1);
+
+        operatorEntity.ApplyLifecycleMutation(
+            OperatorState.Disabled,
+            OperatorRole.Teller,
+            updatedAt,
+            "updated-stamp");
+
+        Assert.Equal(OperatorState.Disabled, operatorEntity.State);
+        Assert.Equal(OperatorRole.Teller, operatorEntity.Role);
+        Assert.Equal("updated-stamp", operatorEntity.SecurityStamp);
+        Assert.Equal(2, operatorEntity.AuthorizationStateVersion);
+        Assert.Equal(updatedAt, operatorEntity.UpdatedAt);
+    }
 }
 
 file sealed class FrozenTimeProvider(DateTimeOffset utcNow) : TimeProvider
